@@ -28,7 +28,12 @@ Takes a completed dossier + brain dump, writes the book chapter by chapter. Each
 - `server/pipeline.ts` — 11-step AI pipeline logic + ProjectState type
 - `server/llm.ts` — Anthropic Claude wrapper (cheap/powerful mode)
 - `server/storage.ts` — File-based storage for projects, chapter sessions, and books
-- `server/writing-rules.ts` — AI writing "tells" avoidance rules injected into all prose prompts
+- `server/writing-rules.ts` — Comprehensive AI writing rules system with 4 specialized rule sets:
+  - `AI_WRITING_RULES` — Core anti-AI-tell rules (dialogue, prose, structure, characters) injected into all prose prompts
+  - `SCENE_WRITING_RULES` — Scene engineering rules (Goal/Conflict/Outcome, double-up rule, mundane friction, pacing control, Cut the Author checklist) used in chapter writing and rewrite prompts
+  - `STORY_ARCHITECTURE_RULES` — Story construction rules (Lie/Truth/Want/Need/Ghost character arcs, plot structure with pinch points, world-as-thematic-mirror, theme as moral argument) used in dossier and outline generation
+  - `CHAPTER_SUMMARY_TEMPLATE` — Enhanced continuity snapshot template with timeline/location/injury/secrets/threats tracking for chapter summaries
+  - Distilled from: Story Construction Codex, Reduce AI Tells research, Novel Construction Best Practices, Editorial Codex
 
 ### Frontend
 - `client/src/pages/Home.tsx` — Main page with 3 views (init/pipeline/result)

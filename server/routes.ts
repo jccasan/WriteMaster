@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import type { BookChapter } from "./storage";
 import { runStep, getStepName } from "./pipeline";
 import { callLLM } from "./llm";
-import { AI_WRITING_RULES } from "./writing-rules";
+import { AI_WRITING_RULES, SCENE_WRITING_RULES, STORY_ARCHITECTURE_RULES, CHAPTER_SUMMARY_TEMPLATE } from "./writing-rules";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -246,15 +246,25 @@ ${elementsList}
 
 ${AI_WRITING_RULES}
 
+${SCENE_WRITING_RULES}
+
 INSTRUCTIONS:
 - Rewrite the entire chapter so it naturally embodies every element listed above
 - Maintain the original voice, style, and point of view unless an element specifically changes it
 - If an element contradicts the original, the element takes priority
 - PRESERVE ORIGINAL DETAILS: The original chapter text is the authoritative source for specific world details, setting descriptions, character traits, and established facts. If the original says a road is "well-maintained" or a location is a "major trade corridor," those details MUST appear in the rewrite unless an element explicitly overrides them. Do not invent replacements for details the author already established.
+- Apply scene engineering: ensure every scene has Goal → Conflict → Outcome with a clear value shift
+- Apply the double-up rule: each scene should serve at least two narrative functions
+- End the chapter on an open circuit — leave an unresolved question or tension
 - Preserve the original's best qualities — strong prose, vivid imagery, good dialogue
 - Do NOT add meta-commentary or notes — output ONLY the rewritten chapter text
 - Match approximately the same length as the original (within 20%)
 - Make the transitions between elements feel organic, not forced
+
+SELF-EDIT PASS (apply before outputting):
+- Remove lines that explain what behavior already shows
+- Break any accidental sentence pattern symmetry
+- Confirm action clarity in physical sequences
 
 Output the rewritten chapter text only, no preamble or commentary.`,
         "powerful"
@@ -356,12 +366,44 @@ Output the rewritten chapter text only, no preamble or commentary.`,
   });
 
   function buildPreviousSummariesContext(chapters: BookChapter[], upToChapter: number): string {
-    const summaries = chapters
+    const relevant = chapters
       .filter(c => c.chapter_number < upToChapter && c.summary)
-      .sort((a, b) => a.chapter_number - b.chapter_number)
+      .sort((a, b) => a.chapter_number - b.chapter_number);
+
+    if (relevant.length === 0) {
+      return "No previous chapters yet — this is the first chapter.";
+    }
+
+    const RECENT_FULL_COUNT = 5;
+
+    if (relevant.length <= RECENT_FULL_COUNT) {
+      return relevant
+        .map(c => `### Chapter ${c.chapter_number}: ${c.title}\n${c.summary}`)
+        .join("\n\n");
+    }
+
+    const older = relevant.slice(0, relevant.length - RECENT_FULL_COUNT);
+    const recent = relevant.slice(relevant.length - RECENT_FULL_COUNT);
+
+    const compressedOlder = older.map(c => {
+      const plotMatch = c.summary!.match(/\*\*Plot Summary:\*\*\s*([\s\S]*?)(?=\*\*|$)/);
+      const changedMatch = c.summary!.match(/\*\*What Changed:\*\*\s*([\s\S]*?)(?=\*\*|$)/);
+      const threadsMatch = c.summary!.match(/\*\*Open Threads:\*\*\s*([\s\S]*?)(?=\*\*|$)/);
+      const continuityMatch = c.summary!.match(/\*\*Continuity Tracking:\*\*\s*([\s\S]*?)(?=\*\*|$)/);
+      const parts = [`### Chapter ${c.chapter_number}: ${c.title} (compressed)`];
+      if (plotMatch) parts.push(plotMatch[0].trim());
+      if (changedMatch) parts.push(changedMatch[0].trim());
+      if (threadsMatch) parts.push(threadsMatch[0].trim());
+      if (continuityMatch) parts.push(continuityMatch[0].trim());
+      if (parts.length === 1) parts.push(c.summary!.substring(0, 500) + "...");
+      return parts.join("\n");
+    }).join("\n\n");
+
+    const fullRecent = recent
       .map(c => `### Chapter ${c.chapter_number}: ${c.title}\n${c.summary}`)
       .join("\n\n");
-    return summaries || "No previous chapters yet — this is the first chapter.";
+
+    return `[EARLIER CHAPTERS — compressed for context efficiency]\n\n${compressedOlder}\n\n[RECENT CHAPTERS — full detail]\n\n${fullRecent}`;
   }
 
   app.post("/api/books/:id/outline-chapter", async (req, res) => {
@@ -391,12 +433,19 @@ ${book.brain_dump}
 PREVIOUS CHAPTER SUMMARIES:
 ${previousSummaries}
 
+${STORY_ARCHITECTURE_RULES}
+
 INSTRUCTIONS:
 - Based on the dossier's plot beats, determine what should happen in Chapter ${nextNum}
 - Consider where the story is right now based on previous chapter summaries
-- The outline should include: chapter goal, key scenes (3-5), character focus, emotional beat, and how the chapter ends
+- Apply the character arc engine: what stage of the protagonist's Lie→Truth journey is this chapter? Are they still in the grip of the Lie, getting a glimpse of the Truth, or being tested?
+- Each scene in the outline must have a clear Goal, Conflict, and Outcome (value shift)
+- Apply the double-up rule: each scene should serve at least two functions (plot + character, action + theme, etc.)
+- Include 1-2 mundane frictions that ground the chapter in physical reality
+- The chapter must end on an open circuit — an unresolved question or tension that propels the reader forward
+- Check continuity: reference character locations, injuries, knowledge states, and active threats from previous chapter summaries
 - Be specific — name characters, reference established world details, connect to ongoing threads
-- Keep the outline to 200-400 words
+- Keep the outline to 300-500 words
 - Include a suggested chapter title
 
 Format as:
@@ -404,14 +453,18 @@ Format as:
 
 **Chapter Goal:** [what this chapter accomplishes in the larger story]
 
+**Arc Position:** [where we are in the protagonist's Lie→Truth journey and the overall plot structure]
+
 **Key Scenes:**
-1. [scene description]
-2. [scene description]
+1. [scene description — include Goal/Conflict/Outcome]
+2. [scene description — include Goal/Conflict/Outcome]
 ...
 
 **Emotional Beat:** [the emotional journey of this chapter]
 
-**Ends With:** [how this chapter closes / what propels the reader to the next]`,
+**Mundane Frictions:** [1-2 physical-world complications that affect the action]
+
+**Ends With:** [the open circuit — what unresolved question pulls the reader to the next chapter]`,
         "powerful"
       );
 
@@ -469,15 +522,29 @@ ${chapter.outline}
 
 ${AI_WRITING_RULES}
 
+${SCENE_WRITING_RULES}
+
 INSTRUCTIONS:
 - Write the full chapter as polished prose, ready for a reader
 - Follow the outline's scenes and emotional beats faithfully
-- Maintain consistency with everything that happened in previous chapters (referenced in summaries above)
+- Apply scene engineering: every scene must have Goal → Conflict → Outcome with a value shift
+- Apply the double-up rule: each scene serves at least two functions simultaneously
+- Begin scenes late, end them early — enter close to the conflict, exit before full resolution
+- End the chapter on an open circuit (Zeigarnik effect) — leave the reader with an unresolved question
+- Include concrete sensory details across multiple senses (sound, smell, texture, temperature), not just sight
+- Use mundane frictions from the outline to ground action in physical reality
+- Maintain continuity with everything in previous chapter summaries — check character locations, injuries, knowledge states, relationships, and active threats
 - Use the character voices, world details, and tone established in the dossier
 - The chapter should be 2000-4000 words
 - Start with the chapter title as a heading
 - Write immersive, engaging fiction — not a summary or treatment
 - Do NOT include author notes, meta-commentary, or section labels within the prose
+
+SELF-EDIT PASS (apply before outputting):
+- Remove lines that explain what behavior already shows
+- Replace at least one abstract "meaning" line with concrete action or sensation
+- Break any accidental sentence pattern symmetry (three sentences with the same structure)
+- Confirm action clarity in physical sequences: hands, objects, positions, cause-and-effect
 
 Output only the chapter text.`,
         "powerful"
@@ -519,31 +586,14 @@ Output only the chapter text.`,
       if (!chapter.content) return res.status(400).json({ error: "Chapter has no content to summarize" });
 
       const result = await callLLM(
-        `You are a story continuity editor. Read the chapter below and produce a structured summary that will be used as context for writing subsequent chapters.
+        `You are a story continuity editor. Read the chapter below and produce a structured continuity snapshot that will be used as context for writing subsequent chapters.
 
 CHAPTER ${chapterNum}: ${chapter.title}
 ${chapter.content}
 
-Produce a summary with these exact sections:
+${CHAPTER_SUMMARY_TEMPLATE}
 
-**Plot Summary:** [What happened in this chapter, 3-5 sentences]
-
-**Key Events:**
-- [Major event 1]
-- [Major event 2]
-...
-
-**Character States at Chapter End:**
-- [Character name]: [emotional state, physical location, key knowledge gained, decisions made]
-...
-
-**What Changed:** [What is different about the story world at the end of this chapter vs. the beginning — relationships, power dynamics, knowledge, stakes]
-
-**Open Threads:** [Unresolved questions, pending threats, setups that need payoff later]
-
-**Tone/Pacing Note:** [Was this a high-action, reflective, transitional chapter? What should the next chapter's energy feel like?]
-
-Be specific and factual. Reference character names and concrete details. This summary will be the ONLY context the next chapter's AI has about this chapter.`,
+CRITICAL: Be specific and factual. Reference character names and concrete details. This snapshot will be the ONLY context the next chapter's AI has about this chapter. Track every detail that could create a continuity error if forgotten — who knows what, who is where, what is damaged/lost/gained, what promises were made, what threats are active. The Continuity Tracking section is especially important for preventing contradictions in later chapters.`,
         "powerful"
       );
 

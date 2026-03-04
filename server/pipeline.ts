@@ -1,5 +1,5 @@
 import { callLLM } from "./llm";
-import { AI_WRITING_RULES } from "./writing-rules";
+import { AI_WRITING_RULES, STORY_ARCHITECTURE_RULES } from "./writing-rules";
 
 export interface TropePack {
   genre: string;
@@ -196,6 +196,8 @@ ${tp}
 AUTHOR BRAIN DUMP:
 ${state.brain_dump}
 
+${STORY_ARCHITECTURE_RULES}
+
 The Story Dossier must include ALL of the following sections in Markdown:
 
 ## 1. Logline
@@ -205,23 +207,32 @@ The Story Dossier must include ALL of the following sections in Markdown:
 [150-200 words]
 
 ## 3. Characters
-For each named character include: Full name, role, physical description (2 sentences), personality (2 sentences), motivation, fatal flaw, and arc summary.
+For each named character include: Full name, role, physical description (2 sentences), personality (2 sentences), motivation, fatal flaw, arc summary.
+REQUIRED for each major character: their Lie (flawed belief), Truth (what they must learn), Want (conscious goal), Need (unconscious requirement), and Ghost (past event that created the Lie).
 Include: protagonist, antagonist, 2-3 supporting characters.
+The antagonist should mirror or invert the protagonist's Lie — they represent what happens if the protagonist never changes.
 
 ## 4. World-Building
 Describe: setting overview, unique rules/magic/technology, social/political structure, atmosphere/tone, 3 specific locations with sensory detail.
+The world should be a thematic mirror — its structures, conflicts, and atmosphere should reflect the story's central moral argument.
+Follow the iceberg principle: provide enough detail that the writer knows the full world, but note which details should be revealed organically through action vs. stated directly.
 
 ## 5. Themes
-List primary theme and 2 secondary themes. For each, explain in concrete terms how it shows up in the story — no vague labels.
+List primary theme and 2 secondary themes. Theme is not a label but a moral argument tested through the plot.
+For each theme: explain in concrete terms how it manifests in character choices, world details, and plot consequences — not just "the story explores X."
 
 ## 6. Key Plot Beats
-- Opening image (what we see on page 1)
-- Inciting incident
-- Act 1 twist / lock-in moment
-- Midpoint shift
-- Dark night of the soul
-- Climax
-- Closing image (how character has changed)
+- Opening image (what we see on page 1 — establish protagonist in grip of their Lie)
+- Inciting incident (disruption that forces engagement)
+- Act 1 twist / lock-in moment (point of no return)
+- Pinch Point 1 (antagonist pressure — reminder of what protagonist faces)
+- Midpoint shift (protagonist moves from reaction to action — a true fulcrum)
+- Pinch Point 2 (antagonist's power escalates, consequences of failure shown)
+- Dark night of the soul (apparent defeat, internal reckoning with the Lie)
+- Climax (protagonist must consciously choose between Lie and Truth to resolve the conflict)
+- Closing image (mirror of opening — shows how character and world have changed)
+
+Include a ticking clock or escalating deadline that creates urgency across the plot.
 
 Be specific. No vague placeholders. Write as if you are handing this to a ghostwriter who needs to start writing tomorrow.
 
@@ -243,9 +254,11 @@ STORY DOSSIER:
 ${state.dossier_v1}
 
 Perform these checks:
-1. THEME COHESION: Identify the primary and secondary themes. For each, list every major story moment where the theme should land but currently feels absent or weak.
-2. EMOTIONAL PAYOFF: Does the protagonist's arc deliver a genuine gut punch? Where does it fall flat?
-3. CHARACTER MOTIVATION: Is every character's motivation specific and believable, or is it generic?
+1. THEME COHESION: Theme is a moral argument tested through the plot, not a label. For each theme, list every major story moment where it should land but currently feels absent or weak. Does the protagonist face forced choices that test the theme?
+2. EMOTIONAL PAYOFF: Does the protagonist's arc deliver a genuine gut punch? Check the Lie→Truth arc: is the Ghost concrete enough? Is the Midpoint a true shift from reaction to action? Does the climax force a conscious choice between Lie and Truth? Where does the arc fall flat?
+3. CHARACTER MOTIVATION: Is every character's Want vs. Need tension specific and believable? Does the antagonist mirror or invert the protagonist's Lie? Are supporting characters full people with their own agendas?
+4. SUSPENSE ENGINE: Is there a ticking clock or escalating deadline? Does every major scene end with an open circuit? Would the Zeigarnik effect keep a reader turning pages?
+5. CONVENIENCE AUDIT: Are there coincidences, convenient discoveries, or external rescues where character action should drive the plot?
 
 For each issue found, write a specific, actionable improvement instruction.
 Format as a numbered list titled: EMOTIONAL IMPROVEMENT PLAN`,
@@ -324,11 +337,13 @@ STORY DOSSIER:
 ${state.dossier_v2}
 
 Check for ALL of the following:
-1. TIMELINE LOGIC: Do events happen in a sequence that makes sense?
-2. CHARACTER CONSISTENCY: Do characters act in ways that contradict their stated motivations or abilities?
-3. WORLD-BUILDING RULES: Does any plot beat violate the established rules of the world's magic, technology, or social structure?
-4. PLOT PLAUSIBILITY: Are there any moments where a character does something convenient rather than logical?
-5. STAKES CONSISTENCY: Are the stakes clearly established and consistently maintained?
+1. TIMELINE LOGIC: Do events happen in a sequence that makes sense? Is there a clear ticking clock or escalating deadline?
+2. CHARACTER CONSISTENCY: Do characters act in ways that contradict their stated motivations, Lie/Truth arcs, or abilities? Does the antagonist function as a dark mirror of the protagonist?
+3. WORLD-BUILDING RULES: Does any plot beat violate the established rules of the world's magic, technology, or social structure? Does the world serve as a thematic mirror?
+4. PLOT PLAUSIBILITY (ECONOMY OF CONVENIENCE): Are there any moments where a character does something convenient rather than logical? Are revelations earned through character action or handed out by authorial convenience? Flag every coincidence.
+5. STAKES CONSISTENCY: Are the stakes clearly established and consistently maintained? Do pinch points show the antagonist's power? Does the midpoint represent a true shift from reaction to action?
+6. ARC INTEGRITY: Is the protagonist's Lie→Truth journey complete? Is the Ghost concrete? Does the climax force a conscious choice? Does the ending echo the opening?
+7. CHEKHOV'S ARMORY: Are there introduced elements (weapons, abilities, relationships, secrets) that never pay off? Are there payoffs that lack proper setup?
 
 For each issue found, write a specific, actionable fix.
 Format as a numbered list titled: LOGIC IMPROVEMENT PLAN`,
