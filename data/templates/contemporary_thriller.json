@@ -1,0 +1,15 @@
+{
+  "genre": "contemporary_thriller",
+  "display_name": "Contemporary Thriller",
+  "major_tropes": [
+    "The Unreliable Narrator",
+    "The Missing Person / Hidden Identity",
+    "Conspiracy Reaches Everywhere",
+    "False Allies",
+    "Race Against the Clock"
+  ],
+  "plot_template": "An ordinary person stumbles into a dangerous conspiracy, realizes they cannot trust anyone around them, and must use their unique knowledge or skill to survive and expose the truth.",
+  "character_archetypes": ["Reluctant Investigator", "The Manipulator", "The Burned Contact", "The Double Agent"],
+  "world_building_notes": "Ground the world in real institutions — government, law enforcement, corporations. Make the setting feel recognizable but threatening.",
+  "emotional_core": "Paranoia, isolation, self-reliance, the cost of knowing too much"
+}

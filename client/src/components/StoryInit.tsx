@@ -1,28 +1,52 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles } from "lucide-react";
+import { BookOpen, Sparkles, Loader2 } from "lucide-react";
 
-const GENRES = [
-  { id: "fantasy_thriller", label: "Fantasy Thriller" },
-  { id: "contemporary_thriller", label: "Contemporary Thriller" },
-  { id: "dark_romance", label: "Dark Romance" }
-];
+interface Genre {
+  id: string;
+  display_name: string;
+}
 
 interface StoryInitProps {
-  onStart: (brainDump: string, genre: string) => void;
+  onStart: (projectId: string) => void;
 }
 
 export default function StoryInit({ onStart }: StoryInitProps) {
   const [brainDump, setBrainDump] = useState("");
   const [genre, setGenre] = useState("");
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetch("/api/genres")
+      .then((r) => r.json())
+      .then(setGenres)
+      .catch((e) => setError("Failed to load genres"));
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (brainDump.trim() && genre) {
-      onStart(brainDump, genre);
+    if (!brainDump.trim() || !genre) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/project/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brain_dump: brainDump, genre }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create project");
+      onStart(data.project_id);
+    } catch (err: any) {
+      setError(err.message);
+      setIsSubmitting(false);
     }
   };
 
@@ -48,7 +72,7 @@ export default function StoryInit({ onStart }: StoryInitProps) {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="braindump" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              <label htmlFor="braindump" className="text-sm font-medium leading-none">
                 Author Brain Dump
               </label>
               <Textarea
@@ -58,6 +82,7 @@ export default function StoryInit({ onStart }: StoryInitProps) {
                 value={brainDump}
                 onChange={(e) => setBrainDump(e.target.value)}
                 data-testid="input-braindump"
+                disabled={isSubmitting}
               />
               <p className="text-xs text-muted-foreground">
                 Include characters, plot fragments, themes, or just the vibes.
@@ -65,33 +90,48 @@ export default function StoryInit({ onStart }: StoryInitProps) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="genre" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              <label htmlFor="genre" className="text-sm font-medium leading-none">
                 Primary Genre
               </label>
-              <Select value={genre} onValueChange={setGenre}>
+              <Select value={genre} onValueChange={setGenre} disabled={isSubmitting}>
                 <SelectTrigger id="genre" data-testid="select-genre" className="h-12">
                   <SelectValue placeholder="Select a genre template" />
                 </SelectTrigger>
                 <SelectContent>
-                  {GENRES.map((g) => (
+                  {genres.map((g) => (
                     <SelectItem key={g.id} value={g.id} data-testid={`genre-${g.id}`}>
-                      {g.label}
+                      {g.display_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" data-testid="text-error">
+                {error}
+              </div>
+            )}
+
             <div className="pt-4">
-              <Button 
-                type="submit" 
-                size="lg" 
+              <Button
+                type="submit"
+                size="lg"
                 className="w-full h-14 text-base gap-2 group"
-                disabled={!brainDump.trim() || !genre}
+                disabled={!brainDump.trim() || !genre || isSubmitting}
                 data-testid="button-start-pipeline"
               >
-                <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
-                Initialize Story Pipeline
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Creating Project...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+                    Initialize Story Pipeline
+                  </>
+                )}
               </Button>
             </div>
           </form>

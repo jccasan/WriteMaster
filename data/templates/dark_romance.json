@@ -1,0 +1,15 @@
+{
+  "genre": "dark_romance",
+  "display_name": "Dark Romance",
+  "major_tropes": [
+    "Enemies to Lovers",
+    "Forced Proximity",
+    "The Morally Grey Love Interest",
+    "The Protective Obsession",
+    "Redemption Arc"
+  ],
+  "plot_template": "Two characters who should never be together are thrown into unavoidable proximity by circumstances, each carrying wounds that make them dangerous to love, and must choose between self-preservation and something real.",
+  "character_archetypes": ["The Wounded Hero", "The Defiant Heroine", "The Rival", "The Confidant"],
+  "world_building_notes": "Atmosphere and tension are everything. Settings should feel claustrophobic, charged, and immersive. Power dynamics must be intentional and acknowledged.",
+  "emotional_core": "Desire vs. self-protection, trauma and healing, choosing vulnerability"
+}

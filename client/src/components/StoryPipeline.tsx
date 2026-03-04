@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Loader2, ArrowRight, FileText } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, ArrowRight, FileText, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PIPELINE_STEPS = [
@@ -18,64 +18,100 @@ const PIPELINE_STEPS = [
   { id: 10, name: "Final Polish", desc: "Applying logic fixes for final dossier" },
 ];
 
-// Mock delays for visual effect
-const MOCK_DELAYS = [800, 1200, 2500, 2000, 800, 3000, 2000, 1500, 2500, 2000, 2000];
-
 interface StoryPipelineProps {
+  projectId: string;
   onComplete: () => void;
-  genre: string;
 }
 
-export default function StoryPipeline({ onComplete, genre }: StoryPipelineProps) {
+interface StepResult {
+  step: number;
+  name: string;
+  preview: string;
+}
+
+export default function StoryPipeline({ projectId, onComplete }: StoryPipelineProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stepResults, setStepResults] = useState<StepResult[]>([]);
+  const [isComplete, setIsComplete] = useState(false);
+  const autoRunRef = useRef(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  const runNextStep = () => {
-    if (currentStep >= PIPELINE_STEPS.length) {
-      onComplete();
-      return;
-    }
-
+  const runNextStep = useCallback(async () => {
+    if (isProcessing) return;
     setIsProcessing(true);
-    
-    // Simulate processing time
-    setTimeout(() => {
-      setCurrentStep(prev => prev + 1);
-      setIsProcessing(false);
-    }, MOCK_DELAYS[currentStep] || 1000);
-  };
+    setError(null);
 
-  // Handle auto-run
-  useEffect(() => {
-    if (autoRun && !isProcessing && currentStep < PIPELINE_STEPS.length) {
-      runNextStep();
-    } else if (autoRun && currentStep >= PIPELINE_STEPS.length) {
-      onComplete();
+    try {
+      const res = await fetch(`/api/project/${projectId}/run-step`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Step failed");
+
+      setStepResults((prev) => [
+        ...prev,
+        {
+          step: data.step_completed,
+          name: data.step_name,
+          preview: data.output_preview,
+        },
+      ]);
+      setCurrentStep(data.current_step);
+
+      if (data.is_complete || data.current_step > 10) {
+        setIsComplete(true);
+        setAutoRun(false);
+        autoRunRef.current = false;
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setAutoRun(false);
+      autoRunRef.current = false;
+    } finally {
+      setIsProcessing(false);
     }
-  }, [autoRun, isProcessing, currentStep, onComplete]);
+  }, [projectId, isProcessing]);
+
+  useEffect(() => {
+    autoRunRef.current = autoRun;
+  }, [autoRun]);
+
+  useEffect(() => {
+    if (autoRunRef.current && !isProcessing && !isComplete && !error) {
+      const timeout = setTimeout(() => {
+        if (autoRunRef.current) runNextStep();
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [isProcessing, autoRun, isComplete, error, runNextStep]);
+
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [currentStep, stepResults]);
 
   const progressPercentage = Math.round((currentStep / PIPELINE_STEPS.length) * 100);
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row gap-8 items-start">
-        
-        {/* Main Process Area */}
         <div className="flex-1 w-full space-y-6">
           <div className="flex justify-between items-end mb-2">
             <div>
               <h2 className="text-3xl font-serif font-bold text-foreground">Pipeline Execution</h2>
-              <p className="text-muted-foreground mt-1">Refining {genre.replace('_', ' ')} concept</p>
+              <p className="text-muted-foreground mt-1">Refining your story concept</p>
             </div>
             <div className="text-right">
               <span className="text-4xl font-light text-primary">{progressPercentage}%</span>
             </div>
           </div>
 
-          {/* Progress Bar */}
           <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
-            <div 
+            <div
               className="h-full bg-primary transition-all duration-700 ease-in-out"
               style={{ width: `${progressPercentage}%` }}
             />
@@ -85,21 +121,25 @@ export default function StoryPipeline({ onComplete, genre }: StoryPipelineProps)
             <CardHeader className="border-b border-border/40 bg-muted/20 pb-4">
               <CardTitle className="text-lg flex items-center justify-between">
                 <span>Active Operation</span>
-                {isProcessing && <span className="text-xs font-mono text-primary animate-pulse flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> PROCESSING</span>}
+                {isProcessing && (
+                  <span className="text-xs font-mono text-primary animate-pulse flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" /> PROCESSING
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="h-[400px] overflow-y-auto p-4 flex flex-col gap-1 relative">
-                {/* Visual fading gradient at bottom */}
+              <div ref={listRef} className="h-[420px] overflow-y-auto p-4 flex flex-col gap-1 relative">
                 <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none z-10" />
-                
+
                 {PIPELINE_STEPS.map((step, index) => {
                   const isPast = index < currentStep;
                   const isCurrent = index === currentStep;
                   const isFuture = index > currentStep;
+                  const result = stepResults.find((r) => r.step === index);
 
                   return (
-                    <div 
+                    <div
                       key={step.id}
                       className={cn(
                         "flex items-start gap-4 p-3 rounded-md transition-all duration-300",
@@ -121,25 +161,20 @@ export default function StoryPipeline({ onComplete, genre }: StoryPipelineProps)
                           <Circle className="w-5 h-5 text-muted-foreground" />
                         )}
                       </div>
-                      <div className="flex-1">
-                        <h4 className={cn(
-                          "font-medium",
-                          isCurrent ? "text-primary" : "text-foreground"
-                        )}>
+                      <div className="flex-1 min-w-0">
+                        <h4
+                          className={cn(
+                            "font-medium",
+                            isCurrent ? "text-primary" : "text-foreground"
+                          )}
+                        >
                           Step {index}: {step.name}
                         </h4>
                         <p className="text-sm text-muted-foreground">{step.desc}</p>
-                        
-                        {/* Mock output preview for completed steps */}
-                        {isPast && index === 2 && (
-                          <div className="mt-2 text-xs font-mono bg-muted/50 p-2 rounded text-muted-foreground line-clamp-2">
-                            Pitch 1: A disgraced detective...
-                            Pitch 2: The last surviving member...
-                          </div>
-                        )}
-                        {isPast && index === 4 && (
-                          <div className="mt-2 text-xs font-mono bg-muted/50 p-2 rounded text-muted-foreground line-clamp-2">
-                            BEST PITCH: 3 - Strongest emotional hook...
+
+                        {result && (
+                          <div className="mt-2 text-xs font-mono bg-muted/50 p-2 rounded text-muted-foreground line-clamp-3 break-words">
+                            {result.preview}
                           </div>
                         )}
                       </div>
@@ -150,42 +185,58 @@ export default function StoryPipeline({ onComplete, genre }: StoryPipelineProps)
             </CardContent>
           </Card>
 
-          <div className="flex gap-4">
-            {!autoRun ? (
-              <>
-                <Button 
-                  onClick={runNextStep} 
-                  disabled={isProcessing || currentStep >= PIPELINE_STEPS.length}
-                  className="flex-1"
-                  variant="outline"
-                  data-testid="button-step-next"
-                >
-                  {isProcessing ? "Processing..." : "Run Next Step manually"}
-                </Button>
-                <Button 
-                  onClick={() => setAutoRun(true)} 
-                  disabled={isProcessing || currentStep >= PIPELINE_STEPS.length}
-                  className="flex-1 gap-2"
-                  data-testid="button-auto-run"
-                >
-                  Auto-Run Pipeline <ArrowRight className="w-4 h-4" />
-                </Button>
-              </>
-            ) : (
-              <Button 
-                onClick={() => setAutoRun(false)} 
-                variant="destructive"
-                className="w-full"
-                data-testid="button-pause-run"
-              >
-                Pause Pipeline
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md" data-testid="text-pipeline-error">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+              <Button variant="outline" size="sm" onClick={() => { setError(null); runNextStep(); }} className="ml-auto shrink-0">
+                Retry
               </Button>
-            )}
-            
-            {currentStep >= PIPELINE_STEPS.length && (
-              <Button 
+            </div>
+          )}
+
+          <div className="flex gap-4">
+            {!isComplete ? (
+              !autoRun ? (
+                <>
+                  <Button
+                    onClick={runNextStep}
+                    disabled={isProcessing}
+                    className="flex-1"
+                    variant="outline"
+                    data-testid="button-step-next"
+                  >
+                    {isProcessing ? "Processing..." : "Run Next Step"}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setAutoRun(true);
+                      if (!isProcessing) runNextStep();
+                    }}
+                    disabled={isProcessing}
+                    className="flex-1 gap-2"
+                    data-testid="button-auto-run"
+                  >
+                    Auto-Run Pipeline <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setAutoRun(false);
+                    autoRunRef.current = false;
+                  }}
+                  variant="destructive"
+                  className="w-full"
+                  data-testid="button-pause-run"
+                >
+                  Pause Pipeline
+                </Button>
+              )
+            ) : (
+              <Button
                 onClick={onComplete}
-                className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                className="w-full gap-2 bg-green-700 hover:bg-green-800 text-white"
                 data-testid="button-view-dossier"
               >
                 <FileText className="w-4 h-4" /> View Final Dossier
@@ -194,29 +245,30 @@ export default function StoryPipeline({ onComplete, genre }: StoryPipelineProps)
           </div>
         </div>
 
-        {/* Side Panel Info */}
         <div className="w-full md:w-64 space-y-4 shrink-0">
           <Card className="bg-muted/30 border-none shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">Model Usage</CardTitle>
+              <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+                Model Usage
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="font-medium text-foreground">GPT-4o (Complex)</span>
-                  <span className="text-primary font-mono">4 tasks</span>
+                  <span className="font-medium text-foreground">Claude Sonnet (Complex)</span>
+                  <span className="text-primary font-mono">5 tasks</span>
                 </div>
                 <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-2/5" />
+                  <div className="h-full bg-primary w-[45%]" />
                 </div>
               </div>
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="font-medium text-foreground">GPT-4o-Mini (Fast)</span>
+                  <span className="font-medium text-foreground">Claude Haiku (Fast)</span>
                   <span className="text-accent-foreground font-mono">6 tasks</span>
                 </div>
                 <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-accent-foreground/50 w-3/5" />
+                  <div className="h-full bg-accent-foreground/50 w-[55%]" />
                 </div>
               </div>
             </CardContent>

@@ -1,0 +1,15 @@
+{
+  "genre": "fantasy_thriller",
+  "display_name": "Fantasy Thriller",
+  "major_tropes": [
+    "The Masquerade — magical world hidden from mundane",
+    "The Chosen Reluctant Hero",
+    "Corrupt Authority / Shadow Government",
+    "Moral Ambiguity — the hero does dark things for right reasons",
+    "Ticking Clock — a catastrophe only the hero can stop"
+  ],
+  "plot_template": "A disgraced or outcast protagonist uncovers a conspiracy within a magical or fantastical power structure, is forced to operate outside the law, and must sacrifice something personal to expose the truth before an irreversible event occurs.",
+  "character_archetypes": ["Vigilante Hero", "Corrupt Noble", "Reluctant Ally", "The Informant"],
+  "world_building_notes": "Magic should have hard rules and costs. Power structures mirror real-world political corruption. Setting should feel lived-in and gritty, not glamorous.",
+  "emotional_core": "Betrayal, justice at personal cost, found family vs. institution"
+}
