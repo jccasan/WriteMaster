@@ -1,0 +1,387 @@
+Build a full-stack web application called "StoryDossier" using Python (FastAPI backend) and a clean HTML/CSS/Vanilla JS frontend, all served from the same Replit project.
+
+---
+
+## PURPOSE
+This app takes a writer's brain dump and genre selection, then runs a multi-step AI pipeline to produce a fully refined "Story Dossier" — a structured document containing a logline, full pitch, characters, worldbuilding, and key plot outline beats.
+
+---
+
+## TECH STACK
+- Backend: Python, FastAPI, Uvicorn
+- Frontend: Single-page HTML/CSS/Vanilla JS (no framework)
+- LLM API: OpenAI (use gpt-4o-mini for cheap steps, gpt-4o for complex steps)
+- Storage: JSON files on disk per project (no database needed for MVP)
+- Dependencies: fastapi, uvicorn, openai, python-dotenv, uuid
+
+---
+
+## ENVIRONMENT VARIABLES
+Store in .env:
+- OPENAI_API_KEY
+
+---
+
+## BACKEND ARCHITECTURE
+
+### File structure:
+/main.py               → FastAPI app entry point
+/routers/pipeline.py   → All pipeline step endpoints
+/services/llm.py       → LLM call wrapper (cheap vs powerful model)
+/services/pipeline.py  → Core step logic functions
+/data/templates/       → JSON genre template files
+/data/projects/        → Per-project state JSON files
+/static/index.html     → Frontend
+/static/style.css
+/static/app.js
+
+---
+
+### ProjectState schema (saved as /data/projects/{project_id}.json):
+{
+  "project_id": "uuid",
+  "created_at": "ISO timestamp",
+  "brain_dump": "string",
+  "genre": "string",
+  "trope_pack": { ... },        // loaded from template file
+  "subgenre_label": "string",
+  "pitches": ["string x5"],
+  "pitch_selection_reasoning": "string",
+  "best_pitch": "string",
+  "dossier_v1": "string",
+  "emotional_check": "string",
+  "name_check": "string",
+  "dossier_v2": "string",
+  "logic_check": "string",
+  "dossier_final": "string",
+  "current_step": 0             // 0-9, tracks progress
+}
+
+---
+
+### Pipeline Steps (run sequentially, each triggered by POST):
+
+STEP 0 — Project Init
+- Accept brain_dump (text) and genre (string) from user
+- Load matching template from /data/templates/{genre}.json
+- Create and save ProjectState
+- Return project_id
+
+STEP 1 — Subgenre Detection (cheap model: gpt-4o-mini)
+Prompt:
+"You are a literary genre expert. Below are genre tropes and a plot template.
+Identify the specific subgenre these templates belong to.
+Output ONLY the subgenre name, nothing else.
+TROPES: {trope_pack}"
+
+STEP 2 — Pitch Generation (powerful model: gpt-4o)
+Prompt:
+"You are a bestselling author's creative collaborator. Your task is to brainstorm
+5 compelling story pitches for a new {subgenre} book.
+
+HOOK RUBRIC (every pitch must satisfy all of these):
+- Has a protagonist with a clear, visceral want AND a hidden need
+- Has a ticking clock or escalating pressure
+- Has a unique world or setting detail that makes it feel fresh
+- Has a central moral dilemma or impossible choice
+- Emotionally hooks the reader in the first two sentences
+- Uses no clichés or AI-obvious phrases
+
+GENRE TROPES AND PLOT TEMPLATE:
+{trope_pack}
+
+AUTHOR BRAIN DUMP:
+{brain_dump}
+
+Format each pitch in Markdown exactly as:
+### Pitch [N]
+**Logline:** [one sentence]
+**Full Pitch:** [150-200 words]
+**Why it works:** [2-3 sentences explaining the hook]"
+
+STEP 3 — Best Pitch Selection (powerful model: gpt-4o)
+Prompt:
+"You are a senior literary agent. Review these 5 story pitches and identify
+which single pitch is most commercially viable and emotionally compelling
+for the {subgenre} genre.
+
+PITCHES:
+{pitches}
+
+Explain in detail why your chosen pitch is strongest. Consider: hook strength,
+originality, emotional resonance, genre fit, and marketability.
+End your response with a line that reads exactly:
+BEST PITCH: [N]
+where N is the pitch number."
+
+STEP 4 — Extract Best Pitch Text (cheap model: gpt-4o-mini)
+Prompt:
+"From the pitches below, extract and reproduce ONLY the full text of Pitch {best_pitch_index},
+including its logline and full pitch sections. Output nothing else.
+PITCHES: {pitches}"
+
+STEP 5 — Story Dossier Generation (powerful model: gpt-4o)
+Prompt:
+"You are a master story architect. Using the materials below, create a complete
+Story Dossier for a {subgenre} novel.
+
+BEST PITCH:
+{best_pitch}
+
+GENRE TROPES AND TEMPLATE:
+{trope_pack}
+
+AUTHOR BRAIN DUMP:
+{brain_dump}
+
+The Story Dossier must include ALL of the following sections in Markdown:
+
+## 1. Logline
+[One sentence]
+
+## 2. Full Pitch
+[150-200 words]
+
+## 3. Characters
+For each named character include: Full name, role, physical description (2 sentences),
+personality (2 sentences), motivation, fatal flaw, and arc summary.
+Include: protagonist, antagonist, 2-3 supporting characters.
+
+## 4. World-Building
+Describe: setting overview, unique rules/magic/technology, social/political structure,
+atmosphere/tone, 3 specific locations with sensory detail.
+
+## 5. Themes
+List primary theme and 2 secondary themes. For each, explain in concrete terms
+how it shows up in the story — no vague labels.
+
+## 6. Key Plot Beats
+- Opening image (what we see on page 1)
+- Inciting incident
+- Act 1 twist / lock-in moment
+- Midpoint shift
+- Dark night of the soul
+- Climax
+- Closing image (how character has changed)
+
+Be specific. No vague placeholders. Write as if you are handing this to a ghostwriter
+who needs to start writing tomorrow."
+
+STEP 6 — Emotional & Theme Check (powerful model: gpt-4o)
+Prompt:
+"You are a developmental editor specializing in emotional resonance and theme.
+Analyze the Story Dossier below.
+
+STORY DOSSIER:
+{dossier_v1}
+
+Perform these checks:
+1. THEME COHESION: Identify the primary and secondary themes. For each, list every
+   major story moment where the theme should land but currently feels absent or weak.
+2. EMOTIONAL PAYOFF: Does the protagonist's arc deliver a genuine gut punch?
+   Where does it fall flat?
+3. CHARACTER MOTIVATION: Is every character's motivation specific and believable,
+   or is it generic?
+
+For each issue found, write a specific, actionable improvement instruction.
+Format as a numbered list titled: EMOTIONAL IMPROVEMENT PLAN"
+
+STEP 7 — Character Name Check (cheap model: gpt-4o-mini)
+Prompt:
+"You are a fiction editor. Review the character names in the Story Dossier below
+and flag any that sound like AI-generated filler names.
+
+NAMES TO AVOID (flag if any character uses these):
+Marcus, Nora, Lyra, Lara, Thorn, Kale, Kalen, Kayla, Silas, Vayne, Vesper, Chen,
+Aria, Zara, Mira, Zephyr, Caden, Aiden, Ethan, Lucas, Elara, Seraphina, Theron,
+Aldric, Malachar, Cassius, Rylan, Talon, Orion, Drake, Kane, Raven
+
+EXCEPTION: If a name was specifically mentioned in the Author Brain Dump, do not flag it.
+
+STORY DOSSIER:
+{dossier_v1}
+
+AUTHOR BRAIN DUMP:
+{brain_dump}
+
+For each flagged name:
+- State the character's role
+- Explain in 1 sentence why this name feels AI-generic
+- Propose 3 alternative names that fit the character's culture and role
+- Justify each alternative in 1 sentence
+
+Format as: CHARACTER NAME IMPROVEMENT PLAN"
+
+STEP 8 — Dossier Rewrite #1 (cheap model: gpt-4o-mini)
+Prompt:
+"You are a precise editor. Your job is to implement specific improvement instructions
+into a Story Dossier without changing anything else.
+
+ORIGINAL STORY DOSSIER:
+{dossier_v1}
+
+EMOTIONAL IMPROVEMENT PLAN:
+{emotional_check}
+
+CHARACTER NAME IMPROVEMENT PLAN:
+{name_check}
+
+Instructions:
+- Implement ONLY the changes suggested in both improvement plans
+- Do NOT rewrite sections that weren't flagged
+- Do NOT add new content beyond what was suggested
+- Reproduce the ENTIRE dossier with changes applied
+- Maintain all original Markdown section headers"
+
+STEP 9 — Logic & Plausibility Check (powerful model: gpt-4o)
+Prompt:
+"You are a developmental editor and logic expert. Rigorously analyze the Story Dossier
+below for internal consistency and plausibility.
+
+STORY DOSSIER:
+{dossier_v2}
+
+Check for ALL of the following:
+1. TIMELINE LOGIC: Do events happen in a sequence that makes sense?
+2. CHARACTER CONSISTENCY: Do characters act in ways that contradict their stated motivations or abilities?
+3. WORLD-BUILDING RULES: Does any plot beat violate the established rules of the world's magic, technology, or social structure?
+4. PLOT PLAUSIBILITY: Are there any moments where a character does something convenient rather than logical?
+5. STAKES CONSISTENCY: Are the stakes clearly established and consistently maintained?
+
+For each issue found, write a specific, actionable fix.
+Format as a numbered list titled: LOGIC IMPROVEMENT PLAN"
+
+STEP 10 — Dossier Rewrite #2 / Final (cheap model: gpt-4o-mini)
+Prompt:
+"You are a precise editor. Implement the logic improvement plan into the Story Dossier.
+
+STORY DOSSIER:
+{dossier_v2}
+
+LOGIC IMPROVEMENT PLAN:
+{logic_check}
+
+Instructions:
+- Implement ONLY the changes in the Logic Improvement Plan
+- Do NOT change anything not flagged
+- Reproduce the ENTIRE dossier with changes applied
+- Maintain all Markdown section headers
+This is the FINAL version of the dossier."
+
+---
+
+## API ENDPOINTS (routers/pipeline.py)
+
+POST /api/project/start
+  Body: { brain_dump, genre }
+  Returns: { project_id }
+
+POST /api/project/{project_id}/run-step
+  Runs the next pending step automatically based on current_step
+  Returns: { step_completed, step_name, output_preview }
+
+GET /api/project/{project_id}/state
+  Returns: full ProjectState JSON
+
+GET /api/project/{project_id}/final
+  Returns: { best_pitch, dossier_final } (or error if not complete)
+
+GET /api/genres
+  Returns: list of available genre template names from /data/templates/
+
+---
+
+## GENRE TEMPLATE FILES (/data/templates/{genre}.json)
+
+Create starter templates for these 3 genres:
+
+fantasy_thriller.json
+{
+  "genre": "fantasy_thriller",
+  "display_name": "Fantasy Thriller",
+  "major_tropes": [
+    "The Masquerade — magical world hidden from mundane",
+    "The Chosen Reluctant Hero",
+    "Corrupt Authority / Shadow Government",
+    "Moral Ambiguity — the hero does dark things for right reasons",
+    "Ticking Clock — a catastrophe only the hero can stop"
+  ],
+  "plot_template": "A disgraced or outcast protagonist uncovers a conspiracy within a magical or fantastical power structure, is forced to operate outside the law, and must sacrifice something personal to expose the truth before an irreversible event occurs.",
+  "character_archetypes": ["Vigilante Hero", "Corrupt Noble", "Reluctant Ally", "The Informant"],
+  "world_building_notes": "Magic should have hard rules and costs. Power structures mirror real-world political corruption. Setting should feel lived-in and gritty, not glamorous.",
+  "emotional_core": "Betrayal, justice at personal cost, found family vs. institution"
+}
+
+contemporary_thriller.json
+{
+  "genre": "contemporary_thriller",
+  "display_name": "Contemporary Thriller",
+  "major_tropes": [
+    "The Unreliable Narrator",
+    "The Missing Person / Hidden Identity",
+    "Conspiracy Reaches Everywhere",
+    "False Allies",
+    "Race Against the Clock"
+  ],
+  "plot_template": "An ordinary person stumbles into a dangerous conspiracy, realizes they cannot trust anyone around them, and must use their unique knowledge or skill to survive and expose the truth.",
+  "character_archetypes": ["Reluctant Investigator", "The Manipulator", "The Burned Contact", "The Double Agent"],
+  "world_building_notes": "Ground the world in real institutions — government, law enforcement, corporations. Make the setting feel recognizable but threatening.",
+  "emotional_core": "Paranoia, isolation, self-reliance, the cost of knowing too much"
+}
+
+dark_romance.json
+{
+  "genre": "dark_romance",
+  "display_name": "Dark Romance",
+  "major_tropes": [
+    "Enemies to Lovers",
+    "Forced Proximity",
+    "The Morally Grey Love Interest",
+    "The Protective Obsession",
+    "Redemption Arc"
+  ],
+  "plot_template": "Two characters who should never be together are thrown into unavoidable proximity by circumstances, each carrying wounds that make them dangerous to love, and must choose between self-preservation and something real.",
+  "character_archetypes": ["The Wounded Hero", "The Defiant Heroine", "The Rival", "The Confidant"],
+  "world_building_notes": "Atmosphere and tension are everything. Settings should feel claustrophobic, charged, and immersive. Power dynamics must be intentional and acknowledged.",
+  "emotional_core": "Desire vs. self-protection, trauma and healing, choosing vulnerability"
+}
+
+---
+
+## FRONTEND (static/index.html + app.js + style.css)
+
+Single page app with 3 views managed by JS:
+
+### View 1 — New Project
+- Textarea: "Brain Dump" (placeholder: "Tell me everything you already know about this book...")
+- Dropdown: Genre (populated from GET /api/genres)
+- Button: "Start Project"
+- On submit: POST /api/project/start, save project_id, go to View 2
+
+### View 2 — Pipeline Progress
+- Show project_id and genre
+- "Run Next Step" button — calls POST /api/project/{id}/run-step
+- Progress bar or step tracker showing all 10 steps with: step name, status (pending / running / complete)
+- After each step completes, show a preview card of the output below the tracker
+- "Run All Steps" button that loops through all remaining steps automatically with a short delay between calls
+
+### View 3 — Final Dossier
+- Renders the final dossier Markdown as formatted HTML
+- Shows the selected best pitch at the top
+- "Copy to Clipboard" button
+- "Download as .md file" button
+- "Start New Project" button
+
+### Style:
+- Dark theme (background #0f0f0f, card background #1a1a1a, accent color #7c5cbf)
+- Clean, minimal, writer-friendly
+- Readable font: use system-ui or Inter
+
+---
+
+## NOTES
+- All LLM calls should use async/await
+- Add basic error handling: if a step fails, return the error message and allow retry
+- Log each step's input/output to console for debugging
+- The /data/projects/ and /data/templates/ directories should be created on startup if they don't exist
+- Use python-dotenv to load OPENAI_API_KEY from .env
