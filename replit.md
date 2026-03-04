@@ -14,7 +14,8 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 - `server/routes.ts` — API endpoints
 - `server/pipeline.ts` — 11-step AI pipeline logic + ProjectState type
 - `server/llm.ts` — Anthropic Claude wrapper (cheap/powerful mode)
-- `server/storage.ts` — File-based project storage (data/projects/*.json)
+- `server/storage.ts` — File-based project + chapter session storage (data/projects/*.json, data/chapters/*.json)
+- `server/writing-rules.ts` — AI writing "tells" avoidance rules injected into prose prompts
 
 ### Frontend
 - `client/src/pages/Home.tsx` — Main page with 3 views (init/pipeline/result)
@@ -26,6 +27,7 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 ### Data
 - `data/templates/` — Genre template JSON files (fantasy_thriller, contemporary_thriller, dark_romance)
 - `data/projects/` — Per-project state JSON files
+- `data/chapters/` — Chapter analyzer session JSON files (persistent)
 
 ## API Endpoints
 - `GET /api/genres` — List available genres
@@ -33,6 +35,10 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 - `POST /api/project/:id/run-step` — Run next pipeline step
 - `GET /api/project/:id/state` — Get full project state
 - `GET /api/project/:id/final` — Get final dossier + best pitch
+- `GET /api/chapters` — List saved chapter analyzer sessions
+- `GET /api/chapters/:id` — Get full chapter session
+- `POST /api/chapters` — Save/update a chapter session
+- `DELETE /api/chapters/:id` — Delete a chapter session
 - `POST /api/chapter/extract` — Extract structural elements from chapter text
 - `POST /api/chapter/rewrite` — Rewrite chapter with edited elements
 

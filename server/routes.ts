@@ -97,6 +97,59 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/chapters", async (_req, res) => {
+    try {
+      const sessions = await storage.listChapterSessions();
+      res.json(sessions);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/chapters/:id", async (req, res) => {
+    try {
+      const session = await storage.getChapterSession(req.params.id);
+      if (!session) return res.status(404).json({ error: "Session not found" });
+      res.json(session);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/chapters", async (req, res) => {
+    try {
+      const { id, title, chapter_text, elements, rewritten_chapter } = req.body;
+      if (!id || !chapter_text) {
+        return res.status(400).json({ error: "id and chapter_text are required" });
+      }
+      const now = new Date().toISOString();
+      const existing = await storage.getChapterSession(id);
+      const session = {
+        id,
+        title: title || chapter_text.substring(0, 60).replace(/\n/g, " ").trim() + "...",
+        created_at: existing?.created_at || now,
+        updated_at: now,
+        chapter_text,
+        elements: elements || [],
+        rewritten_chapter: rewritten_chapter || null,
+      };
+      await storage.saveChapterSession(session);
+      res.json(session);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/chapters/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteChapterSession(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Session not found" });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/chapter/extract", async (req, res) => {
     try {
       const { chapter_text } = req.body;
