@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { runStep, getStepName } from "./pipeline";
 import { callLLM } from "./llm";
+import { AI_WRITING_RULES } from "./writing-rules";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -135,6 +136,8 @@ You MUST respond in valid JSON format with this exact structure:
   ]
 }
 
+When analyzing, also note if the chapter contains any AI writing "tells" — unnatural dialogue, manufactured drama, melodramatic cliches, or over-explaining. If so, flag these in the relevant element values so the user can address them.
+
 Respond with ONLY the JSON, no other text.`,
         "powerful"
       );
@@ -187,10 +190,13 @@ ${chapter_text}
 STRUCTURAL ELEMENTS TO INCORPORATE:
 ${elementsList}
 
+${AI_WRITING_RULES}
+
 INSTRUCTIONS:
 - Rewrite the entire chapter so it naturally embodies every element listed above
 - Maintain the original voice, style, and point of view unless an element specifically changes it
 - If an element contradicts the original, the element takes priority
+- PRESERVE ORIGINAL DETAILS: The original chapter text is the authoritative source for specific world details, setting descriptions, character traits, and established facts. If the original says a road is "well-maintained" or a location is a "major trade corridor," those details MUST appear in the rewrite unless an element explicitly overrides them. Do not invent replacements for details the author already established.
 - Preserve the original's best qualities — strong prose, vivid imagery, good dialogue
 - Do NOT add meta-commentary or notes — output ONLY the rewritten chapter text
 - Match approximately the same length as the original (within 20%)

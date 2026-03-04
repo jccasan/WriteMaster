@@ -1,4 +1,5 @@
 import { callLLM } from "./llm";
+import { AI_WRITING_RULES } from "./writing-rules";
 
 export interface TropePack {
   genre: string;
@@ -125,6 +126,8 @@ HOOK RUBRIC (every pitch must satisfy all of these):
 - Emotionally hooks the reader in the first two sentences
 - Uses no clichés or AI-obvious phrases
 
+${AI_WRITING_RULES}
+
 GENRE TROPES AND PLOT TEMPLATE:
 ${tp}
 
@@ -220,7 +223,9 @@ List primary theme and 2 secondary themes. For each, explain in concrete terms h
 - Climax
 - Closing image (how character has changed)
 
-Be specific. No vague placeholders. Write as if you are handing this to a ghostwriter who needs to start writing tomorrow.`,
+Be specific. No vague placeholders. Write as if you are handing this to a ghostwriter who needs to start writing tomorrow.
+
+${AI_WRITING_RULES}`,
         "powerful"
       );
       state.dossier_v1 = result;
@@ -300,7 +305,9 @@ Instructions:
 - Do NOT rewrite sections that weren't flagged
 - Do NOT add new content beyond what was suggested
 - Reproduce the ENTIRE dossier with changes applied
-- Maintain all original Markdown section headers`,
+- Maintain all original Markdown section headers
+
+${AI_WRITING_RULES}`,
         "cheap"
       );
       state.dossier_v2 = result;
@@ -348,7 +355,9 @@ Instructions:
 - Do NOT change anything not flagged
 - Reproduce the ENTIRE dossier with changes applied
 - Maintain all Markdown section headers
-This is the FINAL version of the dossier.`,
+This is the FINAL version of the dossier.
+
+${AI_WRITING_RULES}`,
         "cheap"
       );
       state.dossier_final = result;
