@@ -8,7 +8,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const CHEAP_MODEL = "claude-haiku-4-5-20241022";
+const CHEAP_MODEL = "claude-haiku-3-5-20241022";
 const POWERFUL_MODEL = "claude-sonnet-4-20250514";
 
 export async function callLLM(
