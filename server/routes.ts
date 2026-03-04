@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { runStep, getStepName } from "./pipeline";
+import { callLLM } from "./llm";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -91,6 +92,121 @@ export async function registerRoutes(
         dossier_final: state.dossier_final,
       });
     } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/chapter/extract", async (req, res) => {
+    try {
+      const { chapter_text } = req.body;
+      if (!chapter_text || !chapter_text.trim()) {
+        return res.status(400).json({ error: "chapter_text is required" });
+      }
+
+      const result = await callLLM(
+        `You are an expert fiction editor and story structure analyst. Analyze the following chapter and extract its key structural elements.
+
+CHAPTER TEXT:
+${chapter_text}
+
+Extract the following elements. For each element, provide a concise but specific description based on what actually happens in the chapter. If an element is not present or not applicable, write "N/A".
+
+You MUST respond in valid JSON format with this exact structure:
+{
+  "elements": [
+    {"key": "focus_character", "label": "Focus Character", "value": "..."},
+    {"key": "character_beginning_state", "label": "Character Beginning State", "value": "..."},
+    {"key": "character_end_state", "label": "Character End State", "value": "..."},
+    {"key": "emotional_arc", "label": "Emotional Arc", "value": "..."},
+    {"key": "chapter_goal", "label": "Chapter Goal", "value": "..."},
+    {"key": "central_problem", "label": "Central Problem", "value": "..."},
+    {"key": "solution", "label": "Solution (if any)", "value": "..."},
+    {"key": "new_problem", "label": "New Problem Introduced", "value": "..."},
+    {"key": "key_conflict", "label": "Key Conflict", "value": "..."},
+    {"key": "stakes", "label": "Stakes", "value": "..."},
+    {"key": "setting", "label": "Setting / Location", "value": "..."},
+    {"key": "tone", "label": "Tone / Atmosphere", "value": "..."},
+    {"key": "key_revelation", "label": "Key Revelation or Discovery", "value": "..."},
+    {"key": "relationship_shift", "label": "Relationship Shift", "value": "..."},
+    {"key": "ends_on", "label": "Ends On (Action/Decision/Cliffhanger)", "value": "..."},
+    {"key": "thematic_thread", "label": "Thematic Thread", "value": "..."},
+    {"key": "foreshadowing", "label": "Foreshadowing", "value": "..."},
+    {"key": "pacing_notes", "label": "Pacing Notes", "value": "..."}
+  ]
+}
+
+Respond with ONLY the JSON, no other text.`,
+        "powerful"
+      );
+
+      let parsed;
+      try {
+        const jsonMatch = result.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON found");
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch {
+        return res.status(500).json({ error: "Failed to parse AI response. Please try again." });
+      }
+
+      if (!parsed.elements || !Array.isArray(parsed.elements)) {
+        return res.status(500).json({ error: "AI returned an unexpected format. Please try again." });
+      }
+
+      const validElements = parsed.elements.filter(
+        (e: any) => e && typeof e.key === "string" && typeof e.label === "string" && typeof e.value === "string"
+      );
+
+      if (validElements.length === 0) {
+        return res.status(500).json({ error: "No valid elements extracted. Please try again." });
+      }
+
+      res.json({ elements: validElements });
+    } catch (err: any) {
+      console.error("[Chapter Extract Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/chapter/rewrite", async (req, res) => {
+    try {
+      const { chapter_text, elements } = req.body;
+      if (!chapter_text || !elements || !Array.isArray(elements)) {
+        return res.status(400).json({ error: "chapter_text and elements array are required" });
+      }
+
+      const elementsList = elements
+        .map((e: { label: string; value: string }) => `- **${e.label}**: ${e.value}`)
+        .join("\n");
+
+      const result = await callLLM(
+        `You are a master fiction writer and editor. Your task is to rewrite the chapter below so that it faithfully incorporates ALL of the structural elements provided.
+
+ORIGINAL CHAPTER:
+${chapter_text}
+
+STRUCTURAL ELEMENTS TO INCORPORATE:
+${elementsList}
+
+INSTRUCTIONS:
+- Rewrite the entire chapter so it naturally embodies every element listed above
+- Maintain the original voice, style, and point of view unless an element specifically changes it
+- If an element contradicts the original, the element takes priority
+- Preserve the original's best qualities — strong prose, vivid imagery, good dialogue
+- Do NOT add meta-commentary or notes — output ONLY the rewritten chapter text
+- Match approximately the same length as the original (within 20%)
+- Make the transitions between elements feel organic, not forced
+
+Output the rewritten chapter text only, no preamble or commentary.`,
+        "powerful"
+      );
+
+      if (!result || !result.trim()) {
+        return res.status(500).json({ error: "AI returned an empty rewrite. Please try again." });
+      }
+
+      res.json({ rewritten_chapter: result });
+    } catch (err: any) {
+      console.error("[Chapter Rewrite Error]", err);
       res.status(500).json({ error: err.message });
     }
   });

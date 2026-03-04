@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Loader2 } from "lucide-react";
+import { BookOpen, Sparkles, Loader2, Scissors } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface Genre {
   id: string;
@@ -15,6 +16,7 @@ interface StoryInitProps {
 }
 
 export default function StoryInit({ onStart }: StoryInitProps) {
+  const [, navigate] = useLocation();
   const [brainDump, setBrainDump] = useState("");
   const [genre, setGenre] = useState("");
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -135,6 +137,36 @@ export default function StoryInit({ onStart }: StoryInitProps) {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <div className="mt-8 relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-3 text-muted-foreground tracking-wider">or</span>
+        </div>
+      </div>
+
+      <Card
+        className="mt-8 border-border/60 hover:border-primary/30 transition-all cursor-pointer group shadow-sm hover:shadow-md"
+        onClick={() => navigate("/chapter-analyzer")}
+        data-testid="card-chapter-analyzer"
+      >
+        <CardContent className="p-6 flex items-center gap-4">
+          <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors shrink-0">
+            <Scissors className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-serif font-semibold text-lg text-foreground mb-1">Chapter Analyzer</h3>
+            <p className="text-sm text-muted-foreground">
+              Paste an existing chapter to extract its structural elements, edit them, and generate a rewrite.
+            </p>
+          </div>
+          <div className="text-muted-foreground group-hover:text-primary transition-colors shrink-0">
+            &rarr;
+          </div>
         </CardContent>
       </Card>
     </div>

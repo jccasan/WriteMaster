@@ -18,7 +18,8 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 
 ### Frontend
 - `client/src/pages/Home.tsx` — Main page with 3 views (init/pipeline/result)
-- `client/src/components/StoryInit.tsx` — Brain dump form + genre selection
+- `client/src/pages/ChapterAnalyzer.tsx` — Chapter element extraction, editing, and rewrite
+- `client/src/components/StoryInit.tsx` — Brain dump form + genre selection + module links
 - `client/src/components/StoryPipeline.tsx` — Real-time pipeline progress tracker
 - `client/src/components/StoryResult.tsx` — Final dossier viewer with tabs
 
@@ -32,6 +33,8 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 - `POST /api/project/:id/run-step` — Run next pipeline step
 - `GET /api/project/:id/state` — Get full project state
 - `GET /api/project/:id/final` — Get final dossier + best pitch
+- `POST /api/chapter/extract` — Extract structural elements from chapter text
+- `POST /api/chapter/rewrite` — Rewrite chapter with edited elements
 
 ## Pipeline Steps (0-10)
 0. Project Init → 1. Subgenre Detection (Haiku) → 2. Pitch Generation (Sonnet) → 3. Best Pitch Selection (Sonnet) → 4. Pitch Extraction (Haiku) → 5. Story Dossier Draft (Sonnet) → 6. Emotional Check (Sonnet) → 7. Name Check (Haiku) → 8. Revision I (Haiku) → 9. Logic Check (Sonnet) → 10. Final Polish (Haiku)
