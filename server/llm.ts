@@ -1,15 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-// Anthropic AI integration — javascript_anthropic blueprint
-// The newest model is "claude-sonnet-4-20250514"
-// Using claude-haiku for cheap/fast steps, claude-sonnet for complex steps
+// Replit AI Integrations — javascript_anthropic_ai_integrations blueprint
+// Uses AI_INTEGRATIONS_ANTHROPIC_BASE_URL and AI_INTEGRATIONS_ANTHROPIC_API_KEY (auto-configured)
+// Supported models: claude-sonnet-4-6 (balanced), claude-haiku-4-5 (fastest)
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
 });
 
-const CHEAP_MODEL = "claude-haiku-3-5-20241022";
-const POWERFUL_MODEL = "claude-sonnet-4-20250514";
+const CHEAP_MODEL = "claude-haiku-4-5";
+const POWERFUL_MODEL = "claude-sonnet-4-6";
 
 export async function callLLM(
   prompt: string,
@@ -23,7 +24,7 @@ export async function callLLM(
 
   const message = await anthropic.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: 8192,
     ...(systemPrompt ? { system: systemPrompt } : {}),
     messages: [{ role: "user", content: prompt }],
   });

@@ -6,7 +6,7 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 
 - **Frontend**: React + TypeScript + Tailwind CSS + shadcn/ui, served via Vite
 - **Backend**: Express.js (TypeScript), JSON file storage (no database)
-- **AI**: Anthropic Claude API (Haiku for fast tasks, Sonnet for complex tasks)
+- **AI**: Replit AI Integrations (Anthropic) — Claude Sonnet 4.6 for complex tasks, Claude Haiku 4.5 for fast tasks
 
 ## Key Files
 
@@ -40,4 +40,5 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 0. Project Init → 1. Subgenre Detection (Haiku) → 2. Pitch Generation (Sonnet) → 3. Best Pitch Selection (Sonnet) → 4. Pitch Extraction (Haiku) → 5. Story Dossier Draft (Sonnet) → 6. Emotional Check (Sonnet) → 7. Name Check (Haiku) → 8. Revision I (Haiku) → 9. Logic Check (Sonnet) → 10. Final Polish (Haiku)
 
 ## Environment Variables
-- `ANTHROPIC_API_KEY` — Required for Claude API calls
+- `AI_INTEGRATIONS_ANTHROPIC_BASE_URL` — Auto-configured by Replit AI Integrations
+- `AI_INTEGRATIONS_ANTHROPIC_API_KEY` — Auto-configured by Replit AI Integrations
