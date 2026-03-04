@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Copy, Check, Loader2, RotateCcw } from "lucide-react";
+import { Download, Copy, Check, Loader2, RotateCcw, BookOpen } from "lucide-react";
 
 interface StoryResultProps {
   projectId: string;
@@ -10,11 +11,13 @@ interface StoryResultProps {
 }
 
 export default function StoryResult({ projectId, onReset }: StoryResultProps) {
+  const [, navigate] = useLocation();
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dossierMarkdown, setDossierMarkdown] = useState("");
   const [bestPitch, setBestPitch] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [creatingBook, setCreatingBook] = useState(false);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}/final`)
@@ -42,6 +45,23 @@ export default function StoryResult({ projectId, onReset }: StoryResultProps) {
     a.download = "story-dossier.md";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleWriteBook = async () => {
+    setCreatingBook(true);
+    try {
+      const res = await fetch(`/api/books/from-project/${projectId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create book");
+      navigate(`/book/${data.id}`);
+    } catch (err: any) {
+      setError(err.message);
+      setCreatingBook(false);
+    }
   };
 
   if (loading) {
@@ -81,6 +101,16 @@ export default function StoryResult({ projectId, onReset }: StoryResultProps) {
           </Button>
           <Button size="sm" onClick={handleDownload} className="gap-2 flex-1 md:flex-none" data-testid="button-download">
             <Download className="w-4 h-4" /> Download .md
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleWriteBook}
+            disabled={creatingBook}
+            className="gap-2 flex-1 md:flex-none"
+            data-testid="button-write-book"
+          >
+            {creatingBook ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
+            {creatingBook ? "Creating..." : "Write the Book"}
           </Button>
           <Button variant="outline" size="sm" onClick={onReset} className="gap-2 flex-1 md:flex-none" data-testid="button-start-new">
             <RotateCcw className="w-4 h-4" /> New

@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import type { BookChapter } from "./storage";
 import { runStep, getStepName } from "./pipeline";
 import { callLLM } from "./llm";
 import { AI_WRITING_RULES } from "./writing-rules";
@@ -266,6 +267,321 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       res.json({ rewritten_chapter: result });
     } catch (err: any) {
       console.error("[Chapter Rewrite Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ========== BOOK WRITER ROUTES ==========
+
+  app.get("/api/books", async (_req, res) => {
+    try {
+      const books = await storage.listBooks();
+      res.json(books);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books", async (req, res) => {
+    try {
+      const { source_project_id, brain_dump, dossier, title } = req.body;
+      if (!brain_dump || !dossier) {
+        return res.status(400).json({ error: "brain_dump and dossier are required" });
+      }
+
+      const book = await storage.createBook(
+        source_project_id || null,
+        brain_dump,
+        dossier,
+        title || "Untitled Book"
+      );
+      res.json(book);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/from-project/:projectId", async (req, res) => {
+    try {
+      const project = await storage.getProject(req.params.projectId);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+      if (!project.dossier_final) return res.status(400).json({ error: "Project pipeline not complete" });
+
+      const book = await storage.createBook(
+        project.project_id,
+        project.brain_dump,
+        project.dossier_final,
+        req.body.title || "Untitled Book"
+      );
+      res.json(book);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/books/:id", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+      res.json(book);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/books/:id", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      if (req.body.title !== undefined) book.title = req.body.title;
+      if (req.body.dossier !== undefined) book.dossier = req.body.dossier;
+      if (req.body.brain_dump !== undefined) book.brain_dump = req.body.brain_dump;
+
+      await storage.saveBook(book);
+      res.json(book);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/books/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteBook(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Book not found" });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  function buildPreviousSummariesContext(chapters: BookChapter[], upToChapter: number): string {
+    const summaries = chapters
+      .filter(c => c.chapter_number < upToChapter && c.summary)
+      .sort((a, b) => a.chapter_number - b.chapter_number)
+      .map(c => `### Chapter ${c.chapter_number}: ${c.title}\n${c.summary}`)
+      .join("\n\n");
+    return summaries || "No previous chapters yet — this is the first chapter.";
+  }
+
+  app.post("/api/books/:id/outline-chapter", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const lastChapter = book.chapters[book.chapters.length - 1];
+      if (lastChapter && (lastChapter.status !== "written" || !lastChapter.summary)) {
+        return res.status(400).json({
+          error: `Chapter ${lastChapter.chapter_number} must be written and summarized before generating the next outline.`
+        });
+      }
+
+      const nextNum = book.chapters.length + 1;
+      const previousSummaries = buildPreviousSummariesContext(book.chapters, nextNum);
+
+      const result = await callLLM(
+        `You are a master story architect working on a novel. Generate a detailed chapter outline for Chapter ${nextNum}.
+
+STORY DOSSIER (characters, world, themes, plot beats):
+${book.dossier}
+
+AUTHOR'S ORIGINAL VISION:
+${book.brain_dump}
+
+PREVIOUS CHAPTER SUMMARIES:
+${previousSummaries}
+
+INSTRUCTIONS:
+- Based on the dossier's plot beats, determine what should happen in Chapter ${nextNum}
+- Consider where the story is right now based on previous chapter summaries
+- The outline should include: chapter goal, key scenes (3-5), character focus, emotional beat, and how the chapter ends
+- Be specific — name characters, reference established world details, connect to ongoing threads
+- Keep the outline to 200-400 words
+- Include a suggested chapter title
+
+Format as:
+**Chapter Title:** [title]
+
+**Chapter Goal:** [what this chapter accomplishes in the larger story]
+
+**Key Scenes:**
+1. [scene description]
+2. [scene description]
+...
+
+**Emotional Beat:** [the emotional journey of this chapter]
+
+**Ends With:** [how this chapter closes / what propels the reader to the next]`,
+        "powerful"
+      );
+
+      const titleMatch = result.match(/\*\*Chapter Title:\*\*\s*(.+)/);
+      const chapterTitle = titleMatch ? titleMatch[1].trim() : `Chapter ${nextNum}`;
+
+      const newChapter: BookChapter = {
+        chapter_number: nextNum,
+        title: chapterTitle,
+        outline: result,
+        content: null,
+        summary: null,
+        status: "outlined",
+      };
+
+      book.chapters.push(newChapter);
+      await storage.saveBook(book);
+
+      res.json({ chapter: newChapter, book });
+    } catch (err: any) {
+      console.error("[Outline Chapter Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/write-chapter/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+      if (!chapter.outline) return res.status(400).json({ error: "Chapter has no outline" });
+
+      chapter.status = "writing";
+      await storage.saveBook(book);
+
+      const previousSummaries = buildPreviousSummariesContext(book.chapters, chapterNum);
+
+      const result = await callLLM(
+        `You are a skilled novelist writing a chapter of a book. Write Chapter ${chapterNum} based on the outline and context below.
+
+STORY DOSSIER (characters, world, themes, plot beats):
+${book.dossier}
+
+AUTHOR'S ORIGINAL VISION:
+${book.brain_dump}
+
+PREVIOUS CHAPTER SUMMARIES (what has happened so far):
+${previousSummaries}
+
+CHAPTER ${chapterNum} OUTLINE:
+${chapter.outline}
+
+${AI_WRITING_RULES}
+
+INSTRUCTIONS:
+- Write the full chapter as polished prose, ready for a reader
+- Follow the outline's scenes and emotional beats faithfully
+- Maintain consistency with everything that happened in previous chapters (referenced in summaries above)
+- Use the character voices, world details, and tone established in the dossier
+- The chapter should be 2000-4000 words
+- Start with the chapter title as a heading
+- Write immersive, engaging fiction — not a summary or treatment
+- Do NOT include author notes, meta-commentary, or section labels within the prose
+
+Output only the chapter text.`,
+        "powerful"
+      );
+
+      if (!result || !result.trim()) {
+        chapter.status = "outlined";
+        await storage.saveBook(book);
+        return res.status(500).json({ error: "AI returned empty chapter. Please try again." });
+      }
+
+      chapter.content = result;
+      chapter.status = "written";
+      await storage.saveBook(book);
+
+      res.json({ chapter, book });
+    } catch (err: any) {
+      console.error("[Write Chapter Error]", err);
+      const book = await storage.getBook(req.params.id);
+      if (book) {
+        const chapter = book.chapters.find(c => c.chapter_number === parseInt(req.params.chapterNum));
+        if (chapter && chapter.status === "writing") {
+          chapter.status = "outlined";
+          await storage.saveBook(book);
+        }
+      }
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/summarize-chapter/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+      if (!chapter.content) return res.status(400).json({ error: "Chapter has no content to summarize" });
+
+      const result = await callLLM(
+        `You are a story continuity editor. Read the chapter below and produce a structured summary that will be used as context for writing subsequent chapters.
+
+CHAPTER ${chapterNum}: ${chapter.title}
+${chapter.content}
+
+Produce a summary with these exact sections:
+
+**Plot Summary:** [What happened in this chapter, 3-5 sentences]
+
+**Key Events:**
+- [Major event 1]
+- [Major event 2]
+...
+
+**Character States at Chapter End:**
+- [Character name]: [emotional state, physical location, key knowledge gained, decisions made]
+...
+
+**What Changed:** [What is different about the story world at the end of this chapter vs. the beginning — relationships, power dynamics, knowledge, stakes]
+
+**Open Threads:** [Unresolved questions, pending threats, setups that need payoff later]
+
+**Tone/Pacing Note:** [Was this a high-action, reflective, transitional chapter? What should the next chapter's energy feel like?]
+
+Be specific and factual. Reference character names and concrete details. This summary will be the ONLY context the next chapter's AI has about this chapter.`,
+        "powerful"
+      );
+
+      chapter.summary = result;
+      await storage.saveBook(book);
+
+      res.json({ chapter, book });
+    } catch (err: any) {
+      console.error("[Summarize Chapter Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/books/:id/chapters/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+
+      if (req.body.title !== undefined) chapter.title = req.body.title;
+      if (req.body.outline !== undefined) chapter.outline = req.body.outline;
+      if (req.body.content !== undefined) {
+        chapter.content = req.body.content;
+        if (req.body.content) {
+          chapter.status = "written";
+        } else {
+          chapter.status = "outlined";
+          chapter.summary = null;
+        }
+      }
+      if (req.body.summary !== undefined) chapter.summary = req.body.summary;
+
+      await storage.saveBook(book);
+      res.json({ chapter, book });
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });

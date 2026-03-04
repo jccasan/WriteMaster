@@ -8,12 +8,13 @@ import { createEmptyProject } from "./pipeline";
 const TEMPLATES_DIR = path.resolve("data/templates");
 const PROJECTS_DIR = path.resolve("data/projects");
 const CHAPTERS_DIR = path.resolve("data/chapters");
+const BOOKS_DIR = path.resolve("data/books");
 
 const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 
-function validateChapterId(id: string): string {
+function validateId(id: string): string {
   if (!SAFE_ID_PATTERN.test(id)) {
-    throw new Error("Invalid session ID");
+    throw new Error("Invalid ID");
   }
   return id;
 }
@@ -22,6 +23,7 @@ async function ensureDirs() {
   if (!existsSync(TEMPLATES_DIR)) await mkdir(TEMPLATES_DIR, { recursive: true });
   if (!existsSync(PROJECTS_DIR)) await mkdir(PROJECTS_DIR, { recursive: true });
   if (!existsSync(CHAPTERS_DIR)) await mkdir(CHAPTERS_DIR, { recursive: true });
+  if (!existsSync(BOOKS_DIR)) await mkdir(BOOKS_DIR, { recursive: true });
 }
 
 export interface ChapterElement {
@@ -40,6 +42,26 @@ export interface ChapterSession {
   rewritten_chapter: string | null;
 }
 
+export interface BookChapter {
+  chapter_number: number;
+  title: string;
+  outline: string;
+  content: string | null;
+  summary: string | null;
+  status: "outlined" | "writing" | "written";
+}
+
+export interface BookProject {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  source_project_id: string | null;
+  brain_dump: string;
+  dossier: string;
+  chapters: BookChapter[];
+}
+
 export interface IStorage {
   getGenres(): Promise<Array<{ id: string; display_name: string }>>;
   getTemplate(genre: string): Promise<TropePack | null>;
@@ -50,6 +72,11 @@ export interface IStorage {
   getChapterSession(id: string): Promise<ChapterSession | null>;
   saveChapterSession(session: ChapterSession): Promise<void>;
   deleteChapterSession(id: string): Promise<boolean>;
+  createBook(sourceProjectId: string | null, brainDump: string, dossier: string, title: string): Promise<BookProject>;
+  getBook(id: string): Promise<BookProject | null>;
+  saveBook(book: BookProject): Promise<void>;
+  listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number }>>;
+  deleteBook(id: string): Promise<boolean>;
 }
 
 export class FileStorage implements IStorage {
@@ -122,7 +149,7 @@ export class FileStorage implements IStorage {
   }
 
   async getChapterSession(id: string): Promise<ChapterSession | null> {
-    validateChapterId(id);
+    validateId(id);
     const filePath = path.join(CHAPTERS_DIR, `${id}.json`);
     if (!existsSync(filePath)) return null;
     const content = await readFile(filePath, "utf-8");
@@ -130,14 +157,79 @@ export class FileStorage implements IStorage {
   }
 
   async saveChapterSession(session: ChapterSession): Promise<void> {
-    validateChapterId(session.id);
+    validateId(session.id);
     const filePath = path.join(CHAPTERS_DIR, `${session.id}.json`);
     await writeFile(filePath, JSON.stringify(session, null, 2));
   }
 
   async deleteChapterSession(id: string): Promise<boolean> {
-    validateChapterId(id);
+    validateId(id);
     const filePath = path.join(CHAPTERS_DIR, `${id}.json`);
+    if (!existsSync(filePath)) return false;
+    await unlink(filePath);
+    return true;
+  }
+
+  async createBook(sourceProjectId: string | null, brainDump: string, dossier: string, title: string): Promise<BookProject> {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const now = new Date().toISOString();
+    const book: BookProject = {
+      id,
+      title,
+      created_at: now,
+      updated_at: now,
+      source_project_id: sourceProjectId,
+      brain_dump: brainDump,
+      dossier,
+      chapters: [],
+    };
+    await this.saveBook(book);
+    return book;
+  }
+
+  async getBook(id: string): Promise<BookProject | null> {
+    validateId(id);
+    const filePath = path.join(BOOKS_DIR, `${id}.json`);
+    if (!existsSync(filePath)) return null;
+    const content = await readFile(filePath, "utf-8");
+    return JSON.parse(content) as BookProject;
+  }
+
+  async saveBook(book: BookProject): Promise<void> {
+    validateId(book.id);
+    book.updated_at = new Date().toISOString();
+    const filePath = path.join(BOOKS_DIR, `${book.id}.json`);
+    await writeFile(filePath, JSON.stringify(book, null, 2));
+  }
+
+  async listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number }>> {
+    if (!existsSync(BOOKS_DIR)) return [];
+    const files = await readdir(BOOKS_DIR);
+    const books: Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number }> = [];
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        const content = await readFile(path.join(BOOKS_DIR, file), "utf-8");
+        const data = JSON.parse(content) as BookProject;
+        books.push({
+          id: data.id,
+          title: data.title,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+          chapter_count: data.chapters.length,
+          chapters_written: data.chapters.filter(c => c.status === "written").length,
+        });
+      } catch {
+        continue;
+      }
+    }
+    books.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    return books;
+  }
+
+  async deleteBook(id: string): Promise<boolean> {
+    validateId(id);
+    const filePath = path.join(BOOKS_DIR, `${id}.json`);
     if (!existsSync(filePath)) return false;
     await unlink(filePath);
     return true;

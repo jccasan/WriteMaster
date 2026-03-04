@@ -1,0 +1,163 @@
+import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  Clock,
+  BookOpen,
+  ChevronRight,
+} from "lucide-react";
+
+interface BookSummary {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  chapter_count: number;
+  chapters_written: number;
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+export default function Books() {
+  const [, navigate] = useLocation();
+  const [books, setBooks] = useState<BookSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchBooks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/books");
+      if (res.ok) {
+        const data = await res.json();
+        setBooks(data);
+      }
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchBooks();
+  }, [fetchBooks]);
+
+  const deleteBook = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/books/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchBooks();
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground font-sans">
+      <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <div className="container max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")} role="button" tabIndex={0}>
+            <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center text-primary-foreground font-serif font-bold text-xl leading-none">
+              S
+            </div>
+            <h1 className="font-serif font-semibold text-xl tracking-tight">StoryDossier</h1>
+          </div>
+          <button
+            onClick={() => navigate("/")}
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            data-testid="button-back-home"
+          >
+            <ArrowLeft className="w-4 h-4" /> Home
+          </button>
+        </div>
+      </header>
+
+      <main className="container max-w-5xl mx-auto px-4 py-8 md:py-12">
+        <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
+              <BookOpen className="w-6 h-6 text-primary" />
+            </div>
+            <h2 className="text-4xl font-serif font-bold text-foreground mb-4">
+              Book Writer
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              Turn your Story Dossiers into full books, chapter by chapter. Create a book from the results page or browse your existing books below.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => navigate("/")}
+            size="lg"
+            className="w-full h-14 text-base gap-2 mb-8"
+            data-testid="button-new-book"
+          >
+            <Plus className="w-5 h-5" />
+            New Book (via Story Dossier)
+          </Button>
+
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+            </div>
+          ) : books.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">No books yet. Complete a Story Dossier pipeline and click "Write the Book" to get started.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                Your Books ({books.length})
+              </h3>
+              {books.map((book) => (
+                <Card
+                  key={book.id}
+                  className="border-border/60 hover:border-primary/30 transition-all cursor-pointer group"
+                  onClick={() => navigate(`/book/${book.id}`)}
+                  data-testid={`card-book-${book.id}`}
+                >
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-foreground truncate" data-testid={`text-book-title-${book.id}`}>
+                        {book.title}
+                      </h4>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">{formatDate(book.updated_at)}</span>
+                        </div>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                          {book.chapters_written}/{book.chapter_count} chapters written
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => deleteBook(book.id, e)}
+                        data-testid={`button-delete-book-${book.id}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
