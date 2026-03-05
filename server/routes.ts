@@ -98,6 +98,25 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/project/:projectId/dossier", async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const state = await storage.getProject(projectId);
+      if (!state) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const { dossier } = req.body;
+      if (typeof dossier !== "string" || !dossier.trim()) {
+        return res.status(400).json({ error: "Dossier text is required" });
+      }
+      state.dossier_final = dossier;
+      await storage.saveProject(state);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/chapters", async (_req, res) => {
     try {
       const sessions = await storage.listChapterSessions();

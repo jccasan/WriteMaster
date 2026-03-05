@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import RichTextEditor from "@/components/RichTextEditor";
 import {
   Loader2,
   ArrowLeft,
@@ -62,7 +63,10 @@ export default function BookWriter() {
   const [chapterTitleDraft, setChapterTitleDraft] = useState("");
   const [copied, setCopied] = useState(false);
   const [dossierExpanded, setDossierExpanded] = useState(false);
+  const [editingContent, setEditingContent] = useState(false);
+  const [editingSummary, setEditingSummary] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentDraftRef = useRef<string>("");
 
   const fetchBook = useCallback(async () => {
     if (!bookId) return;
@@ -85,6 +89,13 @@ export default function BookWriter() {
   }, [fetchBook]);
 
   const currentChapter = book?.chapters.find(c => c.chapter_number === activeChapter) || null;
+
+  useEffect(() => {
+    setEditingContent(false);
+    setEditingSummary(false);
+    setEditingOutline(false);
+    setEditingChapterTitle(false);
+  }, [activeChapter]);
 
   const saveBookUpdate = useCallback(async (updates: Partial<BookProject>) => {
     if (!bookId) return;
@@ -546,26 +557,69 @@ export default function BookWriter() {
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Chapter Text</h3>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleCopyChapter}
-                        className="h-7 gap-1 text-xs"
-                        data-testid="button-copy-chapter"
-                      >
-                        {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
-                        {copied ? "Copied" : "Copy"}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {editingContent ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => {
+                                saveChapterUpdate(currentChapter.chapter_number, { content: contentDraftRef.current });
+                                setEditingContent(false);
+                              }}
+                              className="h-7 gap-1 text-xs"
+                              data-testid="button-save-content"
+                            >
+                              <Check className="w-3 h-3" /> Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingContent(false)}
+                              className="h-7 gap-1 text-xs"
+                            >
+                              <X className="w-3 h-3" /> Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                contentDraftRef.current = currentChapter.content || "";
+                                setEditingContent(true);
+                              }}
+                              className="h-7 gap-1 text-xs"
+                              data-testid="button-edit-content"
+                            >
+                              <Pencil className="w-3 h-3" /> Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCopyChapter}
+                              className="h-7 gap-1 text-xs"
+                              data-testid="button-copy-chapter"
+                            >
+                              {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                              {copied ? "Copied" : "Copy"}
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <Card className="border-border/40">
-                      <CardContent className="p-6">
-                        <ScrollArea className="max-h-[600px]">
-                          <div className="text-base text-foreground/90 leading-relaxed whitespace-pre-wrap font-serif">
-                            {currentChapter.content}
-                          </div>
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
+                    <RichTextEditor
+                      content={currentChapter.content}
+                      readOnly={!editingContent}
+                      onChange={(_html, plain) => {
+                        contentDraftRef.current = plain;
+                      }}
+                      maxHeight="600px"
+                      minHeight="300px"
+                      placeholder="Chapter content..."
+                      data-testid="editor-chapter-content"
+                    />
                   </div>
                 )}
 
@@ -632,15 +686,57 @@ export default function BookWriter() {
 
                 {currentChapter.summary ? (
                   <div className="space-y-3">
-                    <Card className="border-border/40 bg-background">
-                      <CardContent className="p-3">
-                        <ScrollArea className="max-h-[500px]">
-                          <div className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                            {currentChapter.summary}
-                          </div>
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
+                    <div className="flex items-center gap-1 mb-1">
+                      {editingSummary ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => {
+                              saveChapterUpdate(currentChapter.chapter_number, { summary: contentDraftRef.current });
+                              setEditingSummary(false);
+                            }}
+                            className="h-6 gap-1 text-[10px]"
+                            data-testid="button-save-summary"
+                          >
+                            <Check className="w-3 h-3" /> Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingSummary(false)}
+                            className="h-6 gap-1 text-[10px]"
+                          >
+                            <X className="w-3 h-3" /> Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            contentDraftRef.current = currentChapter.summary || "";
+                            setEditingSummary(true);
+                          }}
+                          className="h-6 gap-1 text-[10px]"
+                          data-testid="button-edit-summary"
+                        >
+                          <Pencil className="w-3 h-3" /> Edit
+                        </Button>
+                      )}
+                    </div>
+                    <RichTextEditor
+                      content={currentChapter.summary}
+                      readOnly={!editingSummary}
+                      onChange={(_html, plain) => {
+                        contentDraftRef.current = plain;
+                      }}
+                      maxHeight="500px"
+                      minHeight="100px"
+                      placeholder="Chapter summary..."
+                      className="text-xs"
+                      data-testid="editor-chapter-summary"
+                    />
                     {currentChapter.status === "written" && currentChapter.summary && canGenerateNext && currentChapter.chapter_number === book.chapters.length && (
                       <Button
                         onClick={handleGenerateOutline}

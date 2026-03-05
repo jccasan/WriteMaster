@@ -43,7 +43,8 @@ Takes a completed dossier + brain dump, writes the book chapter by chapter. Each
 - `client/src/pages/BookWriter.tsx` — Chapter-by-chapter book writing with split layout
 - `client/src/components/StoryInit.tsx` — Brain dump form + genre selection + module links
 - `client/src/components/StoryPipeline.tsx` — Real-time pipeline progress tracker
-- `client/src/components/StoryResult.tsx` — Final dossier viewer with tabs + "Write the Book" button
+- `client/src/components/RichTextEditor.tsx` — TipTap-based rich text editor with toolbar (bold, italic, underline, headings, lists, undo/redo); converts plain text/markdown ↔ HTML; used for editable chapter content, summaries, rewrites, and dossier
+- `client/src/components/StoryResult.tsx` — Final dossier viewer with tabs + "Write the Book" button + rich text editing
 
 ### Data
 - `data/templates/` — Genre template JSON files (fantasy_thriller, contemporary_thriller, dark_romance)

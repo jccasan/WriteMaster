@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Copy, Check, Loader2, RotateCcw, BookOpen } from "lucide-react";
+import RichTextEditor from "@/components/RichTextEditor";
+import { Download, Copy, Check, Loader2, RotateCcw, BookOpen, Pencil, X } from "lucide-react";
 
 interface StoryResultProps {
   projectId: string;
@@ -18,6 +19,8 @@ export default function StoryResult({ projectId, onReset }: StoryResultProps) {
   const [bestPitch, setBestPitch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [creatingBook, setCreatingBook] = useState(false);
+  const [editingDossier, setEditingDossier] = useState(false);
+  const dossierDraftRef = useRef("");
 
   useEffect(() => {
     fetch(`/api/project/${projectId}/final`)
@@ -81,8 +84,6 @@ export default function StoryResult({ projectId, onReset }: StoryResultProps) {
     );
   }
 
-  const sections = parseDossierSections(dossierMarkdown);
-
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
@@ -136,20 +137,63 @@ export default function StoryResult({ projectId, onReset }: StoryResultProps) {
 
           <div className="p-6 md:p-8">
             <TabsContent value="full" className="mt-0 focus-visible:outline-none">
-              <div className="prose prose-stone max-w-none">
-                {sections.map((section, i) => (
-                  <div key={i} className="mb-8">
-                    {section.heading && (
-                      <h3 className="text-xl font-serif font-semibold text-primary border-b border-border pb-2 mb-4">
-                        {section.heading}
-                      </h3>
-                    )}
-                    <div className="text-base text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                      {section.content}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-end gap-1 mb-3">
+                {editingDossier ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={async () => {
+                        setDossierMarkdown(dossierDraftRef.current);
+                        setEditingDossier(false);
+                        try {
+                          await fetch(`/api/project/${projectId}/dossier`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ dossier: dossierDraftRef.current }),
+                          });
+                        } catch {}
+                      }}
+                      className="h-7 gap-1 text-xs"
+                      data-testid="button-save-dossier"
+                    >
+                      <Check className="w-3 h-3" /> Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingDossier(false)}
+                      className="h-7 gap-1 text-xs"
+                    >
+                      <X className="w-3 h-3" /> Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      dossierDraftRef.current = dossierMarkdown;
+                      setEditingDossier(true);
+                    }}
+                    className="h-7 gap-1 text-xs"
+                    data-testid="button-edit-dossier"
+                  >
+                    <Pencil className="w-3 h-3" /> Edit
+                  </Button>
+                )}
               </div>
+              <RichTextEditor
+                content={dossierMarkdown}
+                readOnly={!editingDossier}
+                onChange={(_html, plain) => {
+                  dossierDraftRef.current = plain;
+                }}
+                maxHeight="600px"
+                minHeight="300px"
+                placeholder="Story dossier..."
+                data-testid="editor-dossier"
+              />
             </TabsContent>
 
             <TabsContent value="pitch" className="mt-0 focus-visible:outline-none">
@@ -175,28 +219,3 @@ export default function StoryResult({ projectId, onReset }: StoryResultProps) {
   );
 }
 
-function parseDossierSections(markdown: string): Array<{ heading: string; content: string }> {
-  const lines = markdown.split("\n");
-  const sections: Array<{ heading: string; content: string }> = [];
-  let currentHeading = "";
-  let currentContent: string[] = [];
-
-  for (const line of lines) {
-    const headingMatch = line.match(/^##\s+(.+)/);
-    if (headingMatch) {
-      if (currentHeading || currentContent.length > 0) {
-        sections.push({ heading: currentHeading, content: currentContent.join("\n").trim() });
-      }
-      currentHeading = headingMatch[1];
-      currentContent = [];
-    } else {
-      currentContent.push(line);
-    }
-  }
-
-  if (currentHeading || currentContent.length > 0) {
-    sections.push({ heading: currentHeading, content: currentContent.join("\n").trim() });
-  }
-
-  return sections;
-}

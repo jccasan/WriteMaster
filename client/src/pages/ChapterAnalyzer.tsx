@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import RichTextEditor from "@/components/RichTextEditor";
 import {
   Loader2,
   Scissors,
@@ -69,6 +70,8 @@ export default function ChapterAnalyzer() {
   const [copied, setCopied] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [editingRewrite, setEditingRewrite] = useState(false);
+  const rewriteDraftRef = useRef("");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersionRef = useRef(0);
 
@@ -770,15 +773,61 @@ export default function ChapterAnalyzer() {
               </div>
             </div>
 
-            <Card className="border-border/60 shadow-xl mb-6">
-              <CardContent className="p-6 md:p-8">
-                <ScrollArea className="max-h-[600px]">
-                  <div className="text-base text-foreground/90 leading-relaxed whitespace-pre-wrap font-serif">
-                    {rewrittenChapter}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+            <div className="mb-6">
+              <div className="flex items-center justify-end gap-1 mb-2">
+                {editingRewrite ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => {
+                        setRewrittenChapter(rewriteDraftRef.current);
+                        setEditingRewrite(false);
+                        if (sessionId) {
+                          debouncedSave({ rewritten_chapter: rewriteDraftRef.current });
+                        }
+                      }}
+                      className="h-7 gap-1 text-xs"
+                      data-testid="button-save-rewrite"
+                    >
+                      <Check className="w-3 h-3" /> Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingRewrite(false)}
+                      className="h-7 gap-1 text-xs"
+                    >
+                      <X className="w-3 h-3" /> Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      rewriteDraftRef.current = rewrittenChapter;
+                      setEditingRewrite(true);
+                    }}
+                    className="h-7 gap-1 text-xs"
+                    data-testid="button-edit-rewrite"
+                  >
+                    <Pencil className="w-3 h-3" /> Edit
+                  </Button>
+                )}
+              </div>
+              <RichTextEditor
+                content={rewrittenChapter}
+                readOnly={!editingRewrite}
+                onChange={(_html, plain) => {
+                  rewriteDraftRef.current = plain;
+                }}
+                maxHeight="600px"
+                minHeight="300px"
+                placeholder="Rewritten chapter..."
+                data-testid="editor-rewritten-chapter"
+              />
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Button variant="outline" onClick={handleStartOver} className="flex-1" data-testid="button-back-to-sessions">
