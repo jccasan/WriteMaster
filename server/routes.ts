@@ -288,7 +288,9 @@ SELF-EDIT PASS (apply before outputting):
 - Confirm action clarity in physical sequences
 
 Output the rewritten chapter text only, no preamble or commentary.`,
-        "powerful"
+        "powerful",
+        undefined,
+        16384
       );
 
       if (!result || !result.trim()) {
@@ -570,7 +572,9 @@ SELF-EDIT PASS (apply before outputting):
 - Confirm action clarity in physical sequences: hands, objects, positions, cause-and-effect
 
 Output only the chapter text.`,
-        "powerful"
+        "powerful",
+        undefined,
+        16384
       );
 
       if (!result || !result.trim()) {

@@ -15,16 +15,18 @@ const POWERFUL_MODEL = "claude-sonnet-4-6";
 export async function callLLM(
   prompt: string,
   mode: "cheap" | "powerful",
-  systemPrompt?: string
+  systemPrompt?: string,
+  maxTokens?: number
 ): Promise<string> {
   const model = mode === "cheap" ? CHEAP_MODEL : POWERFUL_MODEL;
+  const tokens = maxTokens ?? 8192;
 
-  console.log(`[LLM] Calling ${model} (${mode} mode)...`);
+  console.log(`[LLM] Calling ${model} (${mode} mode, max_tokens=${tokens})...`);
   const startTime = Date.now();
 
   const message = await anthropic.messages.create({
     model,
-    max_tokens: 8192,
+    max_tokens: tokens,
     ...(systemPrompt ? { system: systemPrompt } : {}),
     messages: [{ role: "user", content: prompt }],
   });
