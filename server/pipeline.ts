@@ -1,5 +1,5 @@
 import { callLLM } from "./llm";
-import { AI_WRITING_RULES, STORY_ARCHITECTURE_RULES } from "./writing-rules";
+import { AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, STORY_ARCHITECTURE_RULES } from "./writing-rules";
 
 export interface TropePack {
   genre: string;
@@ -126,6 +126,8 @@ HOOK RUBRIC (every pitch must satisfy all of these):
 - Emotionally hooks the reader in the first two sentences
 - Uses no clichés or AI-obvious phrases
 
+${AUTHOR_VOICE_CONTRACT}
+
 ${AI_WRITING_RULES}
 
 GENRE TROPES AND PLOT TEMPLATE:
@@ -236,6 +238,8 @@ Include a ticking clock or escalating deadline that creates urgency across the p
 
 Be specific. No vague placeholders. Write as if you are handing this to a ghostwriter who needs to start writing tomorrow.
 
+${AUTHOR_VOICE_CONTRACT}
+
 ${AI_WRITING_RULES}`,
         "powerful"
       );
@@ -320,6 +324,8 @@ Instructions:
 - Reproduce the ENTIRE dossier with changes applied
 - Maintain all original Markdown section headers
 
+${AUTHOR_VOICE_CONTRACT}
+
 ${AI_WRITING_RULES}`,
         "cheap"
       );
@@ -371,6 +377,8 @@ Instructions:
 - Reproduce the ENTIRE dossier with changes applied
 - Maintain all Markdown section headers
 This is the FINAL version of the dossier.
+
+${AUTHOR_VOICE_CONTRACT}
 
 ${AI_WRITING_RULES}`,
         "cheap"

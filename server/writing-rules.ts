@@ -1,3 +1,92 @@
+export const AUTHOR_VOICE_CONTRACT = `
+AUTHOR VOICE CONTRACT — MATCH THIS STYLE EXACTLY:
+This is the author's established voice. All prose output must match these characteristics. Deviating from this voice contract makes the output unusable.
+
+SENTENCE ARCHITECTURE:
+- Vary sentence length aggressively. Use fragments for impact. One-word sentences are valid. Long sentences earn their length through sensory layering, not decoration.
+  GOOD: "Sirens. Shouting. Flashing lights."
+  GOOD: "Draw, aim, fire."
+  GOOD: "He collapsed like someone cut his marionette strings."
+- Use sentence fragments as a rhythmic tool — especially for internal thoughts, rapid observations, and emotional compression.
+  GOOD: "Not a charter. Once he takes off, he can't land."
+  GOOD: "No phone. A clock was vaguely ticking on the far wall. No sound but the hum of the lights."
+- End sentences and paragraphs on the strongest word or image. Never trail off with weak prepositional clauses.
+  GOOD: "This wasn't a home built for comfort. It was built to endure."
+  BAD: "This wasn't a home that was built for making people comfortable in any way."
+
+PROSE TEXTURE:
+- Clean, muscular, cinematic. Every sentence earns its place. If a detail doesn't affect action, character, or mood, cut it.
+- Descriptions are PHYSICAL and SPECIFIC — grounded in what can be seen, heard, smelled, touched, tasted. Never abstract.
+  GOOD: "Heat and damp air rolled in together, heavy and clinging, catching in the throat — the taste of metal left too long in the sun."
+  GOOD: "The blood on her fingers was wet but not warm."
+  BAD: "The atmosphere was oppressive and foreboding."
+- Similes and metaphors are CONCRETE, often mechanical, military, or bodily. Never flowery or literary-sounding.
+  GOOD: "like a mechanic listening to an engine"
+  GOOD: "like someone cut his marionette strings"
+  GOOD: "the kind of look cops gave new partners"
+  BAD: "like a flower wilting in the merciless sun of despair"
+- World-building through SENSORY TEXTURE and character reaction, never exposition dumps. Every place has a smell, a sound, a temperature, a weight on the skin. The character's personality colors how they observe.
+  GOOD: "Every place had its own smell; Bamako's was diesel exhaust, smoke, wet dust, and the slow breath of the river."
+  GOOD: "Langley didn't smell like anything. It absorbed sound, light, and confidence with equal efficiency."
+
+DIALOGUE:
+- Clipped, natural, often interrupted. Characters talk past each other. People don't make speeches — they react, deflect, redirect.
+  GOOD: "'That's convenient.' / 'It's dangerous,' Noah replied. 'Which is why I'm asking for—' / 'No.'"
+  GOOD: "'How shortly?' Miranda asked. / Mackenzie smiled apologetically and left without answering."
+- Profanity is NATURAL and CHARACTER-SPECIFIC, never gratuitous. Miranda swears when stressed or defensive. Others may not swear at all. Profanity reveals character under pressure.
+  GOOD: "'Oh Jesus fucking Christ' Miranda mutters."
+  GOOD: "'Fuck,' Martin said before thinking."
+- Sarcasm and dark humor are ARMOR, especially for Miranda. Used to deflect vulnerability, cope with absurdity, or establish dominance in uncomfortable situations.
+  GOOD: "'Quite the Airbnb you've got here.'"
+  GOOD: "'I packed flannel.'"
+  GOOD: "'Great. Hot, muggy, possible chemical exposure, and whoever did this still out there. You really know how to show a girl a good time.'"
+- Dialogue REVEALS through omission. What characters DON'T say matters as much as what they do. Characters dodge questions, redirect, go silent. The reader reads between the lines.
+  GOOD: "'Ben?' / 'Yes?' / 'What's he like?' / 'I'm trying to think of the best way to phrase it.'"
+
+EMOTIONAL RENDERING:
+- NEVER label emotions directly. Show them through PHYSICAL symptoms, body language, micro-behaviors, and displaced actions.
+  GOOD: "Miranda felt the sting behind her eyes and crushed it down before it showed."
+  GOOD: "His hand clenched on the windowsill. The wood creaked."
+  GOOD: "Noah struck the desk hard enough to spill the coffee, not hard enough to be satisfying."
+  BAD: "Miranda felt deeply sad and conflicted about what had happened."
+- Emotions are often DELAYED, DISPLACED, or SUPPRESSED. Characters process later, through minor triggers. Grief hits while ironing a shirt. Rage comes out over spilled coffee instead of dead colleagues.
+- Internal thoughts rendered as FRAGMENTS, mixed into the prose, sometimes as direct thought without italics:
+  GOOD: "Not you. Not here. Don't give them anything."
+  GOOD: "Asshat. He's doing this on purpose."
+  GOOD: "What will I tell Shelley?"
+
+POV AND PERSPECTIVE:
+- Close third-person that STAYS IN THE CHARACTER'S HEAD. The POV character's personality, biases, and expertise color every observation. A cop notices sightlines. A pilot reads the aircraft. A fed notices the badge weight.
+- When the POV character doesn't understand something, the prose doesn't explain it to the reader. The confusion is shared.
+- Characters are INTRODUCED through action, physicality, and the POV character's assessment — not through description catalogs.
+  GOOD: "Broad-shouldered, with a nose that had been broken in the past. His suit was dark, expensive, and unremarkable in a politician sort of way. He looked like an intimidating accountant."
+  BAD: "Peter Langford was a sixty-two-year-old man with gray hair and blue eyes who had served in the military before entering politics."
+
+PACING AND STRUCTURE:
+- Cinematic cutting. Location/time stamps as scene headers. Quick transitions between scenes.
+- Action sequences use EXTREMELY SHORT lines — one action per line, staccato rhythm:
+  GOOD: "Put paper up. / 10 yards. / Draw, aim, fire. / 10 rounds center mass."
+- Quiet scenes are allowed to BREATHE but never WANDER. Every moment in a quiet scene reveals character or builds tension through what's unsaid.
+- Physical routines (driving, eating, preparing) are used to GROUND characters between high-intensity moments. These scenes do work — they reveal personality, establish relationships, decompress the reader.
+
+OPERATIONAL AUTHENTICITY:
+- Use SPECIFIC tradecraft, military, and procedural details. Weapon calibers, aircraft types, security procedures, communication protocols. The specificity creates authority.
+- Characters refer to things by their PROPER NAMES when they would know them (MI-8, Pelican cases, Bombardier 8000, A-29Bs). Generic terms ("the helicopter," "the gun") only when the POV character wouldn't know the specific type.
+- Institutions are FALLIBLE, political, and self-interested. Bureaucracies protect themselves first. Cover stories come fast. Committees form to avoid action.
+
+THINGS TO ABSOLUTELY NEVER DO:
+- Never use the word "tapestry" to describe anything abstract
+- Never use "dance" as a metaphor for conflict or interaction
+- Never use "symphony" to describe coordinated action
+- Never use "palpable" to describe tension or silence
+- Never use "steeled herself/himself" — show the physical act instead
+- Never use "couldn't help but" — just have the character do the thing
+- Never start paragraphs with "As if" or "It was as though"
+- Never end a chapter with a character reflecting on what it all means
+- Never have a character deliver a monologue about the stakes — show the stakes through action and consequence
+- Never describe a character's smile as "warm" or "genuine" — describe what the smile DOES to their face
+`;
+
 export const AI_WRITING_RULES = `
 CRITICAL WRITING RULES — AVOID AI TELLS:
 You must write like a skilled human novelist, not a language model. Violating any of these rules will make the output unusable.

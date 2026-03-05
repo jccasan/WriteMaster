@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import type { BookChapter } from "./storage";
 import { runStep, getStepName } from "./pipeline";
 import { callLLM } from "./llm";
-import { AI_WRITING_RULES, SCENE_WRITING_RULES, STORY_ARCHITECTURE_RULES, CHAPTER_SUMMARY_TEMPLATE } from "./writing-rules";
+import { AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, SCENE_WRITING_RULES, STORY_ARCHITECTURE_RULES, CHAPTER_SUMMARY_TEMPLATE } from "./writing-rules";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -243,6 +243,8 @@ ${chapter_text}
 
 STRUCTURAL ELEMENTS TO INCORPORATE:
 ${elementsList}
+
+${AUTHOR_VOICE_CONTRACT}
 
 ${AI_WRITING_RULES}
 
@@ -519,6 +521,8 @@ ${previousSummaries}
 
 CHAPTER ${chapterNum} OUTLINE:
 ${chapter.outline}
+
+${AUTHOR_VOICE_CONTRACT}
 
 ${AI_WRITING_RULES}
 
