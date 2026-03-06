@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import RichTextEditor from "@/components/RichTextEditor";
+import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import {
   Loader2,
   ArrowLeft,
@@ -32,6 +33,7 @@ interface BookChapter {
   content: string | null;
   summary: string | null;
   status: "outlined" | "writing" | "written";
+  sliders?: NarrativeSliderValues | null;
 }
 
 interface BookProject {
@@ -520,6 +522,16 @@ export default function BookWriter() {
                     </Card>
                   )}
                 </div>
+
+                {/* Narrative Sliders — before writing */}
+                {currentChapter.status === "outlined" && !editingOutline && (
+                  <NarrativeSliders
+                    values={currentChapter.sliders || DEFAULT_SLIDERS}
+                    onChange={(newSliders) => {
+                      saveChapterUpdate(currentChapter.chapter_number, { sliders: newSliders });
+                    }}
+                  />
+                )}
 
                 {/* Write Chapter Button */}
                 {currentChapter.status === "outlined" && !editingOutline && (

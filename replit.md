@@ -28,13 +28,18 @@ Takes a completed dossier + brain dump, writes the book chapter by chapter. Each
 - `server/pipeline.ts` — 11-step AI pipeline logic + ProjectState type
 - `server/llm.ts` — Anthropic Claude wrapper (cheap/powerful mode)
 - `server/storage.ts` — File-based storage for projects, chapter sessions, and books
-- `server/writing-rules.ts` — Comprehensive AI writing rules system with 4 specialized rule sets:
-  - `AI_WRITING_RULES` — Core anti-AI-tell rules (dialogue, prose, structure, characters) injected into all prose prompts
+- `server/writing-rules.ts` — Comprehensive AI writing rules system with specialized rule sets:
+  - `AI_WRITING_RULES` — Core anti-AI-tell rules (dialogue with action verbs: dodge/interrupt/imply/misread/conceal/pressure/deflect/contradict, prose style with em-dash ban and "not just X but Y" ban, structure, characters) injected into all prose prompts
   - `SCENE_WRITING_RULES` — Scene engineering rules (Goal/Conflict/Outcome, double-up rule, mundane friction, pacing control, Cut the Author checklist) used in chapter writing and rewrite prompts
   - `STORY_ARCHITECTURE_RULES` — Story construction rules (Lie/Truth/Want/Need/Ghost character arcs, plot structure with pinch points, world-as-thematic-mirror, theme as moral argument) used in dossier and outline generation
   - `CHAPTER_SUMMARY_TEMPLATE` — Enhanced continuity snapshot template with timeline/location/injury/secrets/threats tracking for chapter summaries
-  - `AUTHOR_VOICE_CONTRACT` — Detailed voice profile extracted from the author's own writing sample, covering sentence architecture (fragments, varied length, staccato action), prose texture (clean/muscular/cinematic, concrete similes, sensory grounding), dialogue (clipped/natural, profanity as character, sarcasm as armor, subtext), emotional rendering (physical symptoms not labels, delayed/displaced reactions, fragment internal thoughts), POV (close third-person colored by character expertise), and a specific never-do list
-  - Distilled from: Story Construction Codex, Reduce AI Tells research, Novel Construction Best Practices, Editorial Codex, author's Oracle Veil alpha draft
+  - `AUTHOR_VOICE_CONTRACT` — Detailed voice profile extracted from the author's own writing sample
+  - `NARRATIVE_SLIDER_RULES` — Dynamic per-scene character state system (tension, intimacy, violence_risk, wonder, dread 0-10; trust, stress, control, hope -10 to +10) that modifies character behavior through prose, not labels
+  - `ANTI_SLOP_FILTER` — Post-generation checklist: cliché intensifiers, repeated metaphors, "suddenly" abuse, moralizing, fake-deep observations, tidy endings, robotic sentence balance, repeated rhetorical contrast
+  - `CONTEXT_ENGINEERING_RULES` — Pre-writing discipline: silently determine POV character's knowledge/wants/obstacles/pressure/continuity before writing; minimum context principle
+  - `DEFAULT_DECISION_RULE` — Decision heuristic: specific over vague, implied over explained, causal over convenient, scene-relevant over encyclopedic, character-true over dramatic, messy over tidy
+  - `LAYERED_GENERATION_WORKFLOW` — 5-phase internal generation process (Scene Intelligence → Dialogue Skeleton → Prose Expansion → Dramatic Integration → Narrow Check Passes) embedded as instructions within single prompts to avoid multi-call cost
+  - Distilled from: Story Construction Codex, Reduce AI Tells research, Novel Construction Best Practices, Editorial Codex, Story Building Engine, author's Oracle Veil alpha draft
 
 ### Frontend
 - `client/src/pages/Home.tsx` — Main page with 3 views (init/pipeline/result)
@@ -44,6 +49,7 @@ Takes a completed dossier + brain dump, writes the book chapter by chapter. Each
 - `client/src/components/StoryInit.tsx` — Brain dump form + genre selection + module links
 - `client/src/components/StoryPipeline.tsx` — Real-time pipeline progress tracker
 - `client/src/components/RichTextEditor.tsx` — TipTap-based rich text editor with toolbar (bold, italic, underline, headings, lists, undo/redo); converts plain text/markdown ↔ HTML; used for editable chapter content, summaries, rewrites, and dossier
+- `client/src/components/NarrativeSliders.tsx` — Collapsible "Scene Atmosphere" panel with 9 sliders (tension, intimacy, violence_risk, wonder, dread 0-10; trust, stress, control, hope -10 to +10); used in BookWriter (before writing) and ChapterAnalyzer (before rewrite); defaults: tension=5, others=3 or 0
 - `client/src/components/StoryResult.tsx` — Final dossier viewer with tabs + "Write the Book" button + rich text editing
 
 ### Data

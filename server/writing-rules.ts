@@ -99,6 +99,8 @@ DIALOGUE:
 - Avoid characters conveniently explaining technical details, backstory, or world-building through dialogue unless it makes sense for the character to do so in that moment.
 - Dialogue is war — characters have competing agendas. Their conversations should contain friction, interruptions, evasions. Even allied characters should generate tension through misaligned priorities.
 - The most compelling dialogue is layered with subtext. Characters rarely say exactly what they mean, especially in high-stakes situations. The true meaning lies beneath the surface.
+- Let characters dodge, interrupt, imply, misread, conceal, pressure, deflect, and contradict themselves under stress. Dialogue must not sound uniformly polished.
+- Use dialogue tags sparingly. Prefer action beats, rhythm, and voice differentiation to identify speakers. Reduce filler tags ("he said with a sigh," "she replied thoughtfully") — let the words and actions carry the tone.
 
 PROSE STYLE:
 - No melodramatic cliches: "little did they know," "a chill ran down their spine," "their blood ran cold," "the weight of the world," "a storm was brewing — both literally and figuratively," "time seemed to stand still," "the silence was deafening."
@@ -113,6 +115,9 @@ PROSE STYLE:
 - Vary sentence length deliberately. Short sentences for urgency. Longer ones for atmosphere. Break patterns — if three sentences start the same way, rewrite at least one.
 - End sentences on the strongest word. Order clauses to build anticipation and land emphasis. Avoid trailing prepositional phrase chains.
 - Show, don't tell at emotional moments. "John was angry" fails. "John's knuckles whitened on the table edge. A muscle twitched in his jaw." succeeds. Reserve telling for efficiency in transitions.
+- Avoid em-dashes unless absolutely necessary. Use commas or break into two sentences wherever possible. Em-dash overuse is an AI tell.
+- Avoid "it was not just X, but Y" constructions unless intentionally styled. This balanced rhetorical pattern is a hallmark of AI prose.
+- Prefer specific nouns and verbs over adverbs. "He sprinted" beats "He ran quickly." "The Glock" beats "the gun."
 
 STRUCTURE:
 - Not every scene needs a dramatic confrontation. Vary pacing. Some scenes are setup, some are aftermath, some are character moments.
@@ -221,4 +226,96 @@ Produce a continuity snapshot with these exact sections:
 - Active Threats: [hunters, deadlines, surveillance, danger level]
 
 **Tone/Pacing Note:** [Was this high-action, reflective, transitional? What energy should the next chapter carry?]
+`;
+
+export const NARRATIVE_SLIDER_RULES = `
+NARRATIVE SLIDER SYSTEM:
+Characters are not static. A character's behavior in every scene must reflect BOTH their baseline traits AND their current dynamic state. The following sliders represent emotional/situational pressure that overrides default characterization for this scene.
+
+SLIDER DEFINITIONS:
+- tension (0-10): Overall scene pressure. High tension sharpens pacing, compresses thought, tightens dialogue. Low tension allows breathing room and observation.
+- intimacy (0-10): Emotional closeness or vulnerability exposure. High intimacy increases sensitivity, hesitation, attraction, or discomfort depending on relationship context. Low intimacy keeps interactions transactional.
+- violence_risk (0-10): Proximity to physical danger. High violence_risk activates survival instincts, hyperawareness, adrenaline responses. Characters notice exits, weapons, cover.
+- wonder (0-10): Sense of discovery or awe. High wonder opens perception, slows the character's internal clock, invites detailed observation. Low wonder makes the world feel routine.
+- dread (0-10): Anticipation of something terrible. High dread darkens interpretation of neutral stimuli, creates paranoia, amplifies small sounds and shadows. Characters catastrophize.
+- trust (-10 to +10): Willingness to be vulnerable with others present. Negative trust creates guardedness, deception, testing behavior. Positive trust allows honesty and cooperation.
+- stress (-10 to +10): Accumulated mental/emotional load. High stress shifts dialogue (shorter, sharper), reduces patience, increases impulsiveness. Low/negative stress creates calm deliberation.
+- control (-10 to +10): Sense of agency over the situation. Negative control increases chaos, defensive reactions, or desperate grasping for leverage. Positive control creates confidence, strategic thinking.
+- hope (-10 to +10): Belief that things can improve. Negative hope creates resignation, nihilism, reckless behavior. Positive hope can create risk-taking, openness, or denial of danger.
+
+EXPRESSION RULES:
+Do NOT mention slider values or names in the prose. Express them through:
+- Word choice and sentence rhythm
+- Body language and micro-behaviors
+- Pacing (compressed vs. expansive)
+- Turn-taking in dialogue (interruptions vs. patience)
+- Internal thought patterns (racing vs. deliberate)
+- Decisions under pressure (impulsive vs. calculated)
+- Sensory filtering (what the character notices and ignores)
+
+INTERACTION EFFECTS:
+Sliders interact. High stress + low control = panic or shutdown. High tension + high intimacy = volatile vulnerability. High dread + low hope = paralysis or reckless abandon. Let these combinations create emergent behavior, not predictable formulas.
+`;
+
+export const ANTI_SLOP_FILTER = `
+ANTI-SLOP FILTER — CHECK BEFORE FINALIZING:
+Scan the output and reduce or eliminate:
+- Cliché intensifiers ("very," "extremely," "incredibly" — replace with specific detail)
+- Generic emotional summaries ("she felt a mix of emotions" — show the specific physical response)
+- Repeated metaphors (if you used a fire metaphor in paragraph 2, don't use another in paragraph 5)
+- "Suddenly" abuse (limit to once per chapter maximum, and only when truly abrupt)
+- Broad moralizing or characters philosophizing about life lessons
+- Over-explained motives ("He did it because he wanted to prove..." — let actions speak)
+- Fake-deep observations ("In that moment, she realized that sometimes the hardest battles..." — cut entirely)
+- Tidy endings where mess is dramatically stronger
+- Robotic balance in sentence structure (two halves of equal weight joined by a comma or conjunction, repeated)
+- Repeated rhetorical contrast patterns ("Not X, but Y" / "It wasn't X — it was Y" appearing multiple times)
+- Obvious AI symmetry: two-sentence pairs where the second mirrors or completes the first in a predictable pattern
+- Generic transition phrases ("As the sun set," "With that," "And with that," "Little did they know")
+- Characters who all react with the same emotional register to different stimuli
+`;
+
+export const CONTEXT_ENGINEERING_RULES = `
+CONTEXT ENGINEERING — PRE-WRITING PROTOCOL:
+Before writing any prose, silently determine these five things (do not output them):
+1. What does the POV character KNOW right now? (Not what the reader knows or what other characters know)
+2. What does the POV character WANT right now? (Immediate scene-level desire, not abstract story goal)
+3. What STANDS IN THE WAY? (External obstacle, internal resistance, or both)
+4. What EMOTIONAL PRESSURE is active? (Carried over from previous scenes, triggered by current situation)
+5. What CONTINUITY FACTS must not be violated? (Injuries, locations, time of day, who knows what, active threats)
+
+CONTEXT DISCIPLINE:
+- Use only the minimum context needed to write the current scene well
+- Prioritize: current scene brief > relevant character details > necessary world rules > concise continuity summary
+- Ignore unrelated lore, unused characters, and irrelevant past events
+- If the dossier contains world-building not relevant to this scene, do not force it in
+- Every scene should feel like it happens BECAUSE OF prior events, current motives, and pressure — not because the outline says so
+- Stay context-bound: do not invent canon that conflicts with provided material
+`;
+
+export const DEFAULT_DECISION_RULE = `
+DEFAULT DECISION RULE — WHEN UNCERTAIN, ALWAYS CHOOSE:
+- Specific over vague
+- Implied over explained
+- Causal over convenient
+- Scene-relevant over encyclopedic
+- Character-true over theatrically dramatic
+- Concrete over abstract
+- Earned over coincidental
+- Messy over tidy (when the mess is dramatically stronger)
+`;
+
+export const LAYERED_GENERATION_WORKFLOW = `
+INTERNAL GENERATION WORKFLOW:
+Follow this sequence internally before producing output. Do not output these phases — they are your mental process.
+
+PHASE 1 — SCENE INTELLIGENCE: Determine POV, setting, scene goal, conflict, emotional turn, revelation/complication, ending state, continuity risks, and required motifs or callbacks.
+
+PHASE 2 — DIALOGUE SKELETON: Draft the key dialogue beats mentally. Focus on conflict, subtext, interruption patterns, power shifts, and distinct character voices. Include only minimal blocking.
+
+PHASE 3 — PROSE EXPANSION: Expand the dialogue skeleton into full scene prose. Add selective sensory detail, internality appropriate to POV, blocking, environmental interaction, pacing variation, and tension management.
+
+PHASE 4 — DRAMATIC INTEGRATION: Strengthen climactic beats, emotional transitions, scene endings, tonal consistency, and thematic resonance without making the prose purple or overwritten.
+
+PHASE 5 — NARROW CHECK PASSES: Before outputting, run targeted checks: adverb cleanup, AI-ism detection, continuity check, plausibility check, dialogue naturalness check. Fix issues without rewriting broadly.
 `;

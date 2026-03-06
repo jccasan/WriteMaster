@@ -1,5 +1,5 @@
 import { callLLM } from "./llm";
-import { AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, STORY_ARCHITECTURE_RULES } from "./writing-rules";
+import { AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, STORY_ARCHITECTURE_RULES, ANTI_SLOP_FILTER, DEFAULT_DECISION_RULE, CONTEXT_ENGINEERING_RULES } from "./writing-rules";
 
 export interface TropePack {
   genre: string;
@@ -140,7 +140,11 @@ Format each pitch in Markdown exactly as:
 ### Pitch [N]
 **Logline:** [one sentence]
 **Full Pitch:** [150-200 words]
-**Why it works:** [2-3 sentences explaining the hook]`,
+**Why it works:** [2-3 sentences explaining the hook]
+
+${ANTI_SLOP_FILTER}
+
+${DEFAULT_DECISION_RULE}`,
         "powerful"
       );
       state.pitches = result;
@@ -240,7 +244,13 @@ Be specific. No vague placeholders. Write as if you are handing this to a ghostw
 
 ${AUTHOR_VOICE_CONTRACT}
 
-${AI_WRITING_RULES}`,
+${AI_WRITING_RULES}
+
+${CONTEXT_ENGINEERING_RULES}
+
+${ANTI_SLOP_FILTER}
+
+${DEFAULT_DECISION_RULE}`,
         "powerful"
       );
       state.dossier_v1 = result;
@@ -326,7 +336,11 @@ Instructions:
 
 ${AUTHOR_VOICE_CONTRACT}
 
-${AI_WRITING_RULES}`,
+${AI_WRITING_RULES}
+
+${ANTI_SLOP_FILTER}
+
+${DEFAULT_DECISION_RULE}`,
         "cheap"
       );
       state.dossier_v2 = result;
@@ -380,7 +394,11 @@ This is the FINAL version of the dossier.
 
 ${AUTHOR_VOICE_CONTRACT}
 
-${AI_WRITING_RULES}`,
+${AI_WRITING_RULES}
+
+${ANTI_SLOP_FILTER}
+
+${DEFAULT_DECISION_RULE}`,
         "cheap"
       );
       state.dossier_final = result;

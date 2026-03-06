@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import RichTextEditor from "@/components/RichTextEditor";
+import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import {
   Loader2,
   Scissors,
@@ -72,6 +73,7 @@ export default function ChapterAnalyzer() {
   const [titleDraft, setTitleDraft] = useState("");
   const [editingRewrite, setEditingRewrite] = useState(false);
   const rewriteDraftRef = useRef("");
+  const [rewriteSliders, setRewriteSliders] = useState<NarrativeSliderValues>({ ...DEFAULT_SLIDERS });
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersionRef = useRef(0);
 
@@ -198,7 +200,7 @@ export default function ChapterAnalyzer() {
       const res = await fetch("/api/chapter/rewrite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapter_text: chapterText, elements }),
+        body: JSON.stringify({ chapter_text: chapterText, elements, sliders: rewriteSliders }),
       });
       let data;
       try {
@@ -695,6 +697,12 @@ export default function ChapterAnalyzer() {
                 {error}
               </div>
             )}
+
+            <NarrativeSliders
+              values={rewriteSliders}
+              onChange={setRewriteSliders}
+              defaultCollapsed={true}
+            />
 
             <div className="flex gap-4">
               <Button

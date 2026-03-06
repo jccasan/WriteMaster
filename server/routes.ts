@@ -1,10 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import type { BookChapter } from "./storage";
+import type { BookChapter, NarrativeSliders } from "./storage";
 import { runStep, getStepName } from "./pipeline";
 import { callLLM } from "./llm";
-import { AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, SCENE_WRITING_RULES, STORY_ARCHITECTURE_RULES, CHAPTER_SUMMARY_TEMPLATE } from "./writing-rules";
+import {
+  AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, SCENE_WRITING_RULES, STORY_ARCHITECTURE_RULES,
+  CHAPTER_SUMMARY_TEMPLATE, NARRATIVE_SLIDER_RULES, ANTI_SLOP_FILTER,
+  CONTEXT_ENGINEERING_RULES, DEFAULT_DECISION_RULE, LAYERED_GENERATION_WORKFLOW
+} from "./writing-rules";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -245,7 +249,7 @@ Respond with ONLY the JSON, no other text.`,
 
   app.post("/api/chapter/rewrite", async (req, res) => {
     try {
-      const { chapter_text, elements } = req.body;
+      const { chapter_text, elements, sliders } = req.body;
       if (!chapter_text || !elements || !Array.isArray(elements)) {
         return res.status(400).json({ error: "chapter_text and elements array are required" });
       }
@@ -254,20 +258,29 @@ Respond with ONLY the JSON, no other text.`,
         .map((e: { label: string; value: string }) => `- **${e.label}**: ${e.value}`)
         .join("\n");
 
+      const slidersBlock = formatSlidersBlock(sliders);
+
       const result = await callLLM(
         `You are a master fiction writer and editor. Your task is to rewrite the chapter below so that it faithfully incorporates ALL of the structural elements provided.
+
+${CONTEXT_ENGINEERING_RULES}
 
 ORIGINAL CHAPTER:
 ${chapter_text}
 
 STRUCTURAL ELEMENTS TO INCORPORATE:
 ${elementsList}
+${slidersBlock}
 
 ${AUTHOR_VOICE_CONTRACT}
 
 ${AI_WRITING_RULES}
 
 ${SCENE_WRITING_RULES}
+
+${DEFAULT_DECISION_RULE}
+
+${LAYERED_GENERATION_WORKFLOW}
 
 INSTRUCTIONS:
 - Rewrite the entire chapter so it naturally embodies every element listed above
@@ -286,6 +299,8 @@ SELF-EDIT PASS (apply before outputting):
 - Remove lines that explain what behavior already shows
 - Break any accidental sentence pattern symmetry
 - Confirm action clarity in physical sequences
+
+${ANTI_SLOP_FILTER}
 
 Output the rewritten chapter text only, no preamble or commentary.`,
         "powerful",
@@ -429,6 +444,23 @@ Output the rewritten chapter text only, no preamble or commentary.`,
     return `[EARLIER CHAPTERS — compressed for context efficiency]\n\n${compressedOlder}\n\n[RECENT CHAPTERS — full detail]\n\n${fullRecent}`;
   }
 
+  function formatSlidersBlock(sliders?: NarrativeSliders | null): string {
+    if (!sliders) return "";
+    return `
+[NARRATIVE_SLIDERS] — Apply these dynamic values to character behavior in this scene:
+- tension: ${sliders.tension}/10
+- intimacy: ${sliders.intimacy}/10
+- violence_risk: ${sliders.violence_risk}/10
+- wonder: ${sliders.wonder}/10
+- dread: ${sliders.dread}/10
+- trust: ${sliders.trust} (range -10 to +10)
+- stress: ${sliders.stress} (range -10 to +10)
+- control: ${sliders.control} (range -10 to +10)
+- hope: ${sliders.hope} (range -10 to +10)
+
+${NARRATIVE_SLIDER_RULES}`;
+  }
+
   app.post("/api/books/:id/outline-chapter", async (req, res) => {
     try {
       const book = await storage.getBook(req.params.id);
@@ -457,6 +489,10 @@ PREVIOUS CHAPTER SUMMARIES:
 ${previousSummaries}
 
 ${STORY_ARCHITECTURE_RULES}
+
+${CONTEXT_ENGINEERING_RULES}
+
+${DEFAULT_DECISION_RULE}
 
 INSTRUCTIONS:
 - Based on the dossier's plot beats, determine what should happen in Chapter ${nextNum}
@@ -501,6 +537,10 @@ Format as:
         content: null,
         summary: null,
         status: "outlined",
+        sliders: {
+          tension: 5, intimacy: 3, violence_risk: 3, wonder: 3, dread: 3,
+          trust: 0, stress: 0, control: 0, hope: 0,
+        },
       };
 
       book.chapters.push(newChapter);
@@ -527,9 +567,12 @@ Format as:
       await storage.saveBook(book);
 
       const previousSummaries = buildPreviousSummariesContext(book.chapters, chapterNum);
+      const slidersBlock = formatSlidersBlock(chapter.sliders);
 
       const result = await callLLM(
         `You are a skilled novelist writing a chapter of a book. Write Chapter ${chapterNum} based on the outline and context below.
+
+${CONTEXT_ENGINEERING_RULES}
 
 STORY DOSSIER (characters, world, themes, plot beats):
 ${book.dossier}
@@ -542,12 +585,17 @@ ${previousSummaries}
 
 CHAPTER ${chapterNum} OUTLINE:
 ${chapter.outline}
+${slidersBlock}
 
 ${AUTHOR_VOICE_CONTRACT}
 
 ${AI_WRITING_RULES}
 
 ${SCENE_WRITING_RULES}
+
+${DEFAULT_DECISION_RULE}
+
+${LAYERED_GENERATION_WORKFLOW}
 
 INSTRUCTIONS:
 - Write the full chapter as polished prose, ready for a reader
@@ -570,6 +618,8 @@ SELF-EDIT PASS (apply before outputting):
 - Replace at least one abstract "meaning" line with concrete action or sensation
 - Break any accidental sentence pattern symmetry (three sentences with the same structure)
 - Confirm action clarity in physical sequences: hands, objects, positions, cause-and-effect
+
+${ANTI_SLOP_FILTER}
 
 Output only the chapter text.`,
         "powerful",
@@ -655,6 +705,7 @@ CRITICAL: Be specific and factual. Reference character names and concrete detail
         }
       }
       if (req.body.summary !== undefined) chapter.summary = req.body.summary;
+      if (req.body.sliders !== undefined) chapter.sliders = req.body.sliders;
 
       await storage.saveBook(book);
       res.json({ chapter, book });

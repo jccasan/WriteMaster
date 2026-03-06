@@ -42,6 +42,18 @@ export interface ChapterSession {
   rewritten_chapter: string | null;
 }
 
+export interface NarrativeSliders {
+  tension: number;
+  intimacy: number;
+  violence_risk: number;
+  wonder: number;
+  dread: number;
+  trust: number;
+  stress: number;
+  control: number;
+  hope: number;
+}
+
 export interface BookChapter {
   chapter_number: number;
   title: string;
@@ -49,6 +61,7 @@ export interface BookChapter {
   content: string | null;
   summary: string | null;
   status: "outlined" | "writing" | "written";
+  sliders?: NarrativeSliders | null;
 }
 
 export interface BookProject {
