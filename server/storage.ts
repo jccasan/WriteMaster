@@ -81,6 +81,7 @@ export interface IStorage {
   createProject(brainDump: string, genre: string): Promise<ProjectState>;
   getProject(projectId: string): Promise<ProjectState | null>;
   saveProject(state: ProjectState): Promise<void>;
+  listProjects(): Promise<Array<{ id: string; created_at: string; genre: string; current_step: number; best_pitch: string }>>;
   listChapterSessions(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; has_rewrite: boolean }>>;
   getChapterSession(id: string): Promise<ChapterSession | null>;
   saveChapterSession(session: ChapterSession): Promise<void>;
@@ -135,6 +136,29 @@ export class FileStorage implements IStorage {
   async saveProject(state: ProjectState): Promise<void> {
     const filePath = path.join(PROJECTS_DIR, `${state.project_id}.json`);
     await writeFile(filePath, JSON.stringify(state, null, 2));
+  }
+
+  async listProjects(): Promise<Array<{ id: string; created_at: string; genre: string; current_step: number; best_pitch: string }>> {
+    if (!existsSync(PROJECTS_DIR)) return [];
+    const files = await readdir(PROJECTS_DIR);
+    const projects: Array<{ id: string; created_at: string; genre: string; current_step: number; best_pitch: string }> = [];
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        const content = await readFile(path.join(PROJECTS_DIR, file), "utf-8");
+        const data = JSON.parse(content) as ProjectState;
+        projects.push({
+          id: data.project_id,
+          created_at: data.created_at,
+          genre: data.genre,
+          current_step: data.current_step,
+          best_pitch: data.best_pitch || "",
+        });
+      } catch {
+        continue;
+      }
+    }
+    return projects.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
   async listChapterSessions(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; has_rewrite: boolean }>> {

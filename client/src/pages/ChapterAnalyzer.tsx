@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import RichTextEditor from "@/components/RichTextEditor";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
+import Layout from "@/components/Layout";
 import {
   Loader2,
   Scissors,
@@ -15,7 +16,6 @@ import {
   Pencil,
   Check,
   X,
-  ArrowLeft,
   RefreshCw,
   Download,
   Copy,
@@ -53,6 +53,7 @@ function formatDate(iso: string) {
 
 export default function ChapterAnalyzer() {
   const [, navigate] = useLocation();
+  const [, routeParams] = useRoute("/chapter-analyzer/:id");
   const [phase, setPhase] = useState<Phase>("list");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -90,7 +91,19 @@ export default function ChapterAnalyzer() {
 
   useEffect(() => {
     fetchSessions();
+    const importedText = sessionStorage.getItem("analyzer_import_text");
+    if (importedText) {
+      sessionStorage.removeItem("analyzer_import_text");
+      setChapterText(importedText);
+      setPhase("input");
+    }
   }, [fetchSessions]);
+
+  useEffect(() => {
+    if (routeParams?.id) {
+      loadSession(routeParams.id);
+    }
+  }, [routeParams?.id]);
 
   const doSave = useCallback(async (payload: {
     id: string;
@@ -344,6 +357,9 @@ export default function ChapterAnalyzer() {
     setError(null);
     setEditingTitle(false);
     fetchSessions();
+    if (routeParams?.id) {
+      navigate("/chapter-analyzer");
+    }
   };
 
   const startNewSession = () => {
@@ -365,37 +381,20 @@ export default function ChapterAnalyzer() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans">
-      <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")} role="button" tabIndex={0}>
-            <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center text-primary-foreground font-serif font-bold text-xl leading-none">
-              S
-            </div>
-            <h1 className="font-serif font-semibold text-xl tracking-tight">StoryDossier</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            {phase !== "list" && (
-              <button
-                onClick={handleStartOver}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                data-testid="button-back-sessions"
-              >
-                <ArrowLeft className="w-4 h-4" /> Sessions
-              </button>
-            )}
+    <Layout>
+      <div>
+        {phase !== "list" && (
+          <div className="mb-6">
             <button
-              onClick={() => navigate("/")}
+              onClick={handleStartOver}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              data-testid="button-back-home"
+              data-testid="button-back-sessions"
             >
-              <ArrowLeft className="w-4 h-4" /> Home
+              <ChevronRight className="w-3 h-3 rotate-180" /> Back to Sessions
             </button>
           </div>
-        </div>
-      </header>
+        )}
 
-      <main className="container max-w-5xl mx-auto px-4 py-8 md:py-12">
         {/* SESSION LIST */}
         {phase === "list" && (
           <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -867,7 +866,7 @@ export default function ChapterAnalyzer() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

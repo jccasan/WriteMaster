@@ -23,8 +23,10 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  Scissors,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Layout from "@/components/Layout";
 
 interface BookChapter {
   chapter_number: number;
@@ -277,64 +279,62 @@ export default function BookWriter() {
   if (!book) return null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container max-w-[1400px] mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/books")}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              data-testid="button-back-books"
+    <Layout fullScreen>
+      <div className="border-b border-border/40 bg-background/95 px-4 h-12 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/books")}
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            data-testid="button-back-books"
+          >
+            <ArrowLeft className="w-4 h-4" /> Books
+          </button>
+          <span className="text-border">|</span>
+          {editingTitle ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                className="text-lg font-serif font-bold h-9 w-64"
+                onKeyDown={(e) => e.key === "Enter" && saveTitle()}
+                autoFocus
+                data-testid="input-book-title"
+              />
+              <Button size="sm" variant="ghost" onClick={saveTitle} className="h-8 w-8 p-0">
+                <Check className="w-4 h-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditingTitle(false)} className="h-8 w-8 p-0">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <h1
+              className="font-serif font-semibold text-lg tracking-tight cursor-pointer hover:text-primary/80 transition-colors group flex items-center gap-1"
+              onClick={() => { setTitleDraft(book.title); setEditingTitle(true); }}
+              data-testid="text-book-title"
             >
-              <ArrowLeft className="w-4 h-4" /> Books
-            </button>
-            <span className="text-border">|</span>
-            {editingTitle ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={titleDraft}
-                  onChange={(e) => setTitleDraft(e.target.value)}
-                  className="text-lg font-serif font-bold h-9 w-64"
-                  onKeyDown={(e) => e.key === "Enter" && saveTitle()}
-                  autoFocus
-                  data-testid="input-book-title"
-                />
-                <Button size="sm" variant="ghost" onClick={saveTitle} className="h-8 w-8 p-0">
-                  <Check className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditingTitle(false)} className="h-8 w-8 p-0">
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <h1
-                className="font-serif font-semibold text-lg tracking-tight cursor-pointer hover:text-primary/80 transition-colors group flex items-center gap-1"
-                onClick={() => { setTitleDraft(book.title); setEditingTitle(true); }}
-                data-testid="text-book-title"
-              >
-                <BookOpen className="w-4 h-4 text-primary" />
-                {book.title}
-                <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-              </h1>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {book.chapters.filter(c => c.status === "written").length}/{book.chapters.length} chapters written
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadBook}
-              disabled={!book.chapters.some(c => c.content)}
-              className="gap-1"
-              data-testid="button-download-book"
-            >
-              <Download className="w-3.5 h-3.5" /> Export
-            </Button>
-          </div>
+              <BookOpen className="w-4 h-4 text-primary" />
+              {book.title}
+              <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+            </h1>
+          )}
         </div>
-      </header>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {book.chapters.filter(c => c.status === "written").length}/{book.chapters.length} chapters written
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadBook}
+            disabled={!book.chapters.some(c => c.content)}
+            className="gap-1"
+            data-testid="button-download-book"
+          >
+            <Download className="w-3.5 h-3.5" /> Export
+          </Button>
+        </div>
+      </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT SIDEBAR — Chapter Navigation */}
@@ -617,6 +617,20 @@ export default function BookWriter() {
                               {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
                               {copied ? "Copied" : "Copy"}
                             </Button>
+                            {currentChapter.content && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  sessionStorage.setItem("analyzer_import_text", currentChapter.content || "");
+                                  navigate("/chapter-analyzer");
+                                }}
+                                className="h-7 gap-1 text-xs"
+                                data-testid="button-analyze-chapter"
+                              >
+                                <Scissors className="w-3 h-3" /> Analyze
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>
@@ -820,7 +834,7 @@ export default function BookWriter() {
           <button onClick={() => setError(null)} className="ml-3 font-medium hover:underline">Dismiss</button>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }
 

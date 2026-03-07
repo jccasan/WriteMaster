@@ -24,6 +24,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/projects", async (_req, res) => {
+    try {
+      const projects = await storage.listProjects();
+      res.json(projects);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/project/start", async (req, res) => {
     try {
       const { brain_dump, genre } = req.body;
