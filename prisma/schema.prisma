@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./forge.db"
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  title       String
+  authorName  String   @default("")
+  genre       String   @default("")
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  revisions   RevisionVersion[]
+  fileAssets  FileAsset[]
+}
+
+model RevisionVersion {
+  id               String   @id @default(uuid())
+  projectId        String
+  label            String   @default("")
+  versionNumber    Int      @default(1)
+  manuscriptFileId String?
+  status           String   @default("draft")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  chapters         Chapter[]
+  chunks           Chunk[]
+  characters       CharacterRecord[]
+  plotThreads      PlotThread[]
+  issues           Issue[]
+  structureBeats   StructureBeat[]
+  sceneAnalyses    SceneAnalysis[]
+  factCheckItems   FactCheckItem[]
+  reports          EditorialReport[]
+  betaResponses    BetaReaderResponse[]
+  analysisJobs     AnalysisJob[]
+}
+
+model FileAsset {
+  id                String   @id @default(uuid())
+  projectId         String
+  revisionVersionId String?
+  type              String
+  fileName          String
+  mimeType          String   @default("")
+  storagePath       String   @default("")
+  extractedText     String   @default("")
+  createdAt         DateTime @default(now())
+
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Chapter {
+  id                  String   @id @default(uuid())
+  revisionVersionId   String
+  number              Int
+  title               String   @default("")
+  rawText             String   @default("")
+  wordCount           Int      @default(0)
+  detectedStartOffset Int      @default(0)
+  detectedEndOffset   Int      @default(0)
+
+  revision            RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+  issues              Issue[]
+  sceneAnalyses       SceneAnalysis[]
+  factCheckItems      FactCheckItem[]
+}
+
+model Chunk {
+  id                String   @id @default(uuid())
+  revisionVersionId String
+  chunkIndex        Int
+  startChapter      Int
+  endChapter        Int
+  rawCombinedText   String   @default("")
+  status            String   @default("pending")
+  summaryJson       String   @default("{}")
+  createdAt         DateTime @default(now())
+
+  revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+  issues            Issue[]
+}
+
+model CharacterRecord {
+  id                String @id @default(uuid())
+  revisionVersionId String
+  name              String
+  aliasesJson       String @default("[]")
+  description       String @default("")
+  traitsJson        String @default("[]")
+  goalsJson         String @default("[]")
+  motivesJson       String @default("[]")
+  relationshipsJson String @default("[]")
+  injuriesJson      String @default("[]")
+  voiceNotesJson    String @default("[]")
+  continuityNotesJson String @default("[]")
+
+  revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+}
+
+model PlotThread {
+  id                  String @id @default(uuid())
+  revisionVersionId   String
+  label               String
+  introducedInChapter Int?
+  status              String @default("active")
+  notesJson           String @default("[]")
+
+  revision            RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+}
+
+model Issue {
+  id                  String  @id @default(uuid())
+  revisionVersionId   String
+  reportId            String?
+  chunkId             String?
+  chapterId           String?
+  type                String
+  severity            String  @default("moderate")
+  title               String
+  description         String  @default("")
+  evidenceJson        String  @default("[]")
+  suggestion          String  @default("")
+  status              String  @default("active")
+  introducedAtChapter Int?
+  resolvedAtChapter   Int?
+
+  revision            RevisionVersion  @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+  report              EditorialReport? @relation(fields: [reportId], references: [id])
+  chunk               Chunk?           @relation(fields: [chunkId], references: [id])
+  chapter             Chapter?         @relation(fields: [chapterId], references: [id])
+}
+
+model StructureBeat {
+  id                String @id @default(uuid())
+  revisionVersionId String
+  beatType          String
+  chapterNumber     Int?
+  confidence        Float  @default(0.5)
+  notes             String @default("")
+
+  revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+}
+
+model SceneAnalysis {
+  id                String @id @default(uuid())
+  revisionVersionId String
+  chapterId         String
+  sceneIndex        Int
+  purpose           String @default("")
+  conflict          String @default("")
+  changeOccurred    Boolean @default(false)
+  valueRating       String  @default("useful but weak")
+  issueFlagsJson    String  @default("[]")
+
+  revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+  chapter           Chapter         @relation(fields: [chapterId], references: [id])
+}
+
+model FactCheckItem {
+  id                String  @id @default(uuid())
+  revisionVersionId String
+  chapterId         String?
+  type              String
+  claim             String
+  finding           String  @default("")
+  confidence        Float   @default(0.5)
+  status            String  @default("pending")
+  citationsJson     String  @default("[]")
+  notes             String  @default("")
+
+  revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+  chapter           Chapter?        @relation(fields: [chapterId], references: [id])
+}
+
+model EditorialReport {
+  id                String   @id @default(uuid())
+  revisionVersionId String
+  reportType        String
+  title             String
+  summary           String   @default("")
+  bodyMarkdown      String   @default("")
+  metadataJson      String   @default("{}")
+  createdAt         DateTime @default(now())
+
+  revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+  issues            Issue[]
+}
+
+model BetaReaderProfile {
+  id                    String @id @default(uuid())
+  name                  String
+  description           String @default("")
+  genreBiasesJson       String @default("[]")
+  readingPreferencesJson String @default("[]")
+
+  responses             BetaReaderResponse[]
+}
+
+model BetaReaderResponse {
+  id                String   @id @default(uuid())
+  revisionVersionId String
+  profileId         String
+  reportId          String?
+  responseJson      String   @default("{}")
+  createdAt         DateTime @default(now())
+
+  revision          RevisionVersion  @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+  profile           BetaReaderProfile @relation(fields: [profileId], references: [id])
+}
+
+model AnalysisJob {
+  id                String   @id @default(uuid())
+  revisionVersionId String
+  analysisType      String
+  status            String   @default("queued")
+  progress          Int      @default(0)
+  configJson        String   @default("{}")
+  logsJson          String   @default("[]")
+  errorMessage      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
+}

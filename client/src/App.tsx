@@ -13,6 +13,18 @@ import ChapterAnalyzer from "@/pages/ChapterAnalyzer";
 import Books from "@/pages/Books";
 import BookWriter from "@/pages/BookWriter";
 import ChapterWriter from "@/pages/ChapterWriter";
+import ForgeDashboard from "@/pages/forge/ForgeDashboard";
+import ForgeProject from "@/pages/forge/ForgeProject";
+import ForgeUpload from "@/pages/forge/ForgeUpload";
+import ForgeAnalysis from "@/pages/forge/ForgeAnalysis";
+import ForgeReports from "@/pages/forge/ForgeReports";
+import ForgeReportDetail from "@/pages/forge/ForgeReportDetail";
+import ForgeIssues from "@/pages/forge/ForgeIssues";
+import ForgeCharacters from "@/pages/forge/ForgeCharacters";
+import ForgeStructure from "@/pages/forge/ForgeStructure";
+import ForgeScenes from "@/pages/forge/ForgeScenes";
+import ForgeFactCheck from "@/pages/forge/ForgeFactCheck";
+import ForgeBetaReaders from "@/pages/forge/ForgeBetaReaders";
 
 function Router() {
   return (
@@ -27,6 +39,18 @@ function Router() {
       <Route path="/chapter-analyzer/:id" component={ChapterAnalyzer} />
       <Route path="/books" component={Books} />
       <Route path="/book/:id" component={BookWriter} />
+      <Route path="/forge" component={ForgeDashboard} />
+      <Route path="/forge/project/:id" component={ForgeProject} />
+      <Route path="/forge/project/:id/upload" component={ForgeUpload} />
+      <Route path="/forge/project/:id/analyze" component={ForgeAnalysis} />
+      <Route path="/forge/project/:id/reports" component={ForgeReports} />
+      <Route path="/forge/report/:reportId" component={ForgeReportDetail} />
+      <Route path="/forge/project/:id/issues" component={ForgeIssues} />
+      <Route path="/forge/project/:id/characters" component={ForgeCharacters} />
+      <Route path="/forge/project/:id/structure" component={ForgeStructure} />
+      <Route path="/forge/project/:id/scenes" component={ForgeScenes} />
+      <Route path="/forge/project/:id/fact-check" component={ForgeFactCheck} />
+      <Route path="/forge/project/:id/beta-readers" component={ForgeBetaReaders} />
       <Route component={NotFound} />
     </Switch>
   );

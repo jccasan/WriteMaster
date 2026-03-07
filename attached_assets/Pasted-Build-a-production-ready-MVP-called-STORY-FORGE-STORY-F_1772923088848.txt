@@ -1,0 +1,926 @@
+Build a production-ready MVP called STORY FORGE.
+
+STORY FORGE is a fiction-only AI editing studio for full manuscripts. It must support separate editorial services, shown in the normal professional order:
+
+1. Editorial Assessment
+2. Developmental Editing
+3. Copy Editing
+4. Proofreading
+5. Fact-Checking
+
+It must also include:
+- AI Beta Reader Suite
+- Story Structure Analyzer
+- Character Consistency Tracker
+- Scene Purpose Scanner
+
+IMPORTANT BUILD RULES
+- Do not give mockups only.
+- Do not stop at scaffolding.
+- Build a working MVP end to end.
+- Include seeded sample data and a sample manuscript project.
+- Include editable prompts in config files.
+- Include a real chunk-processing and synthesis flow.
+- Prioritize working functionality over polish, then refine the UI.
+
+STACK
+Use this unless there is a strong reason not to:
+- Next.js 14+ with TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Prisma
+- SQLite for MVP
+- Server actions or API routes
+- Simple background job runner in app for MVP
+- DOCX/TXT/PDF text extraction libraries
+- PDF and DOCX export support
+- Modular LLM provider abstraction
+- Modular web research service abstraction for fact checking
+
+If a simpler full-stack TypeScript architecture is more stable on Replit, use it. Prioritize reliability.
+
+CORE PRODUCT BEHAVIOR
+The app must:
+- ingest full manuscripts
+- parse and detect chapters
+- chunk the manuscript into 3 to 5 chapter groups
+- analyze each chunk independently
+- create structured internal memory as it goes
+- synthesize final manuscript-level outputs
+- deduplicate repeated findings
+- remove false positives that are resolved later in the manuscript
+- track recurring unresolved issues
+- support multiple revision versions
+- compare editorial results between revisions
+
+SUPPORTED INPUTS
+Manuscript input:
+- .docx
+- .txt
+- .pdf if extractable
+- pasted text
+
+Support files:
+- outline
+- story bible
+- continuity notes
+- character sheets
+- canon notes
+- editorial guides
+- research notes
+- series notes
+- world rules
+
+REFERENCE PRIORITY
+When support files exist, use them actively in analysis, in this priority order:
+1. story bible / outline / canon / continuity files
+2. uploaded editorial frameworks
+3. system-extracted outline
+4. manuscript evidence itself
+
+EDITORIAL PHILOSOPHY
+The analysis framework should reflect strong editorial craft such as:
+- reader contract through empathy and curiosity
+- suspense through unresolved tension
+- conflict and forward motion in openings
+- causality over convenience
+- continuity and time discipline
+- scene integrity
+- scenes doing more than one job
+- character movement at scene level
+- theme and anti-theme pressure
+- character lie versus truth
+- want versus need
+- structural turning points
+- pacing and proportion
+- endings with payoff and aftermath
+
+Do not force rigid formulas where the manuscript is intentionally doing something else successfully.
+
+BUILD THIS FILE TREE
+
+story-forge/
+  app/
+    layout.tsx
+    page.tsx
+    globals.css
+
+    dashboard/page.tsx
+    projects/[projectId]/page.tsx
+    projects/[projectId]/upload/page.tsx
+    projects/[projectId]/analysis/page.tsx
+    projects/[projectId]/reports/page.tsx
+    projects/[projectId]/reports/[reportId]/page.tsx
+    projects/[projectId]/characters/page.tsx
+    projects/[projectId]/structure/page.tsx
+    projects/[projectId]/scenes/page.tsx
+    projects/[projectId]/fact-check/page.tsx
+    projects/[projectId]/beta-readers/page.tsx
+    projects/[projectId]/compare/page.tsx
+
+    api/projects/route.ts
+    api/projects/[projectId]/route.ts
+    api/projects/[projectId]/upload/route.ts
+    api/projects/[projectId]/revisions/route.ts
+    api/revisions/[revisionId]/parse/route.ts
+    api/revisions/[revisionId]/chapters/route.ts
+    api/revisions/[revisionId]/analyze/route.ts
+    api/revisions/[revisionId]/compare/[otherRevisionId]/route.ts
+    api/jobs/[jobId]/route.ts
+    api/reports/[reportId]/route.ts
+    api/reports/[reportId]/export/route.ts
+
+  components/
+    ui/
+    layout/
+      app-shell.tsx
+      sidebar.tsx
+      topbar.tsx
+    dashboard/
+      project-card.tsx
+      stats-strip.tsx
+    upload/
+      upload-form.tsx
+      support-file-list.tsx
+    analysis/
+      analysis-config-form.tsx
+      progress-panel.tsx
+      chunk-progress-list.tsx
+    reports/
+      report-card.tsx
+      issue-table.tsx
+      inline-comments-panel.tsx
+      export-buttons.tsx
+    characters/
+      character-table.tsx
+      character-detail.tsx
+    structure/
+      beat-map.tsx
+      pacing-flags.tsx
+    scenes/
+      scene-purpose-table.tsx
+    fact-check/
+      fact-check-table.tsx
+    beta-readers/
+      beta-reader-cards.tsx
+      reaction-panels.tsx
+    compare/
+      revision-compare-table.tsx
+
+  lib/
+    db.ts
+    utils.ts
+    logger.ts
+    constants.ts
+
+    parsing/
+      manuscript-parser.ts
+      docx-parser.ts
+      txt-parser.ts
+      pdf-parser.ts
+      chapter-detector.ts
+      chunker.ts
+
+    memory/
+      memory-store.ts
+      outline-memory.ts
+      character-memory.ts
+      plot-thread-memory.ts
+      world-rule-memory.ts
+      continuity-memory.ts
+      issue-memory.ts
+      resolution-memory.ts
+
+    analysis/
+      orchestration/
+        analysis-runner.ts
+        job-runner.ts
+        synthesis-runner.ts
+      extractors/
+        outline-extractor.ts
+        character-extractor.ts
+        plot-thread-extractor.ts
+        scene-extractor.ts
+        structure-extractor.ts
+      dedupe/
+        issue-dedupe.ts
+        issue-resolution.ts
+      renderers/
+        report-renderer.ts
+        editorial-letter-renderer.ts
+        chapter-findings-renderer.ts
+        inline-comments-renderer.ts
+      modules/
+        editorial-assessment.ts
+        developmental-editor.ts
+        copy-editor.ts
+        proofreader.ts
+        fact-checker.ts
+        beta-reader.ts
+        structure-analyzer.ts
+        character-tracker.ts
+        scene-purpose-scanner.ts
+
+    llm/
+      provider.ts
+      mock-provider.ts
+      openai-provider.ts
+      prompt-runner.ts
+
+    research/
+      provider.ts
+      mock-research.ts
+      web-research.ts
+
+    export/
+      pdf-export.ts
+      docx-export.ts
+
+    seeds/
+      seed-demo-project.ts
+      demo-manuscript.txt
+      demo-outline.txt
+      demo-story-bible.txt
+
+  config/
+    prompts/
+      editorialAssessment.ts
+      developmentalEditor.ts
+      copyEditor.ts
+      proofreader.ts
+      factChecker.ts
+      betaReaderGenreEnthusiast.ts
+      betaReaderCasualCommercial.ts
+      betaReaderEmotionFirst.ts
+      betaReaderPacingSensitive.ts
+      betaReaderCriticalCraft.ts
+      structureAnalyzer.ts
+      characterTracker.ts
+      scenePurposeScanner.ts
+      outlineExtractor.ts
+      synthesisEngine.ts
+
+    schemas/
+      chunk-summary.schema.ts
+      issue-record.schema.ts
+      character-record.schema.ts
+      plot-thread.schema.ts
+      structure-beat.schema.ts
+      scene-analysis.schema.ts
+      fact-check-item.schema.ts
+      beta-reader-response.schema.ts
+      final-report.schema.ts
+
+  prisma/
+    schema.prisma
+
+  public/
+    demo/
+
+  README.md
+  package.json
+
+DATABASE SCHEMA
+Use Prisma and implement these models or equivalent:
+
+Project
+- id
+- title
+- authorName
+- genre
+- description
+- createdAt
+- updatedAt
+
+RevisionVersion
+- id
+- projectId
+- label
+- versionNumber
+- manuscriptFileId
+- status
+- createdAt
+- updatedAt
+
+FileAsset
+- id
+- projectId
+- revisionVersionId optional
+- type
+- fileName
+- mimeType
+- storagePath
+- extractedText
+- createdAt
+
+Chapter
+- id
+- revisionVersionId
+- number
+- title
+- rawText
+- wordCount
+- detectedStartOffset
+- detectedEndOffset
+
+Chunk
+- id
+- revisionVersionId
+- chunkIndex
+- startChapter
+- endChapter
+- rawCombinedText
+- status
+- summaryJson
+- createdAt
+
+CharacterRecord
+- id
+- revisionVersionId
+- name
+- aliasesJson
+- description
+- traitsJson
+- goalsJson
+- motivesJson
+- relationshipsJson
+- injuriesJson
+- voiceNotesJson
+- continuityNotesJson
+
+PlotThread
+- id
+- revisionVersionId
+- label
+- introducedInChapter
+- status
+- notesJson
+
+Issue
+- id
+- revisionVersionId
+- reportId optional
+- chunkId optional
+- chapterId optional
+- type
+- severity
+- title
+- description
+- evidenceJson
+- suggestion
+- status
+- introducedAtChapter optional
+- resolvedAtChapter optional
+
+StructureBeat
+- id
+- revisionVersionId
+- beatType
+- chapterNumber optional
+- confidence
+- notes
+
+SceneAnalysis
+- id
+- revisionVersionId
+- chapterId
+- sceneIndex
+- purpose
+- conflict
+- changeOccurred
+- valueRating
+- issueFlagsJson
+
+FactCheckItem
+- id
+- revisionVersionId
+- chapterId optional
+- type
+- claim
+- finding
+- confidence
+- status
+- citationsJson
+- notes
+
+EditorialReport
+- id
+- revisionVersionId
+- reportType
+- title
+- summary
+- bodyMarkdown
+- metadataJson
+- createdAt
+
+BetaReaderProfile
+- id
+- name
+- description
+- genreBiasesJson
+- readingPreferencesJson
+
+BetaReaderResponse
+- id
+- revisionVersionId
+- profileId
+- reportId optional
+- responseJson
+- createdAt
+
+AnalysisJob
+- id
+- revisionVersionId
+- analysisType
+- status
+- progress
+- configJson
+- logsJson
+- createdAt
+- updatedAt
+
+MVP USER FLOW
+1. User creates project
+2. User uploads manuscript
+3. User uploads optional support files
+4. App parses files
+5. App detects chapters
+6. App creates revision version
+7. User chooses analysis type
+8. App chunks manuscript into 3 to 5 chapter groups
+9. App runs chunk analyses
+10. App updates structured memory after each chunk
+11. App runs synthesis
+12. App renders final report
+13. User browses report, issues, structure, characters, scenes, beta reader output, fact checks
+14. User uploads revised version later and compares
+
+CHAPTER DETECTION
+Implement chapter detection for:
+- Chapter 1
+- CHAPTER ONE
+- Chapter One
+- numeric only chapter titles
+- roman numeral chapters
+- numbered headers with subtitles
+
+If imperfect, expose a basic manual override UI later, but at minimum store detected boundaries cleanly.
+
+CHUNKING RULES
+- chunk by 3 to 5 chapters
+- default to 4 chapters
+- preserve chapter order
+- if chapters are extremely uneven, prefer chapter grouping over raw token splitting unless a chapter is too large to process
+- if no chapters are found, use balanced segments and label them segments
+
+PER-CHUNK ANALYSIS OUTPUT
+Every chunk analysis should produce structured data:
+- chunk summary
+- major events
+- major character changes
+- plot thread state changes
+- candidate issues
+- continuity notes
+- world-rule notes
+- unresolved questions introduced
+- evidence references
+- uncertainty flags
+
+MEMORY LAYER
+Implement structured memory objects:
+- manuscriptOutlineMemory
+- characterMemory
+- plotThreadMemory
+- worldRuleMemory
+- continuityMemory
+- issueMemory
+- resolutionTimelineMemory
+
+Each chunk updates these memories.
+
+SYNTHESIS ENGINE
+This is mandatory and central.
+
+Final synthesis must:
+- merge duplicate issues
+- merge semantically similar issues
+- remove or downgrade issues clearly resolved later
+- distinguish temporary uncertainty from true unresolved problems
+- preserve recurring and systemic problems
+- prioritize final findings by editorial importance
+
+Issue states:
+- introduced
+- active
+- resolved_later
+- reintroduced
+- uncertain
+- dismissed
+- merged
+
+SYNTHESIS LOGIC EXAMPLES
+- If a plot thread looks unresolved in chunk 2 but resolves in chunk 8, do not present it as unresolved in the final report.
+- If an injury is forgotten for many chapters and later reappears with no explanation, keep it as an active continuity issue.
+- If early passivity is part of a clear arc, do not mislabel it as a character failure unless the transition is mishandled.
+
+EDITOR MODULE SPECS
+
+1. EDITORIAL ASSESSMENT
+Role:
+Senior overview editor.
+
+Output:
+A polished editorial letter.
+
+Focus:
+- premise
+- hook
+- genre fit
+- macro structure
+- marketable strengths
+- biggest weaknesses
+- emotional engagement
+- pacing at manuscript level
+- top revision priorities
+
+Sections:
+- Overview
+- What the manuscript is doing
+- What is working
+- Main concerns
+- Recommended next steps
+- Best next editorial pass
+
+2. DEVELOPMENTAL EDITING
+Role:
+Story architect.
+
+Output:
+- editorial letter
+- chapter findings
+- issue list
+- targeted scene/chapter notes
+- rewrite direction notes
+
+Focus:
+- plot and causality
+- suspense
+- arc logic
+- pacing
+- scene purpose
+- exposition
+- subplot integration
+- world-rule consistency
+- payoff and setup
+- ending performance
+
+3. COPY EDITING
+Role:
+Voice-preserving line editor.
+
+Focus:
+- clarity
+- repetition
+- awkward syntax
+- dialogue clarity
+- tone consistency
+- terminology consistency
+- overwritten or flat prose
+- cliché patterns
+- filler
+- paragraph rhythm
+
+Preserve voice when it works.
+
+4. PROOFREADING
+Role:
+Mechanical cleanup pass.
+
+Focus:
+- spelling
+- grammar
+- punctuation
+- capitalization
+- formatting
+- quotation consistency
+- duplicate words
+- missing words
+
+5. FACT-CHECKING
+Role:
+Canon and realism verifier.
+
+Internal:
+- timeline
+- injuries
+- continuity
+- knowledge state
+- object continuity
+- location continuity
+- world rules
+- canon adherence
+
+External:
+- historical facts
+- geography
+- travel plausibility
+- legal and institutional realism
+- military / intelligence / police realism
+- medicine
+- weapons
+- science
+- technology
+
+Use a modular research provider for external checks and store citations/source references when used.
+
+COMPANION TOOL SPECS
+
+AI BETA READER SUITE
+Create profiles:
+- Genre Enthusiast
+- Casual Commercial Reader
+- Emotion-First Reader
+- Pacing-Sensitive Reader
+- Critical Craft Reader
+
+Each profile returns:
+- where they got hooked
+- where attention sagged
+- confusion points
+- strongest moments
+- least credible moments
+- favorite character reaction
+- would they keep reading
+- where they might quit
+- final emotional reaction
+- recommendation
+
+Make outputs genuinely distinct.
+
+STORY STRUCTURE ANALYZER
+Detect:
+- opening setup
+- inciting incident
+- first turn
+- midpoint
+- second turn
+- climax
+- denouement
+- weak or missing beats
+- act imbalance
+- pacing imbalance
+
+CHARACTER CONSISTENCY TRACKER
+Track:
+- names and aliases
+- descriptors
+- motives
+- goals
+- relationships
+- injuries
+- skills
+- knowledge
+- emotional consequences
+- voice
+
+Flag:
+- forgotten injuries
+- impossible knowledge
+- inconsistent motive
+- unexplained skill emergence
+- description drift
+- relationship reset without cause
+
+SCENE PURPOSE SCANNER
+For each scene or scene proxy:
+- objective
+- conflict
+- change
+- plot value
+- character value
+- thematic value
+- necessity rating
+
+Labels:
+- essential
+- strong
+- useful but weak
+- underperforming
+- redundant
+
+OUTLINE ENGINE
+If no outline exists:
+- generate chapter-by-chapter working outline
+- identify beats
+- identify active threads
+- identify timeline markers
+
+If outline exists:
+- compare manuscript execution against outline
+- flag omitted beats
+- changed beats
+- successful deviations
+- harmful deviations
+
+PROMPT REGISTRY
+All prompts must live in /config/prompts and be easy to edit.
+
+Each prompt file should export:
+- id
+- label
+- systemPrompt
+- taskTemplate
+- outputInstructions
+- toneNotes
+
+Create these prompt files:
+- editorialAssessment
+- developmentalEditor
+- copyEditor
+- proofreader
+- factChecker
+- betaReaderGenreEnthusiast
+- betaReaderCasualCommercial
+- betaReaderEmotionFirst
+- betaReaderPacingSensitive
+- betaReaderCriticalCraft
+- structureAnalyzer
+- characterTracker
+- scenePurposeScanner
+- outlineExtractor
+- synthesisEngine
+
+STARTER PROMPT STYLE
+Prompts should:
+- favor evidence over vagueness
+- diagnose rather than flatter
+- separate strengths from weaknesses
+- preserve author voice
+- label uncertainty when needed
+- avoid forcing formula
+- avoid generic praise padding
+
+OUTPUT SCHEMAS
+Create editable schema config files for:
+- chunk summary
+- issue record
+- character record
+- plot thread state
+- structure beat
+- scene analysis
+- fact check item
+- beta reader response
+- final report sections
+
+Use structured JSON-like internal outputs before rendering polished report prose.
+
+REPORT TYPES
+Implement these:
+- Editorial Letter
+- Chapter Findings Report
+- Inline Notes Packet
+- Fact Check Report
+- Beta Reader Packet
+- Structure Report
+- Character Report
+- Scene Purpose Report
+- Master Editorial Packet
+
+ISSUE TAXONOMY
+Categories:
+- plot hole
+- weak causality
+- pacing drag
+- weak stakes
+- unclear motivation
+- continuity error
+- unresolved thread
+- exposition overload
+- scene redundancy
+- flat arc
+- inconsistent voice
+- prose clarity
+- grammar
+- punctuation
+- formatting
+- realism issue
+- factual error
+- world-rule conflict
+- knowledge inconsistency
+- character inconsistency
+- structural weakness
+
+Severity:
+- minor
+- moderate
+- major
+- critical
+
+API ENDPOINTS
+Create working endpoints or equivalent server actions for:
+- create/list projects
+- get/update project
+- upload manuscript/support files
+- create/list revisions
+- parse manuscript
+- detect chapters
+- start analysis
+- check job status
+- fetch report
+- export report
+- compare revisions
+
+DASHBOARD REQUIREMENTS
+Show:
+- project cards
+- word count
+- chapter count
+- latest reports
+- unresolved issue count
+- active revision status
+- recent analysis jobs
+
+PROJECT VIEW REQUIREMENTS
+Show:
+- manuscript info
+- support file list
+- revisions
+- analysis actions
+- reports by type
+- issue counts by severity
+
+ANALYSIS SETUP REQUIREMENTS
+Allow user to choose:
+- analysis type
+- genre
+- strictness
+- report depth
+- chunk size
+- use support files as canon yes/no
+- run external fact checks yes/no
+- include inline comments yes/no
+- include rewrite suggestions yes/no
+- beta reader profiles
+
+JOB RUNNER
+Implement a simple in-app job runner for MVP:
+- queued
+- parsing
+- chapter_detection
+- chunking
+- analyzing_chunks
+- synthesizing
+- rendering_report
+- completed
+- failed
+
+Store progress and logs in AnalysisJob.
+
+EXPORTS
+Implement export to:
+- PDF
+- DOCX
+
+At minimum, export:
+- editorial letter
+- fact-check report
+- beta reader packet
+- master editorial packet
+
+SEED DEMO
+Create one seeded project:
+- sample fiction manuscript
+- sample outline
+- sample story bible
+- at least one finished report
+- beta reader profiles seeded
+
+README
+Write a clear README that includes:
+- what the app does
+- how to run it
+- architecture overview
+- folder structure
+- Prisma schema summary
+- prompt registry explanation
+- how chunk analysis works
+- how synthesis works
+- where to swap providers
+- known MVP limitations
+
+IMPLEMENTATION NOTES
+- Use mock provider fallbacks so the app still runs in demo mode if an external LLM is not configured
+- Keep analysis modules cleanly separated
+- Store both raw structured outputs and rendered reports
+- Add comments where real providers can be swapped in later
+
+AFTER BUILDING
+After the app is built:
+1. show the file tree
+2. summarize architecture briefly
+3. explain how chunk analysis and synthesis work
+4. point out where prompts can be edited
+5. point out where provider integrations can be swapped
+
+QUALITY BAR
+This should feel like a real editorial platform for novelists, book coaches, and freelance editors. Not a generic chatbot wrapper.

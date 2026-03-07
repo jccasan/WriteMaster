@@ -1,0 +1,113 @@
+THE MERIDIAN DECEPTION — Story Bible
+
+========================================
+CHARACTERS
+========================================
+
+ELENA VASQUEZ — Protagonist
+Age: 34
+Role: Co-founder and CTO of Meridian Analytics
+Background: First-generation college graduate. BS in Mathematics from UC Berkeley, MS in Computer Science from Stanford. Grew up in East San Jose, daughter of Mexican immigrants. Father was a machinist, mother a home health aide.
+Appearance: Dark hair usually pulled back, minimal makeup. Prefers structured blazers over startup hoodies. Slim build, moves quickly and decisively.
+Personality: Analytical, methodical, quietly intense. Uncomfortable with confrontation but capable of it when pushed. Values integrity to the point of rigidity. Tends to internalize stress. Uses work as an avoidance mechanism.
+Strengths: Brilliant data scientist, thorough investigator, emotionally resilient under pressure.
+Weaknesses: Trusts too slowly or too completely—no middle ground. Poor at asking for help. Can be self-righteous. Neglects personal relationships when focused on work.
+Relationships: Co-founder relationship with Marcus (professional, once close). Sister Sofia (strained but loving). Mother (devoted, feels guilty about not visiting enough). No current romantic relationship.
+Key arc: Must reconcile her identity as a builder with her role as the person who tears down what she built.
+
+MARCUS CHEN — Antagonist
+Age: 37
+Role: Co-founder and CEO of Meridian Analytics
+Background: MBA from Wharton. Family money—father is a real estate developer in Vancouver. Marcus has always moved in circles of wealth and influence. Charismatic and genuinely talented at business development.
+Appearance: Well-dressed, athletic build. Warm brown eyes, disarming smile. Looks like someone you'd trust with your savings.
+Personality: Charming, strategic, compartmentalized. Capable of genuine warmth, which makes his deception more unsettling. Does not see himself as a villain—rationalizes his actions as necessary for the company's survival and growth.
+Strengths: Exceptional communicator, skilled negotiator, reads people well.
+Weaknesses: Arrogance masked as confidence. Underestimates Elena because he sees her as "just the tech person." Addicted to the game of it—the cleverness of the scheme matters to him as much as the money.
+Relationships: Professional partnership with Elena (respects her ability but not her authority). Connected to David Reeves through unknown prior relationship. Board relationships carefully cultivated.
+Key arc: Represents the seductive idea that rules don't apply to exceptional people.
+
+DETECTIVE ANNE NGUYEN — Ally
+Age: 42
+Role: Financial crimes investigator, city police
+Background: Vietnamese-American, grew up in the Tenderloin. Criminal justice degree from San Francisco State. Fifteen years on the force, the last six in financial crimes.
+Appearance: Short-cropped hair, sharp eyes, favors practical clothing. No-nonsense posture.
+Personality: Direct, perceptive, patient. Methodical in her work. Dry sense of humor. Has seen enough white-collar crime to be unsurprised but not cynical.
+Strengths: Experienced investigator, good at building cases, trustworthy.
+Weaknesses: Bureaucratic constraints limit her ability to act quickly. Can be overly cautious.
+Role in story: Elena's guide through the legal/investigative process. Provides external validation that Elena isn't overreacting.
+
+SOFIA VASQUEZ — Supporting Character
+Age: 29
+Role: Elena's younger sister
+Background: Works as a paralegal at a mid-size law firm. Lives in Oakland. Closer to their mother than Elena is.
+Personality: Expressive, emotional, protective of family. The opposite of Elena's containment.
+Role in story: Calls Elena with urgent news in Chapter 2 (unresolved in current draft). Represents Elena's personal life and the relationships she risks neglecting.
+
+JAMES WHITFIELD — Supporting Character
+Age: 55
+Role: Managing Partner at Ascent Capital, Meridian's lead investor
+Background: Old-school VC. Built his fund on enterprise software bets in the 2000s.
+Personality: Commanding presence, sharp financial mind, transactional. Loyal to returns, not people.
+Role in story: Represents the institutional stakes. His reaction to the fraud will determine Meridian's corporate fate.
+
+DAVID REEVES — Minor Character (Off-page)
+Age: ~50s
+Role: Officer of Lumen Bridge Consulting (shell company)
+Background: Likely a fabricated or borrowed identity. LinkedIn profile appears manufactured.
+Role in story: The operational link between Marcus's scheme and the money's destination.
+
+RACHEL PARK — Minor Character
+Age: ~30
+Role: Associate at Ascent Capital, works under Whitfield
+Personality: Quiet, observant, takes detailed notes. A watcher.
+Role in story: Present in the board meeting. Potential witness.
+
+========================================
+WORLD / SETTING
+========================================
+
+MERIDIAN ANALYTICS
+Type: B2B SaaS / analytics consultancy hybrid
+Founded: 3 years before story begins
+Location: Market Street, San Francisco (mid-rise office tower)
+Employees: ~40
+Product: Predictive modeling for supply chain optimization
+Valuation: Series B stage, estimated $80-120M
+Key clients: Capstone Logistics (largest), plus 11 other enterprise accounts
+Funding: Series A from Ascent Capital (James Whitfield). Series B from a syndicate led by Ascent.
+Board: Elena (seat), Marcus (seat), James Whitfield (seat), two independent directors (unnamed)
+
+LUMEN BRIDGE CONSULTING
+Type: Shell company
+Registered: Delaware (Harwick & Associates as registered agent)
+Officer: David Reeves (likely fabricated identity)
+Purpose: Receives fraudulent payments from Meridian for nonexistent "strategic advisory services"
+Monthly payments: $40,000-$60,000
+Total suspicious transactions: $2M+ over 18 months
+
+KEPLER DATA SOLUTIONS
+Type: Data services company
+Location: Ankara, Turkey
+Role in story: Suspected endpoint of the money laundering pipeline. Marcus proposes acquiring it as a legitimate business move to fold the scheme into Meridian's operations.
+
+========================================
+TIMELINE
+========================================
+
+3 years ago: Elena and Marcus co-found Meridian Analytics
+2 years ago: Series A funding from Ascent Capital
+~18 months ago: Suspicious transactions begin (Lumen Bridge payments)
+2 years ago: Elena meets Detective Nguyen at cybersecurity conference
+Present: Elena discovers the discrepancies (story begins)
+
+Story spans approximately 1-2 weeks from discovery to board meeting.
+
+========================================
+THEMES
+========================================
+
+Trust and betrayal in professional partnerships
+The cost of doing the right thing
+Identity as a builder vs. destroyer
+Complicity through ignorance
+The performance of legitimacy

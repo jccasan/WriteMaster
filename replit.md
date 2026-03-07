@@ -1,17 +1,19 @@
-# StoryDossier
+# StoryDossier & STORY FORGE
 
-AI-powered story development pipeline that transforms a writer's raw ideas into a polished Story Dossier, then writes the book chapter by chapter.
+Two parallel apps in one repo: **StoryDossier** (AI writing studio) and **STORY FORGE** (manuscript analysis studio).
 
 ## Architecture
 
 - **Frontend**: React + TypeScript + Tailwind CSS + shadcn/ui, served via Vite
-- **Backend**: Express.js (TypeScript), JSON file storage (no database)
+- **Backend**: Express.js (TypeScript)
+- **StoryDossier Storage**: File-based JSON (data/templates/, data/projects/, data/chapters/, data/books/)
+- **STORY FORGE Storage**: Prisma ORM + SQLite (prisma/forge.db)
 - **AI**: Replit AI Integrations (Anthropic) — Claude Sonnet 4.6 for complex tasks, Claude Haiku 4.5 for fast tasks
-- **Navigation**: Shared `Layout` component with persistent top nav bar across all pages; `wouter` for routing
+- **Navigation**: Shared `Layout` component with persistent top nav bar; `wouter` for routing
 
-## App Structure & Routes
+## StoryDossier Routes
 
-- `/` — Dashboard home with four module cards + recent activity feed
+- `/` — Dashboard home with five module cards + recent activity feed
 - `/pipeline` — List of all pipeline projects with status
 - `/pipeline/new` — Brain dump form + genre selection to start new pipeline
 - `/pipeline/:id` — Pipeline execution view (11-step progress tracker)
@@ -22,106 +24,135 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 - `/books` — Book list with create/delete
 - `/book/:id` — Full-screen book writer with split-panel layout
 
-## Modules
+## STORY FORGE Routes
+
+- `/forge` — FORGE dashboard with project cards
+- `/forge/project/:id` — Project detail with tabbed views
+- `/forge/project/:id/upload` — Manuscript/outline/story bible upload
+- `/forge/project/:id/analyze` — Analysis config + progress tracking
+- `/forge/project/:id/reports` — Report list
+- `/forge/report/:reportId` — Full report detail
+- `/forge/project/:id/issues` — Issue table (filterable by type/severity)
+- `/forge/project/:id/characters` — Character tracking results
+- `/forge/project/:id/structure` — Structure beat map
+- `/forge/project/:id/scenes` — Scene purpose analysis
+- `/forge/project/:id/fact-check` — Fact check results
+- `/forge/project/:id/beta-readers` — Beta reader responses
+
+## StoryDossier Modules
 
 ### Story Dossier Pipeline
 11-step AI pipeline: brain dump + genre → subgenre detection → pitch generation → best pitch selection → dossier draft → emotional check → name check → revision → logic check → final polish.
 
 ### Chapter Writer
-Standalone chapter generation: enter a creative prompt (scene description, characters, situation, mood) + optional genre hint + narrative sliders → AI writes a polished 2000-4000 word chapter. No pipeline or book required. Uses the same AUTHOR_VOICE_CONTRACT + Story Building Engine rules as the book writer.
+Standalone chapter generation from creative prompts with narrative sliders.
 
 ### Chapter Analyzer
-Paste a chapter → Claude extracts 18 structural elements → user edits/adds/removes → Claude rewrites chapter. Sessions persist to disk. Cross-module: BookWriter can send chapters directly to Analyzer via sessionStorage.
+Paste a chapter → extract 18 structural elements → edit → rewrite. Cross-module integration with BookWriter.
 
 ### Book Writer
-Takes a completed dossier + brain dump, writes the book chapter by chapter. Each chapter uses running summaries of previous chapters (not full text) for context. Split-panel UI: chapter text on left, summary/high points/changes on right. Flow: generate outline → adjust narrative sliders → write chapter → summarize → next chapter.
+Chapter-by-chapter book writing with autopilot mode (32-chapter loop), narrative sliders, running summaries.
 
-**Autopilot mode**: "Write Entire Book" / "Write Remaining" button runs the full 32-chapter loop automatically (outline → write → summarize → next) without user intervention. Cancellable mid-run. Shows live progress status in sidebar. Outline prompt includes 32-chapter pacing structure (setup → rising action → pinch points → midpoint → escalation → climax → resolution).
+## STORY FORGE Architecture
 
-**Context strategy**: Each chapter prompt receives dossier (characters/world/themes/plot beats), brain dump, ALL previous chapter summaries (compact with sliding window), current chapter outline, and narrative slider values. Avoids token limits while maintaining narrative continuity.
+### Analysis Pipeline
+1. **Upload**: Manuscript (txt/docx) + optional outline + story bible
+2. **Parse**: Chapter detection (regex patterns for Chapter 1, Chapter One, Roman numerals, etc.)
+3. **Chunk**: Group chapters into 3-5 chapter chunks for analysis
+4. **Analyze**: Run selected modules on each chunk with accumulating memory context
+5. **Synthesize**: Merge/dedup issues, generate editorial reports
+6. **Report**: Render structured data into polished markdown reports
+
+### Analysis Modules (9)
+- **Editorial Assessment** — High-level editorial evaluation
+- **Developmental Editor** — Pacing, stakes, causality, character arcs, scene construction
+- **Copy Editor** — Prose clarity, voice consistency, dialogue, clichés, show-don't-tell
+- **Proofreader** — Grammar, punctuation, formatting
+- **Fact Checker** — Internal consistency + external accuracy
+- **Beta Reader** — 5 simulated reader profiles (Genre Enthusiast, Casual Commercial, Emotion-First, Pacing-Sensitive, Critical Craft)
+- **Structure Analyzer** — Narrative structure beats (3-act, Save the Cat, etc.)
+- **Character Tracker** — Character state changes, relationships, injuries, continuity
+- **Scene Scanner** — Scene purpose, conflict, change, necessity rating
+
+### Memory Layer
+Accumulates across chunks: outline, character profiles, plot threads, world rules, continuity notes, issues, resolution timeline. Each subsequent chunk analysis receives prior context.
+
+### Report Types
+- Editorial Letter (synthesis of all findings)
+- Chapter-by-Chapter Findings
+- Character Analysis Report
+- Structure Analysis Report
+- Scene Purpose Report
+- Fact Check Report
+- Beta Reader Packet
+
+### Prompt Registry
+15 prompt files in config/prompts/ with editorial-craft-driven instructions.
+
+### Output Schemas
+9 TypeScript interfaces in config/schemas/ for structured analysis outputs.
 
 ## Key Files
 
-### Backend
-- `server/routes.ts` — API endpoints (pipeline, chapter analyzer, book writer)
-- `server/pipeline.ts` — 11-step AI pipeline logic + ProjectState type
+### StoryDossier Backend
+- `server/routes.ts` — StoryDossier API endpoints
+- `server/pipeline.ts` — 11-step AI pipeline logic
 - `server/llm.ts` — Anthropic Claude wrapper (cheap/powerful mode)
-- `server/storage.ts` — File-based storage for projects, chapter sessions, and books; includes NarrativeSliders interface
-- `server/writing-rules.ts` — Comprehensive AI writing rules system with specialized rule sets:
-  - `AI_WRITING_RULES` — Core anti-AI-tell rules (dialogue with action verbs: dodge/interrupt/imply/misread/conceal/pressure/deflect/contradict, prose style with em-dash ban and "not just X but Y" ban, structure, characters) injected into all prose prompts
-  - `SCENE_WRITING_RULES` — Scene engineering rules (Goal/Conflict/Outcome, double-up rule, mundane friction, pacing control, Cut the Author checklist) used in chapter writing and rewrite prompts
-  - `STORY_ARCHITECTURE_RULES` — Story construction rules (Lie/Truth/Want/Need/Ghost character arcs, plot structure with pinch points, world-as-thematic-mirror, theme as moral argument) used in dossier and outline generation
-  - `CHAPTER_SUMMARY_TEMPLATE` — Enhanced continuity snapshot template with timeline/location/injury/secrets/threats tracking for chapter summaries
-  - `AUTHOR_VOICE_CONTRACT` — Detailed voice profile extracted from the author's own writing sample
-  - `NARRATIVE_SLIDER_RULES` — Dynamic per-scene character state system (tension, intimacy, violence_risk, wonder, dread 0-10; trust, stress, control, hope -10 to +10) that modifies character behavior through prose, not labels
-  - `ANTI_SLOP_FILTER` — Post-generation checklist: cliché intensifiers, repeated metaphors, "suddenly" abuse, moralizing, fake-deep observations, tidy endings, robotic sentence balance, repeated rhetorical contrast
-  - `CONTEXT_ENGINEERING_RULES` — Pre-writing discipline: silently determine POV character's knowledge/wants/obstacles/pressure/continuity before writing; minimum context principle
-  - `DEFAULT_DECISION_RULE` — Decision heuristic: specific over vague, implied over explained, causal over convenient, scene-relevant over encyclopedic, character-true over dramatic, messy over tidy
-  - `LAYERED_GENERATION_WORKFLOW` — 5-phase internal generation process (Scene Intelligence → Dialogue Skeleton → Prose Expansion → Dramatic Integration → Narrow Check Passes) embedded as instructions within single prompts to avoid multi-call cost
-  - Distilled from: Story Construction Codex, Reduce AI Tells research, Novel Construction Best Practices, Editorial Codex, Story Building Engine, author's Oracle Veil alpha draft
+- `server/storage.ts` — File-based storage
+- `server/writing-rules.ts` — AI writing rules system
+
+### STORY FORGE Backend
+- `server/forge/routes.ts` — All FORGE API routes
+- `server/forge/db.ts` — Prisma client singleton
+- `server/forge/parsing/manuscript-parser.ts` — Text extraction (txt/docx)
+- `server/forge/parsing/chapter-detector.ts` — Chapter boundary detection
+- `server/forge/parsing/chunker.ts` — Chapter grouping into chunks
+- `server/forge/memory/types.ts` — Memory type definitions
+- `server/forge/memory/memory-store.ts` — Memory accumulation engine
+- `server/forge/analysis/job-runner.ts` — Background job orchestration
+- `server/forge/analysis/analysis-runner.ts` — Per-chunk analysis pipeline
+- `server/forge/analysis/synthesis-runner.ts` — Final synthesis + report generation
+- `server/forge/analysis/modules/*.ts` — 9 analysis modules
+- `server/forge/renderers/report-renderer.ts` — Markdown report rendering
+- `server/forge/seed/seed-demo.ts` — Demo project seeder
+- `prisma/schema.prisma` — Database schema (14 models)
 
 ### Frontend
-- `client/src/App.tsx` — Route definitions for all pages
-- `client/src/components/Layout.tsx` — Shared layout with persistent top nav bar (Pipeline, Chapter, Analyzer, Books links with active state)
-- `client/src/pages/Home.tsx` — Dashboard with four module cards + recent activity
-- `client/src/pages/ChapterWriter.tsx` — Standalone chapter writer (prompt → chapter)
-- `client/src/pages/PipelineNew.tsx` — Brain dump form + genre selection
-- `client/src/pages/PipelineView.tsx` — Pipeline execution wrapper
-- `client/src/pages/PipelineResult.tsx` — Dossier result wrapper
-- `client/src/pages/PipelineList.tsx` — Pipeline projects list
-- `client/src/pages/ChapterAnalyzer.tsx` — Chapter element extraction, editing, and rewrite with persistent sessions
-- `client/src/pages/Books.tsx` — Book list with create/delete
-- `client/src/pages/BookWriter.tsx` — Chapter-by-chapter book writing with split layout + "Analyze" button for cross-module
-- `client/src/components/StoryPipeline.tsx` — Real-time pipeline progress tracker
-- `client/src/components/StoryResult.tsx` — Final dossier viewer with tabs + "Write the Book" button + rich text editing
-- `client/src/components/RichTextEditor.tsx` — TipTap-based rich text editor with toolbar
-- `client/src/components/NarrativeSliders.tsx` — Collapsible "Scene Atmosphere" panel with 9 sliders; used in BookWriter and ChapterAnalyzer
+- `client/src/App.tsx` — All route definitions
+- `client/src/components/Layout.tsx` — StoryDossier layout with nav
+- `client/src/components/forge/ForgeLayout.tsx` — FORGE layout with dark theme + amber accents
+- `client/src/components/forge/NewProjectDialog.tsx` — New project creation dialog
+- `client/src/pages/forge/*.tsx` — 12 FORGE pages (Dashboard, Project, Upload, Analysis, Reports, ReportDetail, Issues, Characters, Structure, Scenes, FactCheck, BetaReaders)
+- `client/src/pages/Home.tsx` — Dashboard with five module cards
 
-### Data
-- `data/templates/` — Genre template JSON files (fantasy_thriller, contemporary_thriller, dark_romance)
-- `data/projects/` — Per-project state JSON files
-- `data/chapters/` — Chapter analyzer session JSON files
-- `data/books/` — Book project JSON files (chapters stored inline)
+### Data & Config
+- `config/prompts/*.ts` — 15 editorial prompt definitions
+- `config/schemas/*.ts` — 9 output schema TypeScript interfaces
+- `data/` — StoryDossier file storage
+- `prisma/forge.db` — STORY FORGE SQLite database
 
-## API Endpoints
+## FORGE API Endpoints
 
-### Pipeline
-- `GET /api/genres` — List available genres
-- `GET /api/projects` — List all pipeline projects with status
-- `POST /api/project/start` — Create project with brain_dump + genre
-- `POST /api/project/:id/run-step` — Run next pipeline step
-- `GET /api/project/:id/state` — Get full project state
-- `GET /api/project/:id/final` — Get final dossier + best pitch
-- `PUT /api/project/:id/dossier` — Update project dossier
-
-### Chapter Analyzer
-- `GET /api/chapters` — List saved chapter analyzer sessions
-- `GET /api/chapters/:id` — Get full chapter session
-- `POST /api/chapters` — Save/update a chapter session
-- `DELETE /api/chapters/:id` — Delete a chapter session
-- `POST /api/chapter/extract` — Extract structural elements from chapter text
-- `POST /api/chapter/rewrite` — Rewrite chapter with edited elements + optional narrative sliders
-- `POST /api/chapter/write-standalone` — Write a standalone chapter from a creative prompt + optional genre + sliders
-
-### Book Writer
-- `GET /api/books` — List all books
-- `POST /api/books` — Create book manually (brain_dump + dossier)
-- `POST /api/books/from-project/:projectId` — Create book from a completed pipeline project
-- `GET /api/books/:id` — Get full book with all chapters
-- `PUT /api/books/:id` — Update book metadata (title, dossier, brain_dump)
-- `DELETE /api/books/:id` — Delete book
-- `POST /api/books/:id/outline-chapter` — AI generates next chapter outline
-- `POST /api/books/:id/write-chapter/:chapterNum` — AI writes chapter from outline (uses narrative sliders)
-- `POST /api/books/:id/summarize-chapter/:chapterNum` — AI generates chapter summary
-- `PUT /api/books/:id/chapters/:chapterNum` — Update chapter (outline, content, title, sliders)
-
-## Cross-Module Connections
-- Pipeline result → "Write the Book" creates a book and navigates to Book Writer
-- Book Writer → "Analyze" button on written chapters sends text to Chapter Analyzer via sessionStorage
-- Dashboard shows recent activity across all three modules
-
-## Pipeline Steps (0-10)
-0. Project Init → 1. Subgenre Detection (Haiku) → 2. Pitch Generation (Sonnet) → 3. Best Pitch Selection (Sonnet) → 4. Pitch Extraction (Haiku) → 5. Story Dossier Draft (Sonnet) → 6. Emotional Check (Sonnet) → 7. Name Check (Haiku) → 8. Revision I (Haiku) → 9. Logic Check (Sonnet) → 10. Final Polish (Haiku)
+- `GET /api/forge/projects` — List all projects
+- `POST /api/forge/projects` — Create new project
+- `GET /api/forge/projects/:id` — Get project with revisions, chapters, chunks
+- `DELETE /api/forge/projects/:id` — Delete project
+- `POST /api/forge/projects/:id/upload` — Upload manuscript/outline/story_bible
+- `GET /api/forge/projects/:id/revision` — Get latest revision
+- `POST /api/forge/projects/:id/analyze` — Start analysis job
+- `GET /api/forge/jobs/:id` — Get job status
+- `GET /api/forge/jobs` — List all active jobs
+- `GET /api/forge/projects/:id/issues` — Get all issues
+- `PATCH /api/forge/issues/:id` — Update issue status
+- `GET /api/forge/projects/:id/reports` — Get all reports
+- `GET /api/forge/reports/:id` — Get report detail
+- `GET /api/forge/projects/:id/characters` — Get character records
+- `GET /api/forge/projects/:id/structure` — Get structure beats
+- `GET /api/forge/projects/:id/scenes` — Get scene analyses
+- `GET /api/forge/projects/:id/fact-checks` — Get fact check items
+- `GET /api/forge/projects/:id/beta-readers` — Get beta reader responses
+- `GET /api/forge/beta-reader-profiles` — Get all beta reader profiles
+- `POST /api/forge/seed` — Run demo seed
 
 ## Environment Variables
 - `AI_INTEGRATIONS_ANTHROPIC_BASE_URL` — Auto-configured by Replit AI Integrations

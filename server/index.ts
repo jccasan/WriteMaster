@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import forgeRouter from "./forge/routes";
+import { seedDemoProject } from "./forge/seed/seed-demo";
 
 const app = express();
 const httpServer = createServer(app);
@@ -60,7 +62,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  app.use("/api/forge", forgeRouter);
   await registerRoutes(httpServer, app);
+  
+  seedDemoProject().catch(err => console.log("[FORGE] Seed skipped or failed:", err.message));
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

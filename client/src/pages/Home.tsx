@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Scissors, Library, Loader2, ChevronRight, Clock, BookOpen, PenTool } from "lucide-react";
+import { Sparkles, Scissors, Library, Loader2, ChevronRight, Clock, BookOpen, PenTool, Anvil } from "lucide-react";
 import Layout from "@/components/Layout";
 
 interface RecentItem {
@@ -119,6 +119,16 @@ export default function Home() {
       route: "/books",
       cta: "Write Books",
       testId: "card-module-books",
+    },
+    {
+      title: "Story Forge",
+      description: "Production-ready manuscript analysis studio with chunk-based AI analysis, editorial reports, and beta reader simulation.",
+      icon: <Anvil className="w-6 h-6" />,
+      count: 0,
+      countLabel: "",
+      route: "/forge",
+      cta: "Open Forge",
+      testId: "card-module-forge",
     },
   ];
 
