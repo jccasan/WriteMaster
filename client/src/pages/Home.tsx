@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Scissors, Library, Loader2, ChevronRight, Clock, BookOpen } from "lucide-react";
+import { Sparkles, Scissors, Library, Loader2, ChevronRight, Clock, BookOpen, PenTool } from "lucide-react";
 import Layout from "@/components/Layout";
 
 interface RecentItem {
@@ -91,6 +91,16 @@ export default function Home() {
       testId: "card-module-pipeline",
     },
     {
+      title: "Chapter Writer",
+      description: "Write a single polished chapter from a creative prompt — no pipeline or book needed.",
+      icon: <PenTool className="w-6 h-6" />,
+      count: 0,
+      countLabel: "",
+      route: "/chapter-writer",
+      cta: "Write a Chapter",
+      testId: "card-module-chapter-writer",
+    },
+    {
       title: "Chapter Analyzer",
       description: "Paste a chapter to extract structural elements, edit them, and generate AI rewrites.",
       icon: <Scissors className="w-6 h-6" />,
@@ -148,7 +158,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
               {modules.map((mod) => (
                 <Card
                   key={mod.title}
@@ -161,7 +171,7 @@ export default function Home() {
                       <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors text-primary">
                         {mod.icon}
                       </div>
-                      {mod.count > 0 && (
+                      {mod.count > 0 && mod.countLabel && (
                         <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
                           {mod.count} {mod.countLabel}
                         </span>

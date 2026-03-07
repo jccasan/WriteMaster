@@ -12,6 +12,7 @@ import PipelineList from "@/pages/PipelineList";
 import ChapterAnalyzer from "@/pages/ChapterAnalyzer";
 import Books from "@/pages/Books";
 import BookWriter from "@/pages/BookWriter";
+import ChapterWriter from "@/pages/ChapterWriter";
 
 function Router() {
   return (
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/pipeline/new" component={PipelineNew} />
       <Route path="/pipeline/:id/result" component={PipelineResult} />
       <Route path="/pipeline/:id" component={PipelineView} />
+      <Route path="/chapter-writer" component={ChapterWriter} />
       <Route path="/chapter-analyzer" component={ChapterAnalyzer} />
       <Route path="/chapter-analyzer/:id" component={ChapterAnalyzer} />
       <Route path="/books" component={Books} />

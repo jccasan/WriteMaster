@@ -11,12 +11,14 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 
 ## App Structure & Routes
 
-- `/` — Dashboard home with three module cards + recent activity feed
+- `/` — Dashboard home with four module cards + recent activity feed
 - `/pipeline` — List of all pipeline projects with status
 - `/pipeline/new` — Brain dump form + genre selection to start new pipeline
 - `/pipeline/:id` — Pipeline execution view (11-step progress tracker)
 - `/pipeline/:id/result` — Final dossier viewer with download/copy/edit/write-book
+- `/chapter-writer` — Standalone chapter writer (prompt → polished chapter)
 - `/chapter-analyzer` — Chapter analyzer sessions list + analysis flow
+- `/chapter-analyzer/:id` — Deep-link to specific analyzer session
 - `/books` — Book list with create/delete
 - `/book/:id` — Full-screen book writer with split-panel layout
 
@@ -25,11 +27,16 @@ AI-powered story development pipeline that transforms a writer's raw ideas into 
 ### Story Dossier Pipeline
 11-step AI pipeline: brain dump + genre → subgenre detection → pitch generation → best pitch selection → dossier draft → emotional check → name check → revision → logic check → final polish.
 
+### Chapter Writer
+Standalone chapter generation: enter a creative prompt (scene description, characters, situation, mood) + optional genre hint + narrative sliders → AI writes a polished 2000-4000 word chapter. No pipeline or book required. Uses the same AUTHOR_VOICE_CONTRACT + Story Building Engine rules as the book writer.
+
 ### Chapter Analyzer
 Paste a chapter → Claude extracts 18 structural elements → user edits/adds/removes → Claude rewrites chapter. Sessions persist to disk. Cross-module: BookWriter can send chapters directly to Analyzer via sessionStorage.
 
 ### Book Writer
 Takes a completed dossier + brain dump, writes the book chapter by chapter. Each chapter uses running summaries of previous chapters (not full text) for context. Split-panel UI: chapter text on left, summary/high points/changes on right. Flow: generate outline → adjust narrative sliders → write chapter → summarize → next chapter.
+
+**Autopilot mode**: "Write Entire Book" / "Write Remaining" button runs the full chapter loop automatically (outline → write → summarize → next) without user intervention. Cancellable mid-run. Shows live progress status in sidebar.
 
 **Context strategy**: Each chapter prompt receives dossier (characters/world/themes/plot beats), brain dump, ALL previous chapter summaries (compact with sliding window), current chapter outline, and narrative slider values. Avoids token limits while maintaining narrative continuity.
 
@@ -55,8 +62,9 @@ Takes a completed dossier + brain dump, writes the book chapter by chapter. Each
 
 ### Frontend
 - `client/src/App.tsx` — Route definitions for all pages
-- `client/src/components/Layout.tsx` — Shared layout with persistent top nav bar (Pipeline, Analyzer, Books links with active state)
-- `client/src/pages/Home.tsx` — Dashboard with three module cards + recent activity
+- `client/src/components/Layout.tsx` — Shared layout with persistent top nav bar (Pipeline, Chapter, Analyzer, Books links with active state)
+- `client/src/pages/Home.tsx` — Dashboard with four module cards + recent activity
+- `client/src/pages/ChapterWriter.tsx` — Standalone chapter writer (prompt → chapter)
 - `client/src/pages/PipelineNew.tsx` — Brain dump form + genre selection
 - `client/src/pages/PipelineView.tsx` — Pipeline execution wrapper
 - `client/src/pages/PipelineResult.tsx` — Dossier result wrapper
@@ -93,6 +101,7 @@ Takes a completed dossier + brain dump, writes the book chapter by chapter. Each
 - `DELETE /api/chapters/:id` — Delete a chapter session
 - `POST /api/chapter/extract` — Extract structural elements from chapter text
 - `POST /api/chapter/rewrite` — Rewrite chapter with edited elements + optional narrative sliders
+- `POST /api/chapter/write-standalone` — Write a standalone chapter from a creative prompt + optional genre + sliders
 
 ### Book Writer
 - `GET /api/books` — List all books

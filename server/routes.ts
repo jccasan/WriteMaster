@@ -723,5 +723,72 @@ CRITICAL: Be specific and factual. Reference character names and concrete detail
     }
   });
 
+  app.post("/api/chapter/write-standalone", async (req, res) => {
+    try {
+      const { prompt, genre, sliders } = req.body;
+      if (!prompt || !prompt.trim()) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+
+      const slidersBlock = formatSlidersBlock(sliders);
+      const genreHint = genre ? `\nGENRE CONTEXT: ${genre}\n` : "";
+
+      const result = await callLLM(
+        `You are a skilled novelist writing a standalone chapter from the author's creative prompt.
+
+${CONTEXT_ENGINEERING_RULES}
+
+AUTHOR'S CREATIVE PROMPT:
+${prompt}
+${genreHint}
+${slidersBlock}
+
+${AUTHOR_VOICE_CONTRACT}
+
+${AI_WRITING_RULES}
+
+${SCENE_WRITING_RULES}
+
+${DEFAULT_DECISION_RULE}
+
+${LAYERED_GENERATION_WORKFLOW}
+
+INSTRUCTIONS:
+- Write a complete, polished chapter (2000-4000 words) based on the author's prompt
+- Extract characters, setting, conflict, and tone from whatever the author has given you — whether that's a detailed outline or just a raw idea
+- Structure the chapter with proper scene engineering: Goal → Conflict → Outcome with value shifts
+- Apply the double-up rule: each scene serves at least two functions simultaneously
+- Begin scenes late, end them early — enter close to the conflict, exit before full resolution
+- End the chapter on an open circuit (Zeigarnik effect) — leave the reader with an unresolved question
+- Include concrete sensory details across multiple senses (sound, smell, texture, temperature), not just sight
+- Write immersive, engaging fiction — not a summary or treatment
+- Start with a chapter title as a heading
+- Do NOT include author notes, meta-commentary, or section labels within the prose
+
+SELF-EDIT PASS (apply before outputting):
+- Remove lines that explain what behavior already shows
+- Replace at least one abstract "meaning" line with concrete action or sensation
+- Break any accidental sentence pattern symmetry
+- Confirm action clarity in physical sequences
+
+${ANTI_SLOP_FILTER}
+
+Output only the chapter text.`,
+        "powerful",
+        undefined,
+        16384
+      );
+
+      if (!result || !result.trim()) {
+        return res.status(500).json({ error: "AI returned empty chapter. Please try again." });
+      }
+
+      res.json({ content: result });
+    } catch (err: any) {
+      console.error("[Standalone Chapter Write Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return httpServer;
 }

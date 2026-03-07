@@ -69,6 +69,9 @@ export default function BookWriter() {
   const [dossierExpanded, setDossierExpanded] = useState(false);
   const [editingContent, setEditingContent] = useState(false);
   const [editingSummary, setEditingSummary] = useState(false);
+  const [autopilot, setAutopilot] = useState(false);
+  const [autopilotStatus, setAutopilotStatus] = useState("");
+  const autopilotCancelRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentDraftRef = useRef<string>("");
 
@@ -205,6 +208,92 @@ export default function BookWriter() {
       setError(err.message);
     }
     setGenerating(null);
+  };
+
+  const handleAutopilot = async (maxChapters: number = 30) => {
+    if (!bookId || !book) return;
+    autopilotCancelRef.current = false;
+    setAutopilot(true);
+    setError(null);
+
+    try {
+      let currentBook = book!;
+      let chaptersWritten = 0;
+
+      while (chaptersWritten < maxChapters) {
+        if (autopilotCancelRef.current) break;
+
+        const lastCh = currentBook.chapters[currentBook.chapters.length - 1];
+        const needsOutline = !lastCh || (lastCh.status === "written" && lastCh.summary);
+        const needsWrite = lastCh && lastCh.status === "outlined";
+        const needsSummary = lastCh && lastCh.status === "written" && !lastCh.summary;
+
+        if (needsOutline) {
+          const nextNum = (lastCh?.chapter_number || 0) + 1;
+          setAutopilotStatus(`Outlining chapter ${nextNum}...`);
+          setGenerating("outline");
+          const res = await fetch(`/api/books/${bookId}/outline-chapter`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Failed to generate outline");
+          }
+          const data = await res.json();
+          currentBook = data.book;
+          setBook(data.book);
+          setActiveChapter(data.chapter.chapter_number);
+          setGenerating(null);
+        } else if (needsWrite) {
+          setAutopilotStatus(`Writing chapter ${lastCh.chapter_number}...`);
+          setGenerating("writing");
+          const res = await fetch(`/api/books/${bookId}/write-chapter/${lastCh.chapter_number}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Failed to write chapter");
+          }
+          const data = await res.json();
+          currentBook = data.book;
+          setBook(data.book);
+          setGenerating(null);
+        } else if (needsSummary) {
+          setAutopilotStatus(`Summarizing chapter ${lastCh.chapter_number}...`);
+          setGenerating("summarizing");
+          const res = await fetch(`/api/books/${bookId}/summarize-chapter/${lastCh.chapter_number}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Failed to summarize chapter");
+          }
+          const data = await res.json();
+          currentBook = data.book;
+          setBook(data.book);
+          setGenerating(null);
+          chaptersWritten++;
+        } else {
+          break;
+        }
+
+        if (autopilotCancelRef.current) break;
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+
+    setGenerating(null);
+    setAutopilot(false);
+    setAutopilotStatus("");
+  };
+
+  const handleStopAutopilot = () => {
+    autopilotCancelRef.current = true;
+    setAutopilotStatus("Stopping after current step...");
   };
 
   const handleCopyChapter = () => {
@@ -403,6 +492,34 @@ export default function BookWriter() {
               )}
               {generating === "outline" ? "Generating..." : "Next Chapter"}
             </Button>
+
+            {autopilot ? (
+              <div className="mt-2 space-y-2">
+                <div className="text-xs text-primary font-medium text-center animate-pulse" data-testid="text-autopilot-status">
+                  {autopilotStatus}
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleStopAutopilot}
+                  className="w-full gap-1 text-xs"
+                  data-testid="button-autopilot-stop"
+                >
+                  <X className="w-3 h-3" /> Stop Autopilot
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAutopilot()}
+                disabled={generating !== null || (!canGenerateNext && !(currentChapter && (currentChapter.status === "outlined" || (currentChapter.status === "written" && !currentChapter.summary))))}
+                className="w-full mt-1 gap-1 text-xs text-muted-foreground"
+                data-testid="button-autopilot-sidebar"
+              >
+                <RefreshCw className="w-3 h-3" /> Write Remaining
+              </Button>
+            )}
           </div>
         </aside>
 
@@ -422,19 +539,31 @@ export default function BookWriter() {
                     : "Choose a chapter from the sidebar or generate the next one."}
                 </p>
                 {book.chapters.length === 0 && (
-                  <Button
-                    onClick={handleGenerateOutline}
-                    disabled={generating !== null}
-                    className="gap-2"
-                    data-testid="button-start-chapter-1"
-                  >
-                    {generating === "outline" ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-4 h-4" />
-                    )}
-                    {generating === "outline" ? "Generating Outline..." : "Generate Chapter 1 Outline"}
-                  </Button>
+                  <div className="flex flex-col gap-2 items-center">
+                    <Button
+                      onClick={handleGenerateOutline}
+                      disabled={generating !== null}
+                      className="gap-2"
+                      data-testid="button-start-chapter-1"
+                    >
+                      {generating === "outline" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      {generating === "outline" ? "Generating Outline..." : "Generate Chapter 1 Outline"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleAutopilot()}
+                      disabled={generating !== null}
+                      className="gap-2"
+                      data-testid="button-autopilot-start"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Write Entire Book
+                    </Button>
+                  </div>
                 )}
               </div>
             ) : (

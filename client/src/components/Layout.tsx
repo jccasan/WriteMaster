@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { BookOpen, Scissors, Library, Sparkles } from "lucide-react";
+import { BookOpen, Scissors, Library, Sparkles, PenTool } from "lucide-react";
 
 interface NavItem {
   label: string;
@@ -15,6 +15,12 @@ const NAV_ITEMS: NavItem[] = [
     path: "/pipeline",
     icon: <Sparkles className="w-4 h-4" />,
     matchPaths: ["/pipeline"],
+  },
+  {
+    label: "Chapter",
+    path: "/chapter-writer",
+    icon: <PenTool className="w-4 h-4" />,
+    matchPaths: ["/chapter-writer"],
   },
   {
     label: "Analyzer",
