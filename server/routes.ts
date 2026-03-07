@@ -504,7 +504,9 @@ ${CONTEXT_ENGINEERING_RULES}
 ${DEFAULT_DECISION_RULE}
 
 INSTRUCTIONS:
-- Based on the dossier's plot beats, determine what should happen in Chapter ${nextNum}
+- This novel targets 32 chapters total. Chapter ${nextNum} of 32 — pace the story accordingly
+- Based on the dossier's plot beats, determine what should happen at this point in a 32-chapter arc
+- Structure guidance: Chapters 1-3 setup/hook, 4-8 rising action, 9-10 first pinch point, 11-16 midpoint build, 17-18 midpoint reversal, 19-24 escalation, 25-26 second pinch point, 27-30 climax sequence, 31-32 resolution/denouement
 - Consider where the story is right now based on previous chapter summaries
 - Apply the character arc engine: what stage of the protagonist's Lie→Truth journey is this chapter? Are they still in the grip of the Lie, getting a glimpse of the Truth, or being tested?
 - Each scene in the outline must have a clear Goal, Conflict, and Outcome (value shift)

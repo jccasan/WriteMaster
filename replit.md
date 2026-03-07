@@ -36,7 +36,7 @@ Paste a chapter → Claude extracts 18 structural elements → user edits/adds/r
 ### Book Writer
 Takes a completed dossier + brain dump, writes the book chapter by chapter. Each chapter uses running summaries of previous chapters (not full text) for context. Split-panel UI: chapter text on left, summary/high points/changes on right. Flow: generate outline → adjust narrative sliders → write chapter → summarize → next chapter.
 
-**Autopilot mode**: "Write Entire Book" / "Write Remaining" button runs the full chapter loop automatically (outline → write → summarize → next) without user intervention. Cancellable mid-run. Shows live progress status in sidebar.
+**Autopilot mode**: "Write Entire Book" / "Write Remaining" button runs the full 32-chapter loop automatically (outline → write → summarize → next) without user intervention. Cancellable mid-run. Shows live progress status in sidebar. Outline prompt includes 32-chapter pacing structure (setup → rising action → pinch points → midpoint → escalation → climax → resolution).
 
 **Context strategy**: Each chapter prompt receives dossier (characters/world/themes/plot beats), brain dump, ALL previous chapter summaries (compact with sliding window), current chapter outline, and narrative slider values. Avoids token limits while maintaining narrative continuity.
 

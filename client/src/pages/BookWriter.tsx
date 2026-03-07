@@ -210,7 +210,7 @@ export default function BookWriter() {
     setGenerating(null);
   };
 
-  const handleAutopilot = async (maxChapters: number = 30) => {
+  const handleAutopilot = async (maxChapters: number = 32) => {
     if (!bookId || !book) return;
     autopilotCancelRef.current = false;
     setAutopilot(true);
