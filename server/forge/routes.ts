@@ -490,6 +490,70 @@ router.post("/quick-feedback", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/quick-feedback/chat", async (req: Request, res: Response) => {
+  try {
+    const { messages, originalText, genre, feedbackSummary } = req.body;
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      res.status(400).json({ error: "Messages are required." });
+      return;
+    }
+    if (!originalText || typeof originalText !== "string") {
+      res.status(400).json({ error: "Original text context is required." });
+      return;
+    }
+    if (messages.length > 40) {
+      res.status(400).json({ error: "Too many messages. Please start a new conversation." });
+      return;
+    }
+    const validRoles = new Set(["user", "assistant"]);
+    for (const m of messages) {
+      if (!m.content || typeof m.content !== "string" || !validRoles.has(m.role)) {
+        res.status(400).json({ error: "Invalid message format." });
+        return;
+      }
+      if (m.content.length > 10000) {
+        res.status(400).json({ error: "Message too long." });
+        return;
+      }
+    }
+
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const anthropic = new Anthropic({
+      apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+    });
+
+    const systemPrompt = `You are an expert fiction editor and writing coach. The user has submitted a passage for feedback and wants to discuss the results with you.
+
+GENRE: ${genre || "general fiction"}
+
+ORIGINAL PASSAGE:
+${originalText.slice(0, 12000)}
+
+FEEDBACK SUMMARY:
+${(feedbackSummary || "").slice(0, 6000)}
+
+Use the passage and feedback as context. Give specific, actionable craft advice. Reference exact lines or moments from the passage when possible. Be encouraging but honest. Keep responses focused and concise.`;
+
+    const apiMessages = messages.map((m: { role: string; content: string }) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: apiMessages,
+    });
+
+    const reply = response.content[0].type === "text" ? response.content[0].text : "";
+    res.json({ reply });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/seed", async (_req: Request, res: Response) => {
   try {
     await seedDemoProject();

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import ForgeLayout from "@/components/forge/ForgeLayout";
@@ -8,12 +8,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
-  Loader2, Zap, AlertTriangle, CheckCircle, Star,
-  ThumbsUp, ThumbsDown, BookOpen, Eye
+  Loader2, Zap, AlertTriangle, Star,
+  ThumbsUp, BookOpen, Eye, MessageSquare, Send, User, Bot
 } from "lucide-react";
 
 const GENRES = [
@@ -37,12 +38,42 @@ const SEVERITY_COLORS: Record<string, string> = {
   suggestion: "text-blue-400 border-blue-800 bg-blue-950/40",
 };
 
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+function buildFeedbackSummary(result: any): string {
+  const parts: string[] = [];
+  if (result.editorial?.overallImpression) {
+    parts.push(`Overall: ${result.editorial.overallImpression}`);
+  }
+  if (result.editorial?.strengths?.length > 0) {
+    parts.push(`Strengths: ${result.editorial.strengths.join("; ")}`);
+  }
+  if (result.editorial?.weaknesses?.length > 0) {
+    parts.push(`Weaknesses: ${result.editorial.weaknesses.join("; ")}`);
+  }
+  if (result.editorial?.issues?.length > 0) {
+    parts.push(`Issues: ${result.editorial.issues.map((i: any) => `[${i.severity}] ${i.title}: ${i.description}`).join(" | ")}`);
+  }
+  if (result.betaReaders?.length > 0) {
+    for (const br of result.betaReaders) {
+      parts.push(`${br.profileName}: hooked="${br.hookedAt}", recommendation="${br.recommendation}", wouldKeepReading=${br.wouldKeepReading}`);
+    }
+  }
+  return parts.join("\n");
+}
+
 export default function ForgeQuickFeedback() {
   const [text, setText] = useState("");
   const [genre, setGenre] = useState("General Fiction");
   const [selectedProfiles, setSelectedProfiles] = useState<string[]>(
     BETA_PROFILES.map(p => p.key)
   );
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const toggleProfile = (key: string) => {
     setSelectedProfiles(prev =>
@@ -59,7 +90,43 @@ export default function ForgeQuickFeedback() {
       });
       return res.json();
     },
+    onSuccess: () => {
+      setChatMessages([]);
+    },
   });
+
+  const chatMutation = useMutation({
+    mutationFn: async (messages: ChatMessage[]) => {
+      const res = await apiRequest("POST", "/api/forge/quick-feedback/chat", {
+        messages,
+        originalText: text,
+        genre: genre.toLowerCase(),
+        feedbackSummary: feedbackMutation.data ? buildFeedbackSummary(feedbackMutation.data) : "",
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.reply) {
+        setChatMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
+      }
+    },
+    onError: () => {
+      setChatMessages(prev => prev.slice(0, -1));
+    },
+  });
+
+  const sendMessage = () => {
+    const msg = chatInput.trim();
+    if (!msg || chatMutation.isPending) return;
+    const newMessages: ChatMessage[] = [...chatMessages, { role: "user", content: msg }];
+    setChatMessages(newMessages);
+    setChatInput("");
+    chatMutation.mutate(newMessages);
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
 
   const result = feedbackMutation.data;
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
@@ -162,7 +229,7 @@ export default function ForgeQuickFeedback() {
             <Button
               variant="outline"
               className="border-amber-900/30 text-amber-400"
-              onClick={() => feedbackMutation.reset()}
+              onClick={() => { feedbackMutation.reset(); setChatMessages([]); }}
               data-testid="button-new-feedback"
             >
               Analyze Another Passage
@@ -359,6 +426,90 @@ export default function ForgeQuickFeedback() {
                 </div>
               </div>
             )}
+
+            <Card className="bg-gray-900 border-amber-900/20" data-testid="card-discussion">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-amber-400 text-lg flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Discuss with AI
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {chatMessages.length === 0 && (
+                  <p className="text-gray-500 text-sm italic">
+                    Ask follow-up questions about the feedback, dig into specific issues, or brainstorm revisions.
+                  </p>
+                )}
+
+                {chatMessages.length > 0 && (
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1" data-testid="chat-messages">
+                    {chatMessages.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`flex gap-3 ${msg.role === "user" ? "" : ""}`}
+                        data-testid={`chat-message-${i}`}
+                      >
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                          msg.role === "user"
+                            ? "bg-amber-600/20"
+                            : "bg-purple-600/20"
+                        }`}>
+                          {msg.role === "user"
+                            ? <User className="w-3.5 h-3.5 text-amber-400" />
+                            : <Bot className="w-3.5 h-3.5 text-purple-400" />
+                          }
+                        </div>
+                        <div className={`flex-1 rounded-lg p-3 text-sm ${
+                          msg.role === "user"
+                            ? "bg-gray-800/60 text-gray-200"
+                            : "bg-gray-800/30 text-gray-300 border border-gray-800"
+                        }`}>
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {chatMutation.isPending && (
+                      <div className="flex gap-3">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-purple-600/20">
+                          <Bot className="w-3.5 h-3.5 text-purple-400" />
+                        </div>
+                        <div className="flex-1 rounded-lg p-3 bg-gray-800/30 border border-gray-800">
+                          <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    placeholder="Ask about an issue, character, or craft element..."
+                    className="flex-1 bg-gray-950 border-gray-700 text-gray-100 placeholder:text-gray-600"
+                    disabled={chatMutation.isPending}
+                    data-testid="input-chat"
+                  />
+                  <Button
+                    onClick={sendMessage}
+                    disabled={!chatInput.trim() || chatMutation.isPending}
+                    size="icon"
+                    className="bg-amber-600 hover:bg-amber-700 text-gray-950 shrink-0"
+                    data-testid="button-send-chat"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {chatMutation.isError && (
+                  <p className="text-red-400 text-xs" data-testid="text-chat-error">
+                    {(chatMutation.error as Error).message}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
