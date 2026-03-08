@@ -104,6 +104,12 @@ function looksLikeSectionTitle(line: string): boolean {
 
 export function detectChapters(fullText: string): DetectedChapter[] {
   const lines = fullText.split("\n");
+
+  const mdBoundaries = detectMarkdownHeadings(lines, fullText);
+  if (mdBoundaries.length >= 3) {
+    return buildChaptersFromBoundaries(mdBoundaries, fullText);
+  }
+
   const boundaries: Boundary[] = [];
   let autoNumber = 0;
 
@@ -178,6 +184,74 @@ export function detectChapters(fullText: string): DetectedChapter[] {
   }
 
   return [];
+}
+
+function detectMarkdownHeadings(lines: string[], fullText: string): Boundary[] {
+  const boundaries: Boundary[] = [];
+  let charOffset = 0;
+  let chapterNum = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    const h1Match = trimmed.match(/^#\s+(.+)/);
+    if (h1Match) {
+      let title = h1Match[1]
+        .replace(/<[^>]+>/g, "")
+        .replace(/__([^_]*)__/g, "$1")
+        .replace(/^#+\s*/, "")
+        .trim();
+      if (title.length > 0) {
+        chapterNum++;
+        boundaries.push({
+          lineIndex: i,
+          number: chapterNum,
+          title,
+          offset: charOffset,
+        });
+      }
+    }
+    charOffset += lines[i].length + 1;
+  }
+
+  const merged: Boundary[] = [];
+  for (let i = 0; i < boundaries.length; i++) {
+    const next = boundaries[i + 1];
+    if (next) {
+      const gapText = fullText.slice(boundaries[i].offset, next.offset).trim();
+      const gapLines = gapText.split("\n").filter(l => l.trim().length > 0);
+      if (gapLines.length <= 2) {
+        continue;
+      }
+    }
+    merged.push(boundaries[i]);
+  }
+
+  if (merged.length > 0 && merged[0].offset > 0) {
+    const preText = fullText.slice(0, merged[0].offset).trim();
+    if (preText.length > 0) {
+      const firstLine = preText.split("\n")[0].trim();
+      if (firstLine.length > 0 && firstLine.length < 80 && !firstLine.startsWith("#")) {
+        if (looksLikeLocationSubheading(merged[0].title)) {
+          merged[0].title = firstLine;
+          merged[0].offset = 0;
+          merged[0].lineIndex = 0;
+        } else {
+          merged.unshift({
+            lineIndex: 0,
+            number: 0,
+            title: firstLine,
+            offset: 0,
+          });
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < merged.length; i++) {
+    merged[i].number = i + 1;
+  }
+
+  return merged;
 }
 
 function detectTitleHeadings(lines: string[], fullText: string): Boundary[] {

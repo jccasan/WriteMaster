@@ -190,7 +190,15 @@ router.post("/projects/:id/reparse", async (req: Request, res: Response) => {
     await prisma.chapter.deleteMany({ where: { revisionVersionId: revision.id } });
     await prisma.chunk.deleteMany({ where: { revisionVersionId: revision.id } });
 
-    const text = file.extractedText;
+    let text = file.extractedText;
+    if (file.storagePath && (file.fileName.endsWith(".docx") || file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+      try {
+        const freshText = await extractText(file.storagePath, file.mimeType);
+        text = freshText;
+        await prisma.fileAsset.update({ where: { id: file.id }, data: { extractedText: freshText } });
+      } catch (e) {
+      }
+    }
     let detectedChapters = detectChapters(text);
     if (detectedChapters.length === 0) {
       detectedChapters = createSegments(text, 6);
