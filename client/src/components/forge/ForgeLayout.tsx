@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   Anvil, LayoutDashboard, Upload, Zap, FileText, AlertTriangle,
-  Users, GitBranch, Film, Search, BookOpen, ArrowLeft
+  Users, GitBranch, Film, Search, BookOpen, ArrowLeft, MessageSquare
 } from "lucide-react";
 
 interface NavItem {
@@ -70,6 +70,18 @@ export default function ForgeLayout({ children, projectId }: ForgeLayoutProps) {
                 Dashboard
               </button>
             )}
+            <button
+              onClick={() => navigate("/forge/quick-feedback")}
+              className={`flex items-center gap-1.5 text-sm transition-colors ${
+                location === "/forge/quick-feedback"
+                  ? "text-amber-400"
+                  : "text-gray-400 hover:text-amber-400"
+              }`}
+              data-testid="forge-nav-quick-feedback"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Quick Feedback
+            </button>
           </div>
         </div>
       </header>

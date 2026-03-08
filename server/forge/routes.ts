@@ -8,6 +8,8 @@ import { detectChapters, createSegments } from "./parsing/chapter-detector";
 import { createChunks } from "./parsing/chunker";
 import { startAnalysisJob, getJobStatus, getAllJobs } from "./analysis/job-runner";
 import { seedDemoProject } from "./seed/seed-demo";
+import { runEditorialAssessment } from "./analysis/modules/editorial-assessment";
+import { runBetaReader, getProfileKeys } from "./analysis/modules/beta-reader";
 
 const router = Router();
 
@@ -462,6 +464,27 @@ router.get("/beta-reader-profiles", async (_req: Request, res: Response) => {
   try {
     const profiles = await prisma.betaReaderProfile.findMany();
     res.json(profiles);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/quick-feedback", async (req: Request, res: Response) => {
+  try {
+    const { text, genre, betaProfiles } = req.body;
+    if (!text || typeof text !== "string" || text.trim().length < 50) {
+      res.status(400).json({ error: "Please provide at least 50 characters of text." });
+      return;
+    }
+    const g = genre || "general fiction";
+    const profiles: string[] = (betaProfiles && betaProfiles.length > 0) ? betaProfiles : getProfileKeys();
+
+    const [editorial, ...betaResults] = await Promise.all([
+      runEditorialAssessment(text, "", g, ""),
+      ...profiles.map(p => runBetaReader(text, "", g, p)),
+    ]);
+
+    res.json({ editorial, betaReaders: betaResults });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -27,6 +27,7 @@ Two parallel apps in one repo: **StoryDossier** (AI writing studio) and **STORY 
 ## STORY FORGE Routes
 
 - `/forge` — FORGE dashboard with project cards
+- `/forge/quick-feedback` — Paste-and-analyze: editorial + beta reader feedback on any passage
 - `/forge/project/:id` — Project detail with tabbed views
 - `/forge/project/:id/upload` — Manuscript/outline/story bible upload
 - `/forge/project/:id/analyze` — Analysis config + progress tracking
@@ -147,6 +148,7 @@ Accumulates across chunks: outline, character profiles, plot threads, world rule
 
 ## FORGE API Endpoints
 
+- `POST /api/forge/quick-feedback` — Instant editorial + beta reader feedback on pasted text (no project required)
 - `GET /api/forge/projects` — List all projects
 - `POST /api/forge/projects` — Create new project
 - `GET /api/forge/projects/:id` — Get project with revisions, chapters, chunks

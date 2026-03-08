@@ -25,6 +25,7 @@ import ForgeStructure from "@/pages/forge/ForgeStructure";
 import ForgeScenes from "@/pages/forge/ForgeScenes";
 import ForgeFactCheck from "@/pages/forge/ForgeFactCheck";
 import ForgeBetaReaders from "@/pages/forge/ForgeBetaReaders";
+import ForgeQuickFeedback from "@/pages/forge/ForgeQuickFeedback";
 
 function Router() {
   return (
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/forge/project/:id/scenes" component={ForgeScenes} />
       <Route path="/forge/project/:id/fact-check" component={ForgeFactCheck} />
       <Route path="/forge/project/:id/beta-readers" component={ForgeBetaReaders} />
+      <Route path="/forge/quick-feedback" component={ForgeQuickFeedback} />
       <Route component={NotFound} />
     </Switch>
   );
