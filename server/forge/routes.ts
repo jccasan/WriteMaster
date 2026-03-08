@@ -170,6 +170,72 @@ router.post("/projects/:id/upload", upload.single("manuscript"), async (req: Req
   }
 });
 
+router.post("/projects/:id/reparse", async (req: Request, res: Response) => {
+  try {
+    const revision = await prisma.revisionVersion.findFirst({
+      where: { projectId: req.params.id },
+      orderBy: { versionNumber: "desc" },
+    });
+    if (!revision?.manuscriptFileId) {
+      res.status(400).json({ error: "No manuscript uploaded" });
+      return;
+    }
+
+    const file = await prisma.fileAsset.findUnique({ where: { id: revision.manuscriptFileId } });
+    if (!file) {
+      res.status(404).json({ error: "Manuscript file not found" });
+      return;
+    }
+
+    await prisma.chapter.deleteMany({ where: { revisionVersionId: revision.id } });
+    await prisma.chunk.deleteMany({ where: { revisionVersionId: revision.id } });
+
+    const text = file.extractedText;
+    let detectedChapters = detectChapters(text);
+    if (detectedChapters.length === 0) {
+      detectedChapters = createSegments(text, 6);
+    }
+
+    for (const ch of detectedChapters) {
+      await prisma.chapter.create({
+        data: {
+          revisionVersionId: revision.id,
+          number: ch.number,
+          title: ch.title,
+          rawText: ch.rawText,
+          wordCount: ch.wordCount,
+          detectedStartOffset: ch.startOffset,
+          detectedEndOffset: ch.endOffset,
+        },
+      });
+    }
+
+    const chunkDefs = createChunks(detectedChapters.length);
+    for (const cd of chunkDefs) {
+      const chunkChapters = detectedChapters.filter(ch => ch.number >= cd.startChapter && ch.number <= cd.endChapter);
+      const combinedText = chunkChapters.map(ch => ch.rawText).join("\n\n---\n\n");
+      await prisma.chunk.create({
+        data: {
+          revisionVersionId: revision.id,
+          chunkIndex: cd.chunkIndex,
+          startChapter: cd.startChapter,
+          endChapter: cd.endChapter,
+          rawCombinedText: combinedText,
+        },
+      });
+    }
+
+    res.json({
+      chaptersDetected: detectedChapters.length,
+      chunksCreated: chunkDefs.length,
+      totalWords: countWords(text),
+      chapters: detectedChapters.map(ch => ({ number: ch.number, title: ch.title, wordCount: ch.wordCount })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/projects/:id/revision", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
