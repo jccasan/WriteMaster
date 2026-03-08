@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   Anvil, LayoutDashboard, Upload, Zap, FileText, AlertTriangle,
-  Users, GitBranch, Film, Search, BookOpen, ArrowLeft, MessageSquare
+  Users, GitBranch, Film, Search, BookOpen, ArrowLeft, MessageSquare, Home
 } from "lucide-react";
 
 interface NavItem {
@@ -83,6 +83,14 @@ export default function ForgeLayout({ children, projectId }: ForgeLayoutProps) {
               Quick Feedback
             </button>
           </div>
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-amber-400 transition-colors"
+            data-testid="forge-nav-home"
+          >
+            <Home className="w-4 h-4" />
+            <span className="hidden sm:inline">StoryDossier</span>
+          </button>
         </div>
       </header>
 
