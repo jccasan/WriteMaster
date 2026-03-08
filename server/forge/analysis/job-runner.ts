@@ -87,6 +87,17 @@ async function runJob(
     job.status = "analyzing";
     job.progress = 5;
     await updateDbJob(jobId, { status: "analyzing", progress: 5 });
+    addLog(jobId, "Clearing previous analysis results...");
+
+    await prisma.issue.deleteMany({ where: { revisionVersionId } });
+    await prisma.sceneAnalysis.deleteMany({ where: { revisionVersionId } });
+    await prisma.structureBeat.deleteMany({ where: { revisionVersionId } });
+    await prisma.characterRecord.deleteMany({ where: { revisionVersionId } });
+    await prisma.factCheckItem.deleteMany({ where: { revisionVersionId } });
+    await prisma.betaReaderResponse.deleteMany({ where: { revisionVersionId } });
+    await prisma.editorialReport.deleteMany({ where: { revisionVersionId } });
+    await prisma.chunk.updateMany({ where: { revisionVersionId }, data: { status: "pending", summaryJson: "{}" } });
+
     addLog(jobId, "Starting analysis pipeline...");
 
     const revision = await prisma.revisionVersion.findUnique({
