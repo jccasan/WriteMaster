@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface SceneScanResult {
   scenes: {
@@ -57,7 +58,5 @@ Return JSON:
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "powerful", SYSTEM, 6144);
-  const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); }
-  catch { return { scenes: [], redundantScenes: [], issues: [] }; }
+  return extractJSON<SceneScanResult>(result, { scenes: [], redundantScenes: [], issues: [] });
 }

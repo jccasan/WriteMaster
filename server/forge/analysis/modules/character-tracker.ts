@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface CharacterTrackResult {
   characters: {
@@ -55,7 +56,5 @@ Return JSON:
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "powerful", SYSTEM, 8192);
-  const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); }
-  catch { return { characters: [], characterInconsistencies: [], issues: [] }; }
+  return extractJSON<CharacterTrackResult>(result, { characters: [], characterInconsistencies: [], issues: [] });
 }

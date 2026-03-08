@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface EditorialAssessmentResult {
   overallImpression: string;
@@ -62,20 +63,10 @@ Issue types: plot_hole, weak_causality, pacing_drag, weak_stakes, unclear_motiva
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "powerful", SYSTEM, 8192);
-  return parseJSON(result);
-}
-
-function parseJSON(text: string): EditorialAssessmentResult {
-  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    return {
-      overallImpression: "Failed to parse editorial assessment response.",
-      strengths: [], weaknesses: [], majorEvents: [],
-      characterChanges: [], plotThreadUpdates: [], continuityNotes: [],
-      worldRuleNotes: [], unresolvedQuestions: [],
-      issues: [{ type: "structural_weakness", severity: "minor", title: "Parse failure", description: "LLM response could not be parsed", evidence: [], suggestion: "Retry analysis" }],
-    };
-  }
+  return extractJSON<EditorialAssessmentResult>(result, {
+    overallImpression: "Analysis completed but response format was unexpected.",
+    strengths: [], weaknesses: [], majorEvents: [],
+    characterChanges: [], plotThreadUpdates: [], continuityNotes: [],
+    worldRuleNotes: [], unresolvedQuestions: [], issues: [],
+  });
 }

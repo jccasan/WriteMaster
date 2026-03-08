@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { callLLM } from "../../llm";
+import { extractJSON } from "./parse-json";
 import { renderReport } from "../renderers/report-renderer";
 
 export async function runSynthesis(revisionVersionId: string, genre: string) {
@@ -52,8 +53,8 @@ Return JSON:
 }`;
 
     const result = await callLLM(synthesisPrompt, "powerful", "You are a senior fiction editor synthesizing multiple analysis passes into a coherent revision plan.", 8192);
-    const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    synthesisResponse = JSON.parse(cleaned);
+    synthesisResponse = extractJSON(result, null);
+    if (!synthesisResponse) throw new Error("Parse failed");
   } catch (err) {
     synthesisResponse = {
       overallAssessment: "Synthesis could not be generated automatically.",

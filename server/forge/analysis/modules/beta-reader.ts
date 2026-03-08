@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface BetaReaderResult {
   profileName: string;
@@ -73,16 +74,12 @@ Return JSON:
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "cheap", profile.persona, 4096);
-  const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); }
-  catch {
-    return {
-      profileName: profile.name, hookedAt: "", attentionSaggedAt: "",
-      confusionPoints: [], strongestMoments: [], leastCredibleMoments: [],
-      favoriteCharacterReaction: "", wouldKeepReading: true, mightQuitAt: "",
-      finalEmotionalReaction: "Parse failed", recommendation: ""
-    };
-  }
+  return extractJSON<BetaReaderResult>(result, {
+    profileName: profile.name, hookedAt: "", attentionSaggedAt: "",
+    confusionPoints: [], strongestMoments: [], leastCredibleMoments: [],
+    favoriteCharacterReaction: "", wouldKeepReading: true, mightQuitAt: "",
+    finalEmotionalReaction: "", recommendation: ""
+  });
 }
 
 export function getProfileKeys(): string[] {

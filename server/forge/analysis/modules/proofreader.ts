@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface ProofreadResult {
   grammarIssues: { text: string; issue: string; suggestion: string }[];
@@ -28,7 +29,5 @@ Return JSON:
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "cheap", SYSTEM, 4096);
-  const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); }
-  catch { return { grammarIssues: [], punctuationIssues: [], formattingNotes: [], issues: [] }; }
+  return extractJSON<ProofreadResult>(result, { grammarIssues: [], punctuationIssues: [], formattingNotes: [], issues: [] });
 }

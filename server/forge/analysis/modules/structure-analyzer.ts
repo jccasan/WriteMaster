@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface StructureResult {
   beats: { beatType: string; chapterNumber: number | null; confidence: number; notes: string }[];
@@ -39,7 +40,5 @@ Return JSON:
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "powerful", SYSTEM, 4096);
-  const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); }
-  catch { return { beats: [], structuralAssessment: "Parse failed", proportionNotes: "", issues: [] }; }
+  return extractJSON<StructureResult>(result, { beats: [], structuralAssessment: "", proportionNotes: "", issues: [] });
 }

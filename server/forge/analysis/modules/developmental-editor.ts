@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface DevEditResult {
   pacing: { rating: string; notes: string };
@@ -43,7 +44,5 @@ Return JSON:
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "powerful", SYSTEM, 8192);
-  const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); }
-  catch { return { pacing: { rating: "unknown", notes: "Parse failed" }, stakes: { rating: "unknown", notes: "" }, causality: { rating: "unknown", notes: "" }, characterArcs: [], sceneByScene: [], thematicNotes: [], issues: [] }; }
+  return extractJSON<DevEditResult>(result, { pacing: { rating: "unknown", notes: "" }, stakes: { rating: "unknown", notes: "" }, causality: { rating: "unknown", notes: "" }, characterArcs: [], sceneByScene: [], thematicNotes: [], issues: [] });
 }

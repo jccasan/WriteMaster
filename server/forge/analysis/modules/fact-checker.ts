@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface FactCheckResult {
   internalConsistency: { claim: string; finding: string; confidence: number; status: string; chapter?: number }[];
@@ -35,7 +36,5 @@ Return JSON:
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "powerful", SYSTEM, 6144);
-  const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); }
-  catch { return { internalConsistency: [], externalFacts: [], timelineIssues: [], issues: [] }; }
+  return extractJSON<FactCheckResult>(result, { internalConsistency: [], externalFacts: [], timelineIssues: [], issues: [] });
 }

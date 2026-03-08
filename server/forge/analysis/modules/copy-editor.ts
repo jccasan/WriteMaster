@@ -1,4 +1,5 @@
 import { callLLM } from "../../../llm";
+import { extractJSON } from "../parse-json";
 
 export interface CopyEditResult {
   proseQuality: { rating: string; notes: string };
@@ -39,7 +40,5 @@ Return JSON:
 Return ONLY valid JSON.`;
 
   const result = await callLLM(prompt, "powerful", SYSTEM, 6144);
-  const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  try { return JSON.parse(cleaned); }
-  catch { return { proseQuality: { rating: "unknown", notes: "Parse failed" }, voiceConsistency: { rating: "unknown", notes: "" }, dialogueNotes: [], cliches: [], showDontTell: [], issues: [] }; }
+  return extractJSON<CopyEditResult>(result, { proseQuality: { rating: "unknown", notes: "" }, voiceConsistency: { rating: "unknown", notes: "" }, dialogueNotes: [], cliches: [], showDontTell: [], issues: [] });
 }
