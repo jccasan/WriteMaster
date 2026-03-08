@@ -5,10 +5,10 @@ export interface ChunkDefinition {
   chapterNumbers: number[];
 }
 
-export function createChunks(totalChapters: number, chunkSize: number = 4): ChunkDefinition[] {
+export function createChunks(totalChapters: number, chunkSize: number = 8): ChunkDefinition[] {
   if (totalChapters <= 0) return [];
 
-  const effectiveChunkSize = Math.max(3, Math.min(5, chunkSize));
+  const effectiveChunkSize = Math.max(4, Math.min(12, chunkSize));
   const chunks: ChunkDefinition[] = [];
   let currentStart = 1;
   let chunkIndex = 0;
@@ -17,8 +17,8 @@ export function createChunks(totalChapters: number, chunkSize: number = 4): Chun
     const remaining = totalChapters - currentStart + 1;
 
     let size: number;
-    if (remaining <= effectiveChunkSize + 2) {
-      size = remaining;
+    if (remaining <= effectiveChunkSize + Math.floor(effectiveChunkSize / 2)) {
+      size = Math.min(remaining, effectiveChunkSize + Math.floor(effectiveChunkSize / 2));
     } else {
       size = effectiveChunkSize;
     }

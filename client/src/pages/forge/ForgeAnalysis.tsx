@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Zap, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Zap, CheckCircle, XCircle, Clock, Gauge } from "lucide-react";
 
 const MODULES = [
   { key: "editorial_assessment", label: "Editorial Assessment" },
@@ -23,16 +23,27 @@ const MODULES = [
   { key: "scene_scanner", label: "Scene Scanner" },
 ];
 
+const QUICK_MODULES = ["editorial_assessment", "character_tracker", "developmental_editor"];
+const FULL_MODULES = MODULES.filter(m => m.key !== "beta_reader").map(m => m.key);
+
+type Preset = "quick" | "full" | "custom";
+
 export default function ForgeAnalysis() {
   const [, params] = useRoute("/forge/project/:id/analyze");
   const projectId = params?.id || "";
 
-  const [selectedModules, setSelectedModules] = useState<string[]>(
-    MODULES.filter(m => m.key !== "beta_reader").map(m => m.key)
-  );
+  const [preset, setPreset] = useState<Preset>("full");
+  const [selectedModules, setSelectedModules] = useState<string[]>(FULL_MODULES);
   const [jobId, setJobId] = useState<string | null>(null);
 
+  const applyPreset = (p: Preset) => {
+    setPreset(p);
+    if (p === "quick") setSelectedModules([...QUICK_MODULES]);
+    else if (p === "full") setSelectedModules([...FULL_MODULES]);
+  };
+
   const toggleModule = (key: string) => {
+    setPreset("custom");
     setSelectedModules(prev =>
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
@@ -76,41 +87,79 @@ export default function ForgeAnalysis() {
         <h1 className="text-2xl font-bold text-amber-400 mb-6" data-testid="text-analysis-heading">Analysis</h1>
 
         {!jobId && (
-          <Card className="bg-gray-900 border-amber-900/20 mb-6">
-            <CardHeader>
-              <CardTitle className="text-gray-100 text-lg">Select Analysis Modules</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {MODULES.map((mod) => (
-                <div key={mod.key} className="flex items-center gap-3">
-                  <Checkbox
-                    id={mod.key}
-                    checked={selectedModules.includes(mod.key)}
-                    onCheckedChange={() => toggleModule(mod.key)}
-                    className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
-                    data-testid={`checkbox-module-${mod.key}`}
-                  />
-                  <Label htmlFor={mod.key} className="text-gray-300 cursor-pointer">{mod.label}</Label>
-                </div>
-              ))}
-
-              <Button
-                onClick={() => analyzeMutation.mutate()}
-                disabled={selectedModules.length === 0 || analyzeMutation.isPending}
-                className="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold"
-                data-testid="button-start-analysis"
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button
+                onClick={() => applyPreset("quick")}
+                className={`p-4 rounded-lg border text-left transition-colors ${
+                  preset === "quick"
+                    ? "border-amber-500 bg-amber-600/15"
+                    : "border-gray-700 bg-gray-900 hover:border-gray-600"
+                }`}
+                data-testid="button-preset-quick"
               >
-                {analyzeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
-                Start Analysis ({selectedModules.length} modules)
-              </Button>
+                <div className="flex items-center gap-2 mb-1">
+                  <Gauge className="w-4 h-4 text-amber-400" />
+                  <span className="font-semibold text-gray-100">Quick</span>
+                </div>
+                <p className="text-xs text-gray-400">3 core modules. ~10-15 min for a full novel.</p>
+              </button>
+              <button
+                onClick={() => applyPreset("full")}
+                className={`p-4 rounded-lg border text-left transition-colors ${
+                  preset === "full"
+                    ? "border-amber-500 bg-amber-600/15"
+                    : "border-gray-700 bg-gray-900 hover:border-gray-600"
+                }`}
+                data-testid="button-preset-full"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  <span className="font-semibold text-gray-100">Full</span>
+                </div>
+                <p className="text-xs text-gray-400">8 modules in parallel. ~15-25 min for a full novel.</p>
+              </button>
+            </div>
 
-              {analyzeMutation.isError && (
-                <p className="text-red-400 text-sm" data-testid="text-analysis-error">
-                  {(analyzeMutation.error as Error).message}
-                </p>
-              )}
-            </CardContent>
-          </Card>
+            <Card className="bg-gray-900 border-amber-900/20 mb-6">
+              <CardHeader>
+                <CardTitle className="text-gray-100 text-lg flex items-center justify-between">
+                  <span>Modules</span>
+                  {preset === "custom" && <Badge variant="outline" className="border-gray-600 text-gray-400 text-xs">Custom</Badge>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {MODULES.map((mod) => (
+                  <div key={mod.key} className="flex items-center gap-3">
+                    <Checkbox
+                      id={mod.key}
+                      checked={selectedModules.includes(mod.key)}
+                      onCheckedChange={() => toggleModule(mod.key)}
+                      className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+                      data-testid={`checkbox-module-${mod.key}`}
+                    />
+                    <Label htmlFor={mod.key} className="text-gray-300 cursor-pointer">{mod.label}</Label>
+                  </div>
+                ))}
+
+                <Button
+                  onClick={() => analyzeMutation.mutate()}
+                  disabled={selectedModules.length === 0 || analyzeMutation.isPending}
+                  className="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold"
+                  data-testid="button-start-analysis"
+                >
+                  {analyzeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+                  Start Analysis ({selectedModules.length} modules)
+                </Button>
+
+                {analyzeMutation.isError && (
+                  <p className="text-red-400 text-sm" data-testid="text-analysis-error">
+                    {(analyzeMutation.error as Error).message}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
 
         {jobId && jobStatus && (

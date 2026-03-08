@@ -57,22 +57,36 @@ Chapter-by-chapter book writing with autopilot mode (32-chapter loop), narrative
 
 ### Analysis Pipeline
 1. **Upload**: Manuscript (txt/docx) + optional outline + story bible
-2. **Parse**: Chapter detection (regex patterns for Chapter 1, Chapter One, Roman numerals, etc.)
-3. **Chunk**: Group chapters into 3-5 chapter chunks for analysis
+2. **Parse**: Chapter detection (markdown headings primary, regex patterns fallback)
+3. **Chunk**: Group chapters into 4-12 chapter chunks (default 8) for analysis
 4. **Analyze**: Run selected modules on each chunk with accumulating memory context
+   - **Phase 1 (serial)**: Memory-updating modules run first (editorial_assessment → character_tracker) to build context
+   - **Phase 2 (parallel)**: All remaining modules run concurrently (dev editor, copy editor, proofreader, fact checker, structure analyzer, scene scanner, beta reader)
+   - Beta reader profiles also run in parallel within their module
 5. **Synthesize**: Merge/dedup issues, generate editorial reports
 6. **Report**: Render structured data into polished markdown reports
 
+### Analysis Presets
+- **Quick**: 3 core modules (editorial_assessment, character_tracker, developmental_editor) — ~10-15 min for a full novel
+- **Full**: 8 modules (all except beta_reader by default) — ~15-25 min for a full novel
+- **Custom**: User picks any combination of modules
+
 ### Analysis Modules (9)
-- **Editorial Assessment** — High-level editorial evaluation
-- **Developmental Editor** — Pacing, stakes, causality, character arcs, scene construction
-- **Copy Editor** — Prose clarity, voice consistency, dialogue, clichés, show-don't-tell
-- **Proofreader** — Grammar, punctuation, formatting
-- **Fact Checker** — Internal consistency + external accuracy
-- **Beta Reader** — 5 simulated reader profiles (Genre Enthusiast, Casual Commercial, Emotion-First, Pacing-Sensitive, Critical Craft)
-- **Structure Analyzer** — Narrative structure beats (3-act, Save the Cat, etc.)
-- **Character Tracker** — Character state changes, relationships, injuries, continuity
-- **Scene Scanner** — Scene purpose, conflict, change, necessity rating
+- **Editorial Assessment** — High-level editorial evaluation (memory-updating, runs first)
+- **Character Tracker** — Character state changes, relationships, injuries, continuity (memory-updating, runs second)
+- **Developmental Editor** — Pacing, stakes, causality, character arcs, scene construction (parallel)
+- **Copy Editor** — Prose clarity, voice consistency, dialogue, clichés, show-don't-tell (parallel)
+- **Proofreader** — Grammar, punctuation, formatting (parallel)
+- **Fact Checker** — Internal consistency + external accuracy (parallel)
+- **Beta Reader** — 5 simulated reader profiles, all profiles run in parallel (parallel)
+- **Structure Analyzer** — Narrative structure beats (3-act, Save the Cat, etc.) (parallel)
+- **Scene Scanner** — Scene purpose, conflict, change, necessity rating (parallel)
+
+### Performance
+- Chunk size: 8 chapters/chunk (was 4); 58-chapter novel → 7 chunks (was 14)
+- Per chunk: 2 serial memory calls + 1 parallel batch of remaining modules
+- Total serial steps: ~7 chunks × 3 steps = ~21 (was 183 serial calls)
+- Estimated time: ~15-25 min full analysis (was 60+ min)
 
 ### Memory Layer
 Accumulates across chunks: outline, character profiles, plot threads, world rules, continuity notes, issues, resolution timeline. Each subsequent chunk analysis receives prior context.

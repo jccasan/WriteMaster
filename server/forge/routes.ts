@@ -187,6 +187,9 @@ router.post("/projects/:id/reparse", async (req: Request, res: Response) => {
       return;
     }
 
+    await prisma.sceneAnalysis.deleteMany({ where: { revisionVersionId: revision.id } });
+    await prisma.factCheckItem.deleteMany({ where: { revisionVersionId: revision.id } });
+    await prisma.issue.deleteMany({ where: { revisionVersionId: revision.id } });
     await prisma.chapter.deleteMany({ where: { revisionVersionId: revision.id } });
     await prisma.chunk.deleteMany({ where: { revisionVersionId: revision.id } });
 
