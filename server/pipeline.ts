@@ -351,22 +351,65 @@ ${DEFAULT_DECISION_RULE}`,
 
     case 9: {
       const result = await callLLM(
-        `You are a developmental editor and logic expert. Rigorously analyze the Story Dossier below for internal consistency and plausibility.
+        `You are auditing an early-stage story dossier for logical consistency and plausibility.
+The dossier contains a premise, pitch, character list, and world-building elements for a story concept.
+Your task is to identify logical inconsistencies, implausible plot elements, character-world mismatches, and world-building issues that undermine internal coherence.
 
-STORY DOSSIER:
+<dossier>
 ${state.dossier_v2}
+</dossier>
 
-Check for ALL of the following:
-1. TIMELINE LOGIC: Do events happen in a sequence that makes sense? Is there a clear ticking clock or escalating deadline?
-2. CHARACTER CONSISTENCY: Do characters act in ways that contradict their stated motivations, Lie/Truth arcs, or abilities? Does the antagonist function as a dark mirror of the protagonist?
-3. WORLD-BUILDING RULES: Does any plot beat violate the established rules of the world's magic, technology, or social structure? Does the world serve as a thematic mirror?
-4. PLOT PLAUSIBILITY (ECONOMY OF CONVENIENCE): Are there any moments where a character does something convenient rather than logical? Are revelations earned through character action or handed out by authorial convenience? Flag every coincidence.
-5. STAKES CONSISTENCY: Are the stakes clearly established and consistently maintained? Do pinch points show the antagonist's power? Does the midpoint represent a true shift from reaction to action?
-6. ARC INTEGRITY: Is the protagonist's Lie→Truth journey complete? Is the Ghost concrete? Does the climax force a conscious choice? Does the ending echo the opening?
-7. CHEKHOV'S ARMORY: Are there introduced elements (weapons, abilities, relationships, secrets) that never pay off? Are there payoffs that lack proper setup?
+Before producing your final audit, reason through these steps internally (do not include this reasoning in your output):
+- Identify the core premise and pitch.
+- List all characters and their roles, goals, and abilities.
+- Record all stated world-building rules and key details.
+- Check each of the six audit categories below systematically.
+- Note any contradictions, implausibilities, or logic gaps.
+- For each issue, think through what specifically breaks and how it could be resolved.
 
-For each issue found, write a specific, actionable fix.
-Format as a numbered list titled: LOGIC IMPROVEMENT PLAN`,
+Perform the six audit checks below. Structure your response as a six-section audit report.
+
+1. PREMISE LOGIC CHECK
+- Does the core premise hold together internally?
+- Are the central conflict and stakes consistent with the stated world rules?
+- Does the "what if" setup make logical sense?
+
+2. CHARACTER-WORLD FIT
+- Do character roles, goals, and capabilities make sense within the world?
+- Are any characters' abilities or positions inconsistent with the world's rules?
+- Do relationships and motivations align with the premise and tone?
+
+3. WORLD-BUILDING COHERENCE
+- Do the world's elements support the premise?
+- Are there contradictions between different sections or rules?
+- Do geography, tech/magic level, and social structures operate logically together?
+
+4. PLOT SETUP PLAUSIBILITY
+- Are there logistical impossibilities in the setup?
+- Are there motivation gaps that would stop the story from starting?
+- Does the antagonist's power make sense relative to the protagonist?
+- Is the inciting incident plausible?
+
+5. EARLY-STAGE CONVENIENCE FLAGS
+- Does the premise rely on unlikely coincidences or contrived events?
+- Do any characters exist only to solve story problems?
+- Are there perfect allies or resources that feel forced?
+- Are there "because the plot needs it" moments with no in-world logic?
+
+6. SPECIFIC FIXES
+For every major issue identified in sections 1-5, provide a fix block. Each fix should follow this structure:
+
+Issue: [Brief description of the logical flaw]
+Why it breaks: [Explanation of inconsistency or implausibility]
+Suggested fix: [Specific, actionable recommendation that preserves the core appeal]
+
+If no significant issues were identified in sections 1-5, write:
+"No significant issues identified. The dossier is internally consistent."
+
+For sections 1-5, if no issues exist for a particular category, write:
+"No significant issues identified in this category."
+
+Your response should include only the six-section audit report.`,
         "powerful"
       );
       state.logic_check = result;
@@ -377,17 +420,19 @@ Format as a numbered list titled: LOGIC IMPROVEMENT PLAN`,
 
     case 10: {
       const result = await callLLM(
-        `You are a precise editor. Implement the logic improvement plan into the Story Dossier.
+        `You are a precise editor. Implement the fixes from the Logic Audit Report into the Story Dossier.
 
 STORY DOSSIER:
 ${state.dossier_v2}
 
-LOGIC IMPROVEMENT PLAN:
+LOGIC AUDIT REPORT:
 ${state.logic_check}
 
 Instructions:
-- Implement ONLY the changes in the Logic Improvement Plan
-- Do NOT change anything not flagged
+- The audit report has 6 sections: Premise Logic, Character-World Fit, World-Building Coherence, Plot Setup Plausibility, Early-Stage Convenience Flags, and Specific Fixes
+- Implement ONLY the fixes described in Section 6 (Specific Fixes) — each has an Issue, Why it breaks, and Suggested fix
+- Do NOT change anything that was not explicitly flagged with a fix in Section 6
+- If Section 6 says "No significant issues identified," reproduce the dossier unchanged
 - Reproduce the ENTIRE dossier with changes applied
 - Maintain all Markdown section headers
 This is the FINAL version of the dossier.
