@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, BookOpen } from "lucide-react";
+import { Loader2, BookOpen, Zap } from "lucide-react";
 
 export default function ForgeBetaReaders() {
   const [, params] = useRoute("/forge/project/:id/beta-readers");
@@ -26,7 +26,14 @@ export default function ForgeBetaReaders() {
         ) : !responses || responses.length === 0 ? (
           <div className="text-center py-16" data-testid="empty-betareaders">
             <BookOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No beta reader responses yet. Run the Beta Reader analysis.</p>
+            <p className="text-gray-400 mb-4">No beta reader responses yet.</p>
+            <Link
+              href={`/forge/project/${projectId}/analyze`}
+              className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
+              data-testid="link-run-beta-reader"
+            >
+              <Zap className="w-4 h-4" /> Run Beta Reader Analysis
+            </Link>
           </div>
         ) : (
           <div className="space-y-6">

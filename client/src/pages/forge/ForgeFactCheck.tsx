@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Zap } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   verified: "bg-green-600 text-white",
@@ -42,7 +42,14 @@ export default function ForgeFactCheck() {
         ) : !items || items.length === 0 ? (
           <div className="text-center py-16" data-testid="empty-factcheck">
             <Search className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No fact check items yet. Run the Fact Checker analysis.</p>
+            <p className="text-gray-400 mb-4">No fact check items yet.</p>
+            <Link
+              href={`/forge/project/${projectId}/analyze`}
+              className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
+              data-testid="link-run-fact-checker"
+            >
+              <Zap className="w-4 h-4" /> Run Fact Checker
+            </Link>
           </div>
         ) : (
           <div className="space-y-6">

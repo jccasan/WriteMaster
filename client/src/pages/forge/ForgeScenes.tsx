@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Film } from "lucide-react";
+import { Loader2, Film, Zap } from "lucide-react";
 
 function ratingColor(rating: number | null | undefined): string {
   if (!rating) return "bg-gray-600 text-gray-200";
@@ -34,7 +34,14 @@ export default function ForgeScenes() {
         ) : !scenes || scenes.length === 0 ? (
           <div className="text-center py-16" data-testid="empty-scenes">
             <Film className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No scene analyses yet. Run the Scene Scanner.</p>
+            <p className="text-gray-400 mb-4">No scene analyses yet.</p>
+            <Link
+              href={`/forge/project/${projectId}/analyze`}
+              className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
+              data-testid="link-run-scene-scanner"
+            >
+              <Zap className="w-4 h-4" /> Run Scene Scanner
+            </Link>
           </div>
         ) : (
           <Card className="bg-gray-900 border-amber-900/20 overflow-hidden">

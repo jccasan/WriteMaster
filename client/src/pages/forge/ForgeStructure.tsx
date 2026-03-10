@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, GitBranch } from "lucide-react";
+import { Loader2, GitBranch, Zap } from "lucide-react";
 import { useMemo } from "react";
 
 const BEAT_COLORS: Record<string, string> = {
@@ -88,7 +88,14 @@ export default function ForgeStructure() {
         ) : !beats || beats.length === 0 ? (
           <div className="text-center py-16" data-testid="empty-structure">
             <GitBranch className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No structure beats detected. Run the Structure Analyzer.</p>
+            <p className="text-gray-400 mb-4">No structure beats detected.</p>
+            <Link
+              href={`/forge/project/${projectId}/analyze`}
+              className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
+              data-testid="link-run-structure-analyzer"
+            >
+              <Zap className="w-4 h-4" /> Run Structure Analyzer
+            </Link>
           </div>
         ) : (
           <>
