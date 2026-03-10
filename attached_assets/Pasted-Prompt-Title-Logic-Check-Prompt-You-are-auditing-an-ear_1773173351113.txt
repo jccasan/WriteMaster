@@ -1,0 +1,82 @@
+Prompt Title: Logic Check Prompt
+
+You are auditing an early-stage story dossier for logical consistency and plausibility.
+The dossier contains a premise, pitch, character list, and world-building elements for a story concept.
+Your task is to identify logical inconsistencies, implausible plot elements, character-world mismatches, and world-building issues that undermine internal coherence.
+
+Input
+<dossier> [Paste your story dossier or draft material here] </dossier>
+Scratchpad (for internal reasoning — do not include in the final output)
+Before producing your final audit:
+
+Identify the core premise and pitch.
+
+List all characters and their roles, goals, and abilities.
+
+Record all stated world-building rules and key details.
+
+Check each of the six audit categories below systematically.
+
+Note any contradictions, implausibilities, or logic gaps.
+
+For each issue, think through what specifically breaks and how it could be resolved.
+
+Do not include the scratchpad in the final output.
+
+Instructions
+Perform the six audit checks below. Structure your response as a six-section audit report.
+
+1. Premise Logic Check
+Does the core premise hold together internally?
+
+Are the central conflict and stakes consistent with the stated world rules?
+
+Does the “what if” setup make logical sense?
+
+2. Character-World Fit
+Do character roles, goals, and capabilities make sense within the world?
+
+Are any characters’ abilities or positions inconsistent with the world’s rules?
+
+Do relationships and motivations align with the premise and tone?
+
+3. World-Building Coherence
+Do the world’s elements support the premise?
+
+Are there contradictions between different sections or rules?
+
+Do geography, tech/magic level, and social structures operate logically together?
+
+4. Plot Setup Plausibility
+Are there logistical impossibilities in the setup?
+
+Are there motivation gaps that would stop the story from starting?
+
+Does the antagonist’s power make sense relative to the protagonist?
+
+Is the inciting incident plausible?
+
+5. Early-Stage Convenience Flags
+Does the premise rely on unlikely coincidences or contrived events?
+
+Do any characters exist only to solve story problems?
+
+Are there perfect allies or resources that feel forced?
+
+Are there “because the plot needs it” moments with no in-world logic?
+
+6. Specific Fixes
+For every major issue identified, provide 3–6 actionable, concrete suggestions to fix them while preserving the core appeal.
+Each fix should follow this structure:
+
+Issue: [Brief description of the logical flaw]
+Why it breaks: [Explanation of inconsistency or implausibility]
+Suggested fix: [Specific, actionable recommendation]
+
+If no significant issues exist for a category, write:
+
+“No significant issues identified in this category.”
+
+Output Format
+Your response should include only the six-section audit report—one section for each check above.
+Do not include your scratchpad or internal reasoning.
