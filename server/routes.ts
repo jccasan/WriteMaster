@@ -1,5 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { readFile, writeFile, readdir, mkdir, unlink } from "fs/promises";
+import { existsSync } from "fs";
+import path from "path";
 import { storage } from "./storage";
 import type { BookChapter, NarrativeSliders } from "./storage";
 import { runStep, getStepName } from "./pipeline";
@@ -9,6 +12,21 @@ import {
   CHAPTER_SUMMARY_TEMPLATE, NARRATIVE_SLIDER_RULES, ANTI_SLOP_FILTER,
   CONTEXT_ENGINEERING_RULES, DEFAULT_DECISION_RULE, LAYERED_GENERATION_WORKFLOW
 } from "./writing-rules";
+
+const DRAFTS_DIR = path.resolve("data/chapter-drafts");
+if (!existsSync(DRAFTS_DIR)) mkdir(DRAFTS_DIR, { recursive: true }).catch(() => {});
+
+const SAFE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
+
+interface ChapterDraft {
+  id: string;
+  title: string;
+  prompt: string;
+  genre: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -788,6 +806,74 @@ Output only the chapter text.`,
       res.json({ content: result });
     } catch (err: any) {
       console.error("[Standalone Chapter Write Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/chapter-drafts", async (_req, res) => {
+    try {
+      if (!existsSync(DRAFTS_DIR)) { res.json([]); return; }
+      const files = await readdir(DRAFTS_DIR);
+      const drafts: ChapterDraft[] = [];
+      for (const file of files) {
+        if (!file.endsWith(".json")) continue;
+        try {
+          const raw = await readFile(path.join(DRAFTS_DIR, file), "utf-8");
+          drafts.push(JSON.parse(raw));
+        } catch { continue; }
+      }
+      drafts.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      res.json(drafts);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/chapter-drafts/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      if (!SAFE_ID.test(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+      const fp = path.join(DRAFTS_DIR, `${id}.json`);
+      if (!existsSync(fp)) { res.status(404).json({ error: "Not found" }); return; }
+      const raw = await readFile(fp, "utf-8");
+      res.json(JSON.parse(raw));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/chapter-drafts", async (req, res) => {
+    try {
+      const { id, prompt, genre, content } = req.body;
+      const now = new Date().toISOString();
+      const draftId = (id && SAFE_ID.test(id)) ? id : Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const titleLine = (prompt || "").split("\n")[0].slice(0, 80) || "Untitled Chapter";
+      const existing = existsSync(path.join(DRAFTS_DIR, `${draftId}.json`));
+      const draft: ChapterDraft = {
+        id: draftId,
+        title: titleLine,
+        prompt: prompt || "",
+        genre: genre || "",
+        content: content || "",
+        created_at: existing ? (JSON.parse(await readFile(path.join(DRAFTS_DIR, `${draftId}.json`), "utf-8")).created_at || now) : now,
+        updated_at: now,
+      };
+      await writeFile(path.join(DRAFTS_DIR, `${draftId}.json`), JSON.stringify(draft, null, 2));
+      res.json(draft);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/chapter-drafts/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      if (!SAFE_ID.test(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+      const fp = path.join(DRAFTS_DIR, `${id}.json`);
+      if (!existsSync(fp)) { res.status(404).json({ error: "Not found" }); return; }
+      await unlink(fp);
+      res.json({ success: true });
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });

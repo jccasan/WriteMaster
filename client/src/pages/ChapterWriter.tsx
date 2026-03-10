@@ -1,10 +1,23 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, PenTool, Copy, Check, Download, RotateCcw } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, PenTool, Copy, Check, Download, RotateCcw, Clock, Trash2 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import Layout from "@/components/Layout";
+
+interface SavedDraft {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  prompt: string;
+  genre: string;
+  content: string;
+}
 
 export default function ChapterWriter() {
   const [prompt, setPrompt] = useState("");
@@ -12,8 +25,15 @@ export default function ChapterWriter() {
   const [sliders, setSliders] = useState<NarrativeSliderValues>({ ...DEFAULT_SLIDERS });
   const [generating, setGenerating] = useState(false);
   const [content, setContent] = useState<string | null>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
+
+  const { data: drafts } = useQuery<SavedDraft[]>({
+    queryKey: ["/api/chapter-drafts"],
+  });
 
   const handleWrite = async () => {
     if (!prompt.trim()) return;
@@ -32,6 +52,25 @@ export default function ChapterWriter() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to write chapter");
       setContent(data.content);
+
+      try {
+        const saveRes = await fetch("/api/chapter-drafts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: currentDraftId,
+            prompt: prompt.trim(),
+            genre: genre.trim(),
+            content: data.content,
+          }),
+        });
+        if (saveRes.ok) {
+          const saved = await saveRes.json();
+          setCurrentDraftId(saved.id);
+          queryClient.invalidateQueries({ queryKey: ["/api/chapter-drafts"] });
+        }
+      } catch {}
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -61,6 +100,34 @@ export default function ChapterWriter() {
     setContent(null);
     setError(null);
     setCopied(false);
+    setCurrentDraftId(null);
+    setPrompt("");
+    setGenre("");
+    setSliders({ ...DEFAULT_SLIDERS });
+  };
+
+  const loadDraft = (draft: SavedDraft) => {
+    setPrompt(draft.prompt);
+    setGenre(draft.genre);
+    setContent(draft.content);
+    setCurrentDraftId(draft.id);
+    setError(null);
+    setCopied(false);
+  };
+
+  const deleteDraft = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = await fetch(`/api/chapter-drafts/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: ["/api/chapter-drafts"] });
+      if (currentDraftId === id) handleReset();
+    }
+  };
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+      " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   };
 
   if (content) {
@@ -120,6 +187,45 @@ export default function ChapterWriter() {
             Describe what you want — a scene, a situation, characters, a mood — and the AI will write a polished chapter from your prompt.
           </p>
         </div>
+
+        {drafts && drafts.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
+              <Clock className="w-4 h-4" /> Previous Chapters
+            </h3>
+            <div className="grid gap-2">
+              {drafts.map((draft) => (
+                <Card
+                  key={draft.id}
+                  className="cursor-pointer hover:border-primary/40 transition-colors"
+                  onClick={() => loadDraft(draft)}
+                  data-testid={`card-draft-${draft.id}`}
+                >
+                  <CardContent className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" data-testid={`text-draft-title-${draft.id}`}>
+                        {draft.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {draft.genre && <span className="mr-2">{draft.genre}</span>}
+                        {formatDate(draft.updated_at)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={(e) => deleteDraft(draft.id, e)}
+                      data-testid={`button-delete-draft-${draft.id}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-6">
           <div>
