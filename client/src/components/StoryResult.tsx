@@ -119,101 +119,103 @@ export default function StoryResult({ projectId, onReset }: StoryResultProps) {
         </div>
       </div>
 
-      <div className="bg-card border border-border shadow-xl rounded-xl overflow-hidden">
-        <Tabs defaultValue="full" className="w-full">
-          <div className="border-b border-border bg-muted/20 px-4 pt-4">
-            <TabsList className="bg-transparent h-auto p-0 gap-6">
-              {["full", "pitch", "raw"].map((tab) => (
-                <TabsTrigger
-                  key={tab}
-                  value={tab}
-                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 pb-3 pt-2 text-base font-medium capitalize"
-                >
-                  {tab === "full" ? "Full Dossier" : tab === "pitch" ? "Best Pitch" : "Raw Markdown"}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+      <div>
+        <div className="bg-card border border-border shadow-xl rounded-xl overflow-hidden">
+          <Tabs defaultValue="full" className="w-full">
+            <div className="border-b border-border bg-muted/20 px-4 pt-4">
+              <TabsList className="bg-transparent h-auto p-0 gap-6">
+                {["full", "pitch", "raw"].map((tab) => (
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 pb-3 pt-2 text-base font-medium capitalize"
+                  >
+                    {tab === "full" ? "Full Dossier" : tab === "pitch" ? "Best Pitch" : "Raw Markdown"}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
 
-          <div className="p-6 md:p-8">
-            <TabsContent value="full" className="mt-0 focus-visible:outline-none">
-              <div className="flex items-center justify-end gap-1 mb-3">
-                {editingDossier ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={async () => {
-                        setDossierMarkdown(dossierDraftRef.current);
-                        setEditingDossier(false);
-                        try {
-                          await fetch(`/api/project/${projectId}/dossier`, {
-                            method: "PUT",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ dossier: dossierDraftRef.current }),
-                          });
-                        } catch {}
-                      }}
-                      className="h-7 gap-1 text-xs"
-                      data-testid="button-save-dossier"
-                    >
-                      <Check className="w-3 h-3" /> Save
-                    </Button>
+            <div className="p-6 md:p-8">
+              <TabsContent value="full" className="mt-0 focus-visible:outline-none">
+                <div className="flex items-center justify-end gap-1 mb-3">
+                  {editingDossier ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={async () => {
+                          setDossierMarkdown(dossierDraftRef.current);
+                          setEditingDossier(false);
+                          try {
+                            await fetch(`/api/project/${projectId}/dossier`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ dossier: dossierDraftRef.current }),
+                            });
+                          } catch {}
+                        }}
+                        className="h-7 gap-1 text-xs"
+                        data-testid="button-save-dossier"
+                      >
+                        <Check className="w-3 h-3" /> Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingDossier(false)}
+                        className="h-7 gap-1 text-xs"
+                      >
+                        <X className="w-3 h-3" /> Cancel
+                      </Button>
+                    </>
+                  ) : (
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setEditingDossier(false)}
+                      onClick={() => {
+                        dossierDraftRef.current = dossierMarkdown;
+                        setEditingDossier(true);
+                      }}
                       className="h-7 gap-1 text-xs"
+                      data-testid="button-edit-dossier"
                     >
-                      <X className="w-3 h-3" /> Cancel
+                      <Pencil className="w-3 h-3" /> Edit
                     </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      dossierDraftRef.current = dossierMarkdown;
-                      setEditingDossier(true);
-                    }}
-                    className="h-7 gap-1 text-xs"
-                    data-testid="button-edit-dossier"
-                  >
-                    <Pencil className="w-3 h-3" /> Edit
-                  </Button>
-                )}
-              </div>
-              <RichTextEditor
-                content={dossierMarkdown}
-                readOnly={!editingDossier}
-                onChange={(_html, plain) => {
-                  dossierDraftRef.current = plain;
-                }}
-                maxHeight="600px"
-                minHeight="300px"
-                placeholder="Story dossier..."
-                data-testid="editor-dossier"
-              />
-            </TabsContent>
-
-            <TabsContent value="pitch" className="mt-0 focus-visible:outline-none">
-              <div className="bg-muted/10 border border-border/50 rounded-lg p-6">
-                <h3 className="text-xl font-serif font-semibold text-primary mb-4">Selected Best Pitch</h3>
-                <div className="text-base text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                  {bestPitch}
+                  )}
                 </div>
-              </div>
-            </TabsContent>
+                <RichTextEditor
+                  content={dossierMarkdown}
+                  readOnly={!editingDossier}
+                  onChange={(_html, plain) => {
+                    dossierDraftRef.current = plain;
+                  }}
+                  maxHeight="600px"
+                  minHeight="300px"
+                  placeholder="Story dossier..."
+                  data-testid="editor-dossier"
+                />
+              </TabsContent>
 
-            <TabsContent value="raw" className="mt-0 focus-visible:outline-none">
-              <ScrollArea className="h-[600px]">
-                <pre className="text-sm font-mono bg-muted/30 p-4 rounded-lg whitespace-pre-wrap break-words text-foreground/80">
-                  {dossierMarkdown}
-                </pre>
-              </ScrollArea>
-            </TabsContent>
-          </div>
-        </Tabs>
+              <TabsContent value="pitch" className="mt-0 focus-visible:outline-none">
+                <div className="bg-muted/10 border border-border/50 rounded-lg p-6">
+                  <h3 className="text-xl font-serif font-semibold text-primary mb-4">Selected Best Pitch</h3>
+                  <div className="text-base text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                    {bestPitch}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="raw" className="mt-0 focus-visible:outline-none">
+                <ScrollArea className="h-[600px]">
+                  <pre className="text-sm font-mono bg-muted/30 p-4 rounded-lg whitespace-pre-wrap break-words text-foreground/80">
+                    {dossierMarkdown}
+                  </pre>
+                </ScrollArea>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
