@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import NewProjectDialog from "@/components/forge/NewProjectDialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,28 +46,60 @@ export default function ForgeDashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer" onClick={() => { if (projects?.[0]) navigate(`/forge/project/${projects[0].id}/issues`); }}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 bg-orange-600/20 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-orange-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-100" data-testid="stat-issues">{totalIssues}</p>
-                <p className="text-xs text-gray-400">Total Issues</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer" onClick={() => { if (projects?.[0]) navigate(`/forge/project/${projects[0].id}/reports`); }}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 bg-amber-600/20 rounded-lg">
-                <BookOpen className="w-5 h-5 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-100" data-testid="stat-reports">{totalReports}</p>
-                <p className="text-xs text-gray-400">Reports</p>
-              </div>
-            </CardContent>
-          </Card>
+          {projects?.[0] ? (
+            <Link href={`/forge/project/${projects[0].id}/issues`} className="block no-underline">
+              <Card className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer h-full">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 bg-orange-600/20 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-100" data-testid="stat-issues">{totalIssues}</p>
+                    <p className="text-xs text-gray-400">Total Issues</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ) : (
+            <Card className="bg-gray-900 border-amber-900/20">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-orange-600/20 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-orange-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-100" data-testid="stat-issues">{totalIssues}</p>
+                  <p className="text-xs text-gray-400">Total Issues</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {projects?.[0] ? (
+            <Link href={`/forge/project/${projects[0].id}/reports`} className="block no-underline">
+              <Card className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer h-full">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 bg-amber-600/20 rounded-lg">
+                    <BookOpen className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-100" data-testid="stat-reports">{totalReports}</p>
+                    <p className="text-xs text-gray-400">Reports</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ) : (
+            <Card className="bg-gray-900 border-amber-900/20">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-amber-600/20 rounded-lg">
+                  <BookOpen className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-100" data-testid="stat-reports">{totalReports}</p>
+                  <p className="text-xs text-gray-400">Reports</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {isLoading ? (
@@ -87,39 +119,41 @@ export default function ForgeDashboard() {
               const revCount = project.revisions?.length || 0;
               const issueCount = project.revisions?.reduce((s: number, r: any) => s + (r._count?.issues || 0), 0) || 0;
               return (
-                <Card
+                <Link
                   key={project.id}
-                  className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer group"
-                  onClick={() => navigate(`/forge/project/${project.id}`)}
+                  href={`/forge/project/${project.id}`}
+                  className="block no-underline"
                   data-testid={`card-project-${project.id}`}
                 >
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-gray-100 group-hover:text-amber-400 transition-colors truncate" data-testid={`text-project-title-${project.id}`}>
-                        {project.title}
-                      </h3>
-                      {project.genre && (
-                        <Badge variant="outline" className="border-amber-900/40 text-amber-400 text-xs shrink-0 ml-2" data-testid={`badge-genre-${project.id}`}>
-                          {project.genre}
-                        </Badge>
+                  <Card className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer group h-full">
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="font-semibold text-gray-100 group-hover:text-amber-400 transition-colors truncate" data-testid={`text-project-title-${project.id}`}>
+                          {project.title}
+                        </h3>
+                        {project.genre && (
+                          <Badge variant="outline" className="border-amber-900/40 text-amber-400 text-xs shrink-0 ml-2" data-testid={`badge-genre-${project.id}`}>
+                            {project.genre}
+                          </Badge>
+                        )}
+                      </div>
+                      {project.description && (
+                        <p className="text-sm text-gray-400 mb-3 line-clamp-2">{project.description}</p>
                       )}
-                    </div>
-                    {project.description && (
-                      <p className="text-sm text-gray-400 mb-3 line-clamp-2">{project.description}</p>
-                    )}
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <GitBranch className="w-3 h-3" />
-                        {revCount} rev{revCount !== 1 ? "s" : ""}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        {issueCount} issue{issueCount !== 1 ? "s" : ""}
-                      </span>
-                      <span className="ml-auto">{formatDate(project.createdAt)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <GitBranch className="w-3 h-3" />
+                          {revCount} rev{revCount !== 1 ? "s" : ""}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          {issueCount} issue{issueCount !== 1 ? "s" : ""}
+                        </span>
+                        <span className="ml-auto">{formatDate(project.createdAt)}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               );
             })}
           </div>
