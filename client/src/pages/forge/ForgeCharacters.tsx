@@ -13,18 +13,45 @@ function parseJson(val: any): any {
   return val;
 }
 
-function renderList(items: any): React.ReactNode {
+function formatItem(item: any): string {
+  if (typeof item === "string") return item;
+  if (item && typeof item === "object") {
+    if (item.character && item.type) {
+      let label = `${item.character} (${item.type})`;
+      if (item.notes) label += ` — ${item.notes}`;
+      return label;
+    }
+    if (item.name) return item.name;
+    if (item.description) return item.description;
+    const vals = Object.values(item).filter(Boolean);
+    if (vals.length > 0) return vals.join(" — ");
+  }
+  return JSON.stringify(item);
+}
+
+function renderList(items: any, asBlock = false): React.ReactNode {
   const parsed = parseJson(items);
   if (!parsed) return null;
   if (Array.isArray(parsed)) {
+    if (asBlock) {
+      return (
+        <div className="space-y-1.5">
+          {parsed.map((item, i) => (
+            <div key={i} className="text-sm text-gray-300 bg-gray-800/50 rounded px-2.5 py-1.5 leading-snug">
+              {formatItem(item)}
+            </div>
+          ))}
+        </div>
+      );
+    }
     return parsed.map((item, i) => (
       <Badge key={i} variant="outline" className="border-gray-700 text-gray-300 text-xs mr-1 mb-1">
-        {typeof item === "string" ? item : JSON.stringify(item)}
+        {formatItem(item)}
       </Badge>
     ));
   }
   if (typeof parsed === "string") return <span className="text-gray-300 text-sm">{parsed}</span>;
-  return <span className="text-gray-300 text-sm">{JSON.stringify(parsed)}</span>;
+  return <span className="text-gray-300 text-sm">{formatItem(parsed)}</span>;
 }
 
 export default function ForgeCharacters() {
@@ -81,14 +108,14 @@ export default function ForgeCharacters() {
                   {char.relationshipsJson && (
                     <div>
                       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Relationships</p>
-                      <div className="flex flex-wrap">{renderList(char.relationshipsJson)}</div>
+                      {renderList(char.relationshipsJson, true)}
                     </div>
                   )}
 
                   {char.injuriesJson && (
                     <div>
                       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Injuries</p>
-                      <div className="flex flex-wrap">{renderList(char.injuriesJson)}</div>
+                      {renderList(char.injuriesJson, true)}
                     </div>
                   )}
 
