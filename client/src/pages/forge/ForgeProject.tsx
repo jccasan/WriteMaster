@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { useState } from "react";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,37 +78,49 @@ export default function ForgeProject() {
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           {[
-            { label: "Revisions", value: project.revisions?.length || 0, icon: <GitBranch className="w-4 h-4" /> },
-            { label: "Chapters", value: chapters.length, icon: <FileText className="w-4 h-4" /> },
-            { label: "Issues", value: counts.issues || 0, icon: <AlertTriangle className="w-4 h-4" /> },
-            { label: "Reports", value: counts.reports || 0, icon: <BookOpen className="w-4 h-4" /> },
-            { label: "Characters", value: counts.characters || 0, icon: <Users className="w-4 h-4" /> },
-          ].map((stat) => (
-            <Card key={stat.label} className="bg-gray-900 border-amber-900/20">
-              <CardContent className="p-3 flex items-center gap-2">
-                <div className="text-amber-500">{stat.icon}</div>
-                <div>
-                  <p className="text-lg font-bold text-gray-100" data-testid={`stat-${stat.label.toLowerCase()}`}>{stat.value}</p>
-                  <p className="text-xs text-gray-500">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+            { label: "Revisions", value: project.revisions?.length || 0, icon: <GitBranch className="w-4 h-4" />, href: null },
+            { label: "Chapters", value: chapters.length, icon: <FileText className="w-4 h-4" />, href: null },
+            { label: "Issues", value: counts.issues || 0, icon: <AlertTriangle className="w-4 h-4" />, href: `/forge/project/${projectId}/issues` },
+            { label: "Reports", value: counts.reports || 0, icon: <BookOpen className="w-4 h-4" />, href: `/forge/project/${projectId}/reports` },
+            { label: "Characters", value: counts.characters || 0, icon: <Users className="w-4 h-4" />, href: `/forge/project/${projectId}/characters` },
+          ].map((stat) => {
+            const content = (
+              <Card className={`bg-gray-900 border-amber-900/20 h-full ${stat.href ? "hover:border-amber-600/40 cursor-pointer" : ""} transition-all`}>
+                <CardContent className="p-3 flex items-center gap-2">
+                  <div className="text-amber-500">{stat.icon}</div>
+                  <div>
+                    <p className="text-lg font-bold text-gray-100" data-testid={`stat-${stat.label.toLowerCase()}`}>{stat.value}</p>
+                    <p className="text-xs text-gray-500">{stat.label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+            return stat.href ? (
+              <Link key={stat.label} href={stat.href} className="block no-underline" data-testid={`link-stat-${stat.label.toLowerCase()}`}>
+                {content}
+              </Link>
+            ) : (
+              <div key={stat.label}>{content}</div>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
-          <Button variant="outline" className="border-amber-900/30 text-amber-400 hover:bg-amber-600/20" onClick={() => navigate(`/forge/project/${projectId}/upload`)} data-testid="button-goto-upload">
-            <Upload className="w-4 h-4 mr-2" /> Upload
-          </Button>
-          <Button variant="outline" className="border-amber-900/30 text-amber-400 hover:bg-amber-600/20" onClick={() => navigate(`/forge/project/${projectId}/analyze`)} data-testid="button-goto-analyze">
-            <Zap className="w-4 h-4 mr-2" /> Analyze
-          </Button>
-          <Button variant="outline" className="border-amber-900/30 text-amber-400 hover:bg-amber-600/20" onClick={() => navigate(`/forge/project/${projectId}/reports`)} data-testid="button-goto-reports">
-            <FileText className="w-4 h-4 mr-2" /> Reports
-          </Button>
-          <Button variant="outline" className="border-amber-900/30 text-amber-400 hover:bg-amber-600/20" onClick={() => navigate(`/forge/project/${projectId}/issues`)} data-testid="button-goto-issues">
-            <AlertTriangle className="w-4 h-4 mr-2" /> Issues
-          </Button>
+          {[
+            { label: "Upload", icon: <Upload className="w-4 h-4" />, href: `/forge/project/${projectId}/upload` },
+            { label: "Analyze", icon: <Zap className="w-4 h-4" />, href: `/forge/project/${projectId}/analyze` },
+            { label: "Reports", icon: <FileText className="w-4 h-4" />, href: `/forge/project/${projectId}/reports` },
+            { label: "Issues", icon: <AlertTriangle className="w-4 h-4" />, href: `/forge/project/${projectId}/issues` },
+          ].map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
+              data-testid={`button-goto-${item.label.toLowerCase()}`}
+            >
+              {item.icon} {item.label}
+            </Link>
+          ))}
           {latestRevision?.manuscriptFileId && (
             <Button variant="outline" className="border-amber-900/30 text-amber-400 hover:bg-amber-600/20" onClick={handleReparse} disabled={reparsing} data-testid="button-reparse">
               {reparsing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
