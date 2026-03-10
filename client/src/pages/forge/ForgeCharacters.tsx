@@ -1,9 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
+import { useState } from "react";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Users, Zap } from "lucide-react";
+import RelationshipWeb from "@/components/forge/RelationshipWeb";
+import { useToast } from "@/hooks/use-toast";
 
 function parseJson(val: any): any {
   if (!val) return null;
@@ -57,11 +61,27 @@ function renderList(items: any, asBlock = false): React.ReactNode {
 export default function ForgeCharacters() {
   const [, params] = useRoute("/forge/project/:id/characters");
   const projectId = params?.id || "";
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: characters, isLoading } = useQuery<any[]>({
     queryKey: ["/api/forge/projects", projectId, "characters"],
     enabled: !!projectId,
   });
+
+  const handleSaveRelationships = async (characterId: string, relationships: any[]) => {
+    const res = await fetch(`/api/forge/characters/${characterId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ relationshipsJson: relationships, projectId }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Failed to save");
+    }
+    toast({ title: "Relationships saved" });
+    queryClient.invalidateQueries({ queryKey: ["/api/forge/projects", projectId, "characters"] });
+  };
 
   return (
     <ForgeLayout projectId={projectId}>
@@ -85,47 +105,64 @@ export default function ForgeCharacters() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {characters.map((char: any) => (
-              <Card key={char.id} className="bg-gray-900 border-amber-900/20" data-testid={`card-character-${char.id}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-amber-400 text-lg" data-testid={`text-character-name-${char.id}`}>
-                    {char.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {char.description && (
-                    <p className="text-gray-300 text-sm" data-testid={`text-character-desc-${char.id}`}>{char.description}</p>
-                  )}
+          <Tabs defaultValue="web" className="w-full">
+            <TabsList className="bg-gray-900 border border-amber-900/20 mb-4">
+              <TabsTrigger value="web" className="data-[state=active]:bg-amber-600/20 data-[state=active]:text-amber-400" data-testid="tab-relationship-web">
+                Relationship Web
+              </TabsTrigger>
+              <TabsTrigger value="cards" className="data-[state=active]:bg-amber-600/20 data-[state=active]:text-amber-400" data-testid="tab-character-cards">
+                Character Cards ({characters.length})
+              </TabsTrigger>
+            </TabsList>
 
-                  {char.traitsJson && (
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Traits</p>
-                      <div className="flex flex-wrap">{renderList(char.traitsJson)}</div>
-                    </div>
-                  )}
+            <TabsContent value="web" className="mt-0">
+              <RelationshipWeb characters={characters} onSave={handleSaveRelationships} />
+            </TabsContent>
 
-                  {char.relationshipsJson && (
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Relationships</p>
-                      {renderList(char.relationshipsJson, true)}
-                    </div>
-                  )}
+            <TabsContent value="cards" className="mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {characters.map((char: any) => (
+                  <Card key={char.id} className="bg-gray-900 border-amber-900/20" data-testid={`card-character-${char.id}`}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-amber-400 text-lg" data-testid={`text-character-name-${char.id}`}>
+                        {char.name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {char.description && (
+                        <p className="text-gray-300 text-sm" data-testid={`text-character-desc-${char.id}`}>{char.description}</p>
+                      )}
 
-                  {char.injuriesJson && (
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Injuries</p>
-                      {renderList(char.injuriesJson, true)}
-                    </div>
-                  )}
+                      {char.traitsJson && (
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Traits</p>
+                          <div className="flex flex-wrap">{renderList(char.traitsJson)}</div>
+                        </div>
+                      )}
 
-                  {char.firstAppearanceChapter && (
-                    <p className="text-xs text-gray-500">First appears: Chapter {char.firstAppearanceChapter}</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                      {char.relationshipsJson && (
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Relationships</p>
+                          {renderList(char.relationshipsJson, true)}
+                        </div>
+                      )}
+
+                      {char.injuriesJson && (
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Injuries</p>
+                          {renderList(char.injuriesJson, true)}
+                        </div>
+                      )}
+
+                      {char.firstAppearanceChapter && (
+                        <p className="text-xs text-gray-500">First appears: Chapter {char.firstAppearanceChapter}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </ForgeLayout>

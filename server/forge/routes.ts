@@ -392,6 +392,36 @@ router.get("/projects/:id/characters", async (req: Request, res: Response) => {
   }
 });
 
+router.patch("/characters/:charId", async (req: Request, res: Response) => {
+  try {
+    const { relationshipsJson, projectId } = req.body;
+    if (relationshipsJson === undefined) return res.status(400).json({ error: "relationshipsJson required" });
+    if (!projectId) return res.status(400).json({ error: "projectId required" });
+
+    const rels = typeof relationshipsJson === "string" ? JSON.parse(relationshipsJson) : relationshipsJson;
+    if (!Array.isArray(rels)) return res.status(400).json({ error: "relationshipsJson must be an array" });
+    for (const r of rels) {
+      if (!r.character || typeof r.character !== "string") return res.status(400).json({ error: "Each relationship must have a character name" });
+    }
+
+    const char = await prisma.characterRecord.findUnique({ where: { id: req.params.charId } });
+    if (!char) return res.status(404).json({ error: "Character not found" });
+
+    const revision = await prisma.revisionVersion.findUnique({ where: { id: char.revisionVersionId } });
+    if (!revision || revision.projectId !== projectId) {
+      return res.status(403).json({ error: "Character does not belong to this project" });
+    }
+
+    const updated = await prisma.characterRecord.update({
+      where: { id: req.params.charId },
+      data: { relationshipsJson: JSON.stringify(rels) },
+    });
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/projects/:id/structure", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
