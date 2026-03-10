@@ -35,7 +35,7 @@ export default function ForgeDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="bg-gray-900 border-amber-900/20">
+          <Card className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer" onClick={() => { const el = document.getElementById("project-list"); el?.scrollIntoView({ behavior: "smooth" }); }}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 bg-amber-600/20 rounded-lg">
                 <FolderOpen className="w-5 h-5 text-amber-400" />
@@ -46,7 +46,7 @@ export default function ForgeDashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-900 border-amber-900/20">
+          <Card className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer" onClick={() => { if (projects?.[0]) navigate(`/forge/project/${projects[0].id}/issues`); }}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 bg-orange-600/20 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-orange-400" />
@@ -57,7 +57,7 @@ export default function ForgeDashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-900 border-amber-900/20">
+          <Card className="bg-gray-900 border-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer" onClick={() => { if (projects?.[0]) navigate(`/forge/project/${projects[0].id}/reports`); }}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 bg-amber-600/20 rounded-lg">
                 <BookOpen className="w-5 h-5 text-amber-400" />
@@ -82,7 +82,7 @@ export default function ForgeDashboard() {
             <NewProjectDialog onCreated={(p) => navigate(`/forge/project/${p.id}`)} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div id="project-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project: any) => {
               const revCount = project.revisions?.length || 0;
               const issueCount = project.revisions?.reduce((s: number, r: any) => s + (r._count?.issues || 0), 0) || 0;
