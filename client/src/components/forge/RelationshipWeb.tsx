@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Plus, Save, GripVertical } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { X, Plus, Save, ChevronRight, Edit2 } from "lucide-react";
 
 interface Relationship {
   character: string;
@@ -14,6 +15,17 @@ interface CharacterNode {
   id: string;
   name: string;
   relationships: Relationship[];
+  description: string;
+  traits: string[];
+  goals: string[];
+  motives: string[];
+  injuries: any[];
+  voiceNotes: string[];
+  continuityNotes: string[];
+  aliases: string[];
+  appearanceCount: number;
+  firstAppearanceChapter?: number | null;
+  lastAppearanceChapter?: number | null;
 }
 
 interface Edge {
@@ -37,11 +49,13 @@ const TYPE_COLORS: Record<string, string> = {
   friend: "#22c55e",
   lover: "#ec4899",
   romantic: "#ec4899",
+  love_interest: "#ec4899",
   family: "#3b82f6",
   mentor: "#8b5cf6",
   antagonist: "#ef4444",
   enemy: "#ef4444",
   rival: "#f97316",
+  colleague: "#06b6d4",
   neutral: "#6b7280",
 };
 
@@ -73,16 +87,29 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
   const [positions, setPositions] = useState<Record<string, NodePosition>>({});
   const [dragging, setDragging] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<{ from: string; to: string } | null>(null);
+  const [selectedChar, setSelectedChar] = useState<string | null>(null);
   const [editingChar, setEditingChar] = useState<string | null>(null);
   const [editRels, setEditRels] = useState<Relationship[]>([]);
   const [saving, setSaving] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const nodes: CharacterNode[] = useMemo(() =>
     characters.map((c) => ({
       id: c.id,
       name: c.name,
       relationships: parseJson(c.relationshipsJson),
+      description: c.description || "",
+      traits: parseJson(c.traitsJson),
+      goals: parseJson(c.goalsJson),
+      motives: parseJson(c.motivesJson),
+      injuries: parseJson(c.injuriesJson),
+      voiceNotes: parseJson(c.voiceNotesJson),
+      continuityNotes: parseJson(c.continuityNotesJson),
+      aliases: parseJson(c.aliasesJson),
+      appearanceCount: c.appearanceCount || 1,
+      firstAppearanceChapter: c.firstAppearanceChapter,
+      lastAppearanceChapter: c.lastAppearanceChapter,
     })),
     [characters]
   );
@@ -174,12 +201,28 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
 
   const handleMouseUp = useCallback(() => { setDragging(null); }, []);
 
+  const handleNodeClick = (charId: string) => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      openEditor(charId);
+    } else {
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        setSelectedChar(selectedChar === charId ? null : charId);
+        setSelectedEdge(null);
+        setEditingChar(null);
+      }, 250);
+    }
+  };
+
   const openEditor = (charId: string) => {
     const node = nodes.find((n) => n.id === charId);
     if (!node) return;
     setEditingChar(charId);
     setEditRels([...node.relationships]);
     setSelectedEdge(null);
+    setSelectedChar(null);
   };
 
   const handleSaveRels = async () => {
@@ -213,6 +256,8 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
     return Array.from(types);
   }, [edges]);
 
+  const selectedNode = selectedChar ? nodes.find((n) => n.id === selectedChar) : null;
+
   if (nodes.length === 0) return null;
 
   return (
@@ -237,11 +282,19 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onClick={() => { setSelectedChar(null); setSelectedEdge(null); }}
             data-testid="relationship-web-svg"
           >
             <defs>
               <filter id="glow">
                 <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id="glow-selected">
+                <feGaussianBlur stdDeviation="5" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
@@ -258,6 +311,7 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                 (selectedEdge.from === edge.from && selectedEdge.to === edge.to) ||
                 (selectedEdge.from === edge.to && selectedEdge.to === edge.from)
               );
+              const isConnectedToSelected = selectedChar && (edge.from === selectedChar || edge.to === selectedChar);
               const mx = (fromPos.x + toPos.x) / 2;
               const my = (fromPos.y + toPos.y) / 2;
               return (
@@ -266,18 +320,18 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                     x1={fromPos.x} y1={fromPos.y}
                     x2={toPos.x} y2={toPos.y}
                     stroke={color}
-                    strokeWidth={isSelected ? 3 : 1.5}
-                    strokeOpacity={isSelected ? 1 : 0.5}
+                    strokeWidth={isSelected || isConnectedToSelected ? 3 : 1.5}
+                    strokeOpacity={isSelected || isConnectedToSelected ? 1 : selectedChar ? 0.15 : 0.5}
                     className="cursor-pointer"
-                    onClick={() => setSelectedEdge(isSelected ? null : { from: edge.from, to: edge.to })}
+                    onClick={(e) => { e.stopPropagation(); setSelectedEdge(isSelected ? null : { from: edge.from, to: edge.to }); setSelectedChar(null); }}
                   />
                   <text
                     x={mx} y={my - 6}
                     textAnchor="middle"
                     fill={color}
                     fontSize={10}
-                    fontWeight={isSelected ? 600 : 400}
-                    opacity={isSelected ? 1 : 0.7}
+                    fontWeight={isSelected || isConnectedToSelected ? 600 : 400}
+                    opacity={isSelected || isConnectedToSelected ? 1 : selectedChar ? 0.15 : 0.7}
                     className="pointer-events-none select-none"
                   >
                     {edge.type}
@@ -290,21 +344,28 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
               const pos = positions[node.id];
               if (!pos) return null;
               const hasEdges = edges.some((e) => e.from === node.id || e.to === node.id);
+              const isSelected = selectedChar === node.id;
+              const isConnected = selectedChar ? edges.some((e) =>
+                (e.from === selectedChar && e.to === node.id) || (e.to === selectedChar && e.from === node.id)
+              ) : false;
+              const dimmed = selectedChar && !isSelected && !isConnected;
+              const nodeRadius = hasEdges ? 22 : 16;
               return (
                 <g
                   key={node.id}
                   className="cursor-grab active:cursor-grabbing"
                   onMouseDown={(e) => handleMouseDown(node.id, e)}
-                  onDoubleClick={() => openEditor(node.id)}
+                  onClick={(e) => { e.stopPropagation(); handleNodeClick(node.id); }}
+                  style={{ opacity: dimmed ? 0.25 : 1 }}
                   data-testid={`node-${node.id}`}
                 >
                   <circle
                     cx={pos.x} cy={pos.y}
-                    r={hasEdges ? 22 : 16}
-                    fill="#1f2937"
-                    stroke="#d97706"
-                    strokeWidth={editingChar === node.id ? 3 : 1.5}
-                    filter="url(#glow)"
+                    r={nodeRadius}
+                    fill={isSelected ? "#292524" : "#1f2937"}
+                    stroke={isSelected ? "#f59e0b" : "#d97706"}
+                    strokeWidth={isSelected ? 3 : 1.5}
+                    filter={isSelected ? "url(#glow-selected)" : "url(#glow)"}
                   />
                   <text
                     x={pos.x} y={pos.y + 1}
@@ -333,9 +394,150 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
         </CardContent>
       </Card>
 
-      <p className="text-xs text-gray-600 mt-2">Drag nodes to rearrange. Double-click a character to edit relationships.</p>
+      <p className="text-xs text-gray-600 mt-2">Click a character to view details. Double-click to edit relationships. Drag to rearrange.</p>
 
-      {selectedEdge && (() => {
+      {selectedNode && !editingChar && (
+        <Card className="bg-gray-900 border-amber-900/20 mt-3 animate-in fade-in slide-in-from-top-2 duration-200" data-testid="character-detail-panel">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-amber-400 font-bold text-lg" data-testid="detail-character-name">{selectedNode.name}</h3>
+                {selectedNode.aliases.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-0.5">aka {selectedNode.aliases.join(", ")}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openEditor(selectedNode.id)}
+                  className="text-amber-400 hover:bg-amber-600/20 h-7 gap-1 text-xs"
+                  data-testid="button-edit-from-detail"
+                >
+                  <Edit2 className="w-3 h-3" /> Edit
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedChar(null)} className="text-gray-400 h-7 w-7 p-0">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {selectedNode.description && (
+              <p className="text-sm text-gray-300 mb-4 leading-relaxed" data-testid="detail-description">{selectedNode.description}</p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {selectedNode.traits.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Traits</p>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedNode.traits.map((t, i) => (
+                      <Badge key={i} variant="outline" className="border-amber-900/30 text-amber-300/80 text-xs">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedNode.goals.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Goals</p>
+                  <div className="space-y-1">
+                    {selectedNode.goals.map((g, i) => (
+                      <div key={i} className="flex items-start gap-1.5 text-sm text-gray-300">
+                        <ChevronRight className="w-3 h-3 text-amber-600 mt-1 shrink-0" />
+                        <span>{g}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedNode.motives.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Motives</p>
+                  <div className="space-y-1">
+                    {selectedNode.motives.map((m, i) => (
+                      <div key={i} className="flex items-start gap-1.5 text-sm text-gray-300">
+                        <ChevronRight className="w-3 h-3 text-orange-600 mt-1 shrink-0" />
+                        <span>{m}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedNode.relationships.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Relationships</p>
+                  <div className="space-y-1.5">
+                    {selectedNode.relationships.map((rel, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getEdgeColor(rel.type) }} />
+                        <span className="text-gray-200 font-medium">{rel.character}</span>
+                        <span className="text-gray-500 text-xs capitalize">({rel.type})</span>
+                        {rel.notes && <span className="text-gray-400 text-xs">— {rel.notes}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedNode.injuries.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Injuries</p>
+                  <div className="space-y-1">
+                    {selectedNode.injuries.map((inj, i) => {
+                      const desc = typeof inj === "string" ? inj : inj.description || JSON.stringify(inj);
+                      const resolved = typeof inj === "object" && inj.resolved;
+                      return (
+                        <div key={i} className={`text-sm ${resolved ? "text-gray-500 line-through" : "text-red-300"}`}>
+                          {desc}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {selectedNode.voiceNotes.length > 0 && (
+                <div className="md:col-span-2">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Voice &amp; Dialogue Notes</p>
+                  <div className="space-y-1">
+                    {selectedNode.voiceNotes.map((v, i) => (
+                      <p key={i} className="text-sm text-gray-300 italic">"{v}"</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedNode.continuityNotes.length > 0 && (
+                <div className="md:col-span-2">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Continuity Notes</p>
+                  <div className="space-y-1">
+                    {selectedNode.continuityNotes.map((n, i) => (
+                      <p key={i} className="text-sm text-gray-400">{n}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {(selectedNode.firstAppearanceChapter || selectedNode.appearanceCount > 1) && (
+              <div className="mt-4 pt-3 border-t border-gray-800 flex items-center gap-4 text-xs text-gray-500">
+                {selectedNode.firstAppearanceChapter && (
+                  <span>First seen: Ch. {selectedNode.firstAppearanceChapter}</span>
+                )}
+                {selectedNode.lastAppearanceChapter && selectedNode.lastAppearanceChapter !== selectedNode.firstAppearanceChapter && (
+                  <span>Last seen: Ch. {selectedNode.lastAppearanceChapter}</span>
+                )}
+                <span>Appeared in {selectedNode.appearanceCount} analysis chunk{selectedNode.appearanceCount !== 1 ? "s" : ""}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedEdge && !selectedChar && (() => {
         const edge = edges.find((e) =>
           (e.from === selectedEdge.from && e.to === selectedEdge.to) ||
           (e.from === selectedEdge.to && e.to === selectedEdge.from)
@@ -386,7 +588,7 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                     className="bg-gray-800 border border-gray-700 text-gray-200 rounded-md h-8 text-sm px-2 flex-1"
                     data-testid={`select-rel-type-${i}`}
                   >
-                    {["ally", "friend", "lover", "family", "mentor", "rival", "antagonist", "enemy", "neutral"].map((t) => (
+                    {["ally", "friend", "lover", "love_interest", "family", "mentor", "colleague", "rival", "antagonist", "enemy", "neutral"].map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>

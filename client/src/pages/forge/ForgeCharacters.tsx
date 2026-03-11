@@ -5,7 +5,8 @@ import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Users, Zap } from "lucide-react";
+import { Loader2, Users, Zap, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import RelationshipWeb from "@/components/forge/RelationshipWeb";
 import { useToast } from "@/hooks/use-toast";
 
@@ -63,11 +64,16 @@ export default function ForgeCharacters() {
   const projectId = params?.id || "";
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [showMinor, setShowMinor] = useState(false);
 
   const { data: characters, isLoading } = useQuery<any[]>({
     queryKey: ["/api/forge/projects", projectId, "characters"],
     enabled: !!projectId,
   });
+
+  const significantCharacters = characters?.filter((c) => (c.appearanceCount || 1) >= 2) || [];
+  const minorCharacters = characters?.filter((c) => (c.appearanceCount || 1) < 2) || [];
+  const displayCharacters = showMinor ? (characters || []) : significantCharacters;
 
   const handleSaveRelationships = async (characterId: string, relationships: any[]) => {
     const res = await fetch(`/api/forge/characters/${characterId}`, {
@@ -86,7 +92,21 @@ export default function ForgeCharacters() {
   return (
     <ForgeLayout projectId={projectId}>
       <div className="animate-in fade-in duration-300">
-        <h1 className="text-2xl font-bold text-amber-400 mb-6" data-testid="text-characters-heading">Characters</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-amber-400" data-testid="text-characters-heading">Characters</h1>
+          {minorCharacters.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowMinor(!showMinor)}
+              className="text-gray-400 hover:text-amber-400 hover:bg-amber-600/10 h-8 gap-1.5 text-xs"
+              data-testid="button-toggle-minor"
+            >
+              {showMinor ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              {showMinor ? "Hide" : "Show"} {minorCharacters.length} minor character{minorCharacters.length !== 1 ? "s" : ""}
+            </Button>
+          )}
+        </div>
 
         {isLoading ? (
           <div className="flex justify-center py-16">
@@ -111,22 +131,27 @@ export default function ForgeCharacters() {
                 Relationship Web
               </TabsTrigger>
               <TabsTrigger value="cards" className="data-[state=active]:bg-amber-600/20 data-[state=active]:text-amber-400" data-testid="tab-character-cards">
-                Character Cards ({characters.length})
+                Character Cards ({displayCharacters.length})
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="web" className="mt-0">
-              <RelationshipWeb characters={characters} onSave={handleSaveRelationships} />
+              <RelationshipWeb characters={displayCharacters} onSave={handleSaveRelationships} />
             </TabsContent>
 
             <TabsContent value="cards" className="mt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {characters.map((char: any) => (
+                {displayCharacters.map((char: any) => (
                   <Card key={char.id} className="bg-gray-900 border-amber-900/20" data-testid={`card-character-${char.id}`}>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-amber-400 text-lg" data-testid={`text-character-name-${char.id}`}>
-                        {char.name}
-                      </CardTitle>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-amber-400 text-lg" data-testid={`text-character-name-${char.id}`}>
+                          {char.name}
+                        </CardTitle>
+                        {(char.appearanceCount || 1) < 2 && (
+                          <Badge variant="outline" className="border-gray-700 text-gray-500 text-[10px]">minor</Badge>
+                        )}
+                      </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {char.description && (
@@ -154,8 +179,16 @@ export default function ForgeCharacters() {
                         </div>
                       )}
 
-                      {char.firstAppearanceChapter && (
-                        <p className="text-xs text-gray-500">First appears: Chapter {char.firstAppearanceChapter}</p>
+                      {(char.firstAppearanceChapter || char.appearanceCount > 1) && (
+                        <div className="pt-2 border-t border-gray-800 flex items-center gap-3 text-xs text-gray-500">
+                          {char.firstAppearanceChapter && <span>First: Ch. {char.firstAppearanceChapter}</span>}
+                          {char.lastAppearanceChapter && char.lastAppearanceChapter !== char.firstAppearanceChapter && (
+                            <span>Last: Ch. {char.lastAppearanceChapter}</span>
+                          )}
+                          {(char.appearanceCount || 1) > 1 && (
+                            <span>{char.appearanceCount} chunks</span>
+                          )}
+                        </div>
                       )}
                     </CardContent>
                   </Card>

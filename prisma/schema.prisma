@@ -102,6 +102,9 @@ model CharacterRecord {
   injuriesJson      String @default("[]")
   voiceNotesJson    String @default("[]")
   continuityNotesJson String @default("[]")
+  appearanceCount   Int    @default(1)
+  firstAppearanceChapter Int?
+  lastAppearanceChapter  Int?
 
   revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
 }

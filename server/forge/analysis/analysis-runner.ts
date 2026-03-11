@@ -230,10 +230,12 @@ async function runModule(
           voiceNotes: char.voiceNotes, continuityNotes: char.continuityNotes,
           lastSeenChapter: chunk.endChapter,
         });
+        const charRecordId = `${revisionVersionId}_${char.name.toLowerCase().trim()}`;
+        const existingChar = await prisma.characterRecord.findUnique({ where: { id: charRecordId } });
         await prisma.characterRecord.upsert({
-          where: { id: `${revisionVersionId}_${char.name.toLowerCase().trim()}` },
+          where: { id: charRecordId },
           create: {
-            id: `${revisionVersionId}_${char.name.toLowerCase().trim()}`,
+            id: charRecordId,
             revisionVersionId, name: char.name,
             aliasesJson: JSON.stringify(char.aliases || []),
             description: char.description || "",
@@ -244,6 +246,9 @@ async function runModule(
             injuriesJson: JSON.stringify(char.injuries || []),
             voiceNotesJson: JSON.stringify(char.voiceNotes || []),
             continuityNotesJson: JSON.stringify(char.continuityNotes || []),
+            appearanceCount: 1,
+            firstAppearanceChapter: chunk.startChapter,
+            lastAppearanceChapter: chunk.endChapter,
           },
           update: {
             description: char.description || "",
@@ -254,6 +259,8 @@ async function runModule(
             injuriesJson: JSON.stringify(char.injuries || []),
             voiceNotesJson: JSON.stringify(char.voiceNotes || []),
             continuityNotesJson: JSON.stringify(char.continuityNotes || []),
+            appearanceCount: (existingChar?.appearanceCount || 0) + 1,
+            lastAppearanceChapter: chunk.endChapter,
           },
         });
       }
