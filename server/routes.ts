@@ -7,6 +7,7 @@ import { storage } from "./storage";
 import type { BookChapter, NarrativeSliders } from "./storage";
 import { runStep, getStepName } from "./pipeline";
 import { callLLM } from "./llm";
+import { prisma } from "./forge/db";
 import {
   AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, SCENE_WRITING_RULES, STORY_ARCHITECTURE_RULES,
   CHAPTER_SUMMARY_TEMPLATE, NARRATIVE_SLIDER_RULES, ANTI_SLOP_FILTER,
@@ -412,6 +413,13 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       if (req.body.title !== undefined) book.title = req.body.title;
       if (req.body.dossier !== undefined) book.dossier = req.body.dossier;
       if (req.body.brain_dump !== undefined) book.brain_dump = req.body.brain_dump;
+      if (req.body.forge_project_id !== undefined) {
+        if (req.body.forge_project_id !== null) {
+          const forgeProject = await prisma.project.findUnique({ where: { id: req.body.forge_project_id } });
+          if (!forgeProject) return res.status(400).json({ error: "FORGE project not found" });
+        }
+        book.forge_project_id = req.body.forge_project_id;
+      }
 
       await storage.saveBook(book);
       res.json(book);
@@ -425,6 +433,114 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       const deleted = await storage.deleteBook(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Book not found" });
       res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/books/:id/editor-feedback", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const forgeProjectId = book.forge_project_id;
+      if (!forgeProjectId) {
+        return res.json({ linked: false, forgeProjects: await prisma.project.findMany({ select: { id: true, title: true, genre: true }, orderBy: { updatedAt: "desc" } }) });
+      }
+
+      const revision = await prisma.revisionVersion.findFirst({
+        where: { projectId: forgeProjectId },
+        orderBy: { versionNumber: "desc" },
+      });
+      if (!revision) {
+        return res.json({ linked: true, noRevision: true });
+      }
+
+      const [betaResponses, chunks, issues, sceneAnalyses] = await Promise.all([
+        prisma.betaReaderResponse.findMany({
+          where: { revisionVersionId: revision.id },
+          include: { profile: true },
+        }),
+        prisma.chunk.findMany({
+          where: { revisionVersionId: revision.id },
+          orderBy: { chunkIndex: "asc" },
+        }),
+        prisma.issue.findMany({
+          where: { revisionVersionId: revision.id },
+          orderBy: [{ type: "asc" }],
+        }),
+        prisma.sceneAnalysis.findMany({
+          where: { revisionVersionId: revision.id },
+          include: { chapter: true },
+        }),
+      ]);
+
+      const editorialChunks = chunks.map((c) => {
+        let summary: any = {};
+        try { summary = JSON.parse(c.summaryJson || "{}"); } catch {}
+        return {
+          chunkIndex: c.chunkIndex,
+          startChapter: c.startChapter,
+          endChapter: c.endChapter,
+          overallImpression: summary.overallImpression || null,
+          strengths: summary.strengths || [],
+          weaknesses: summary.weaknesses || [],
+          continuityNotes: summary.continuityNotes || [],
+          unresolvedQuestions: summary.unresolvedQuestions || [],
+          pacing: summary.pacing || null,
+          stakes: summary.stakes || null,
+          causality: summary.causality || null,
+          characterArcs: summary.characterArcs || [],
+          thematicNotes: summary.thematicNotes || [],
+        };
+      });
+
+      const betaReaders = betaResponses.map((br) => {
+        let response: any = {};
+        try { response = JSON.parse(br.responseJson || "{}"); } catch {}
+        return {
+          profileName: br.profile?.name || response.profileName || "Unknown",
+          profileDescription: br.profile?.description || "",
+          ...response,
+        };
+      });
+
+      const severityOrder: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
+      const sortedIssues = [...issues].sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9));
+
+      const issuesSummary = {
+        total: issues.length,
+        bySeverity: {
+          major: issues.filter((i) => i.severity === "major").length,
+          moderate: issues.filter((i) => i.severity === "moderate").length,
+          minor: issues.filter((i) => i.severity === "minor").length,
+        },
+        topIssues: sortedIssues.slice(0, 20).map((i) => ({
+          type: i.type,
+          severity: i.severity,
+          title: i.title,
+          description: i.description,
+          suggestion: i.suggestion,
+        })),
+      };
+
+      const scenes = sceneAnalyses.map((s) => ({
+        chapterNumber: s.chapter?.number,
+        chapterTitle: s.chapter?.title || "",
+        sceneIndex: s.sceneIndex,
+        purpose: s.purpose,
+        conflict: s.conflict,
+        changeOccurred: s.changeOccurred,
+        valueRating: s.valueRating,
+      }));
+
+      res.json({
+        linked: true,
+        betaReaders,
+        editorialChunks,
+        issues: issuesSummary,
+        scenes,
+      });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

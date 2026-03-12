@@ -70,6 +70,7 @@ export interface BookProject {
   created_at: string;
   updated_at: string;
   source_project_id: string | null;
+  forge_project_id: string | null;
   brain_dump: string;
   dossier: string;
   chapters: BookChapter[];
@@ -216,6 +217,7 @@ export class FileStorage implements IStorage {
       created_at: now,
       updated_at: now,
       source_project_id: sourceProjectId,
+      forge_project_id: null,
       brain_dump: brainDump,
       dossier,
       chapters: [],
