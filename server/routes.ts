@@ -443,7 +443,15 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       const book = await storage.getBook(req.params.id);
       if (!book) return res.status(404).json({ error: "Book not found" });
 
-      const forgeProjectId = book.forge_project_id;
+      let forgeProjectId = book.forge_project_id;
+      if (!forgeProjectId && book.source_project_id) {
+        const matchedForge = await prisma.project.findUnique({ where: { id: book.source_project_id } });
+        if (matchedForge) {
+          forgeProjectId = matchedForge.id;
+          book.forge_project_id = forgeProjectId;
+          await storage.saveBook(book);
+        }
+      }
       if (!forgeProjectId) {
         return res.json({ linked: false, forgeProjects: await prisma.project.findMany({ select: { id: true, title: true, genre: true }, orderBy: { updatedAt: "desc" } }) });
       }

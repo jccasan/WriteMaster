@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Books",
     path: "/books",
     icon: <Library className="w-4 h-4" />,
-    matchPaths: ["/books", "/book/"],
+    matchPaths: ["/books", "/book/", "/editor"],
   },
   {
     label: "Forge",
