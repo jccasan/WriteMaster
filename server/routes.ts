@@ -438,30 +438,29 @@ Output the rewritten chapter text only, no preamble or commentary.`,
     }
   });
 
-  app.get("/api/books/:id/editor-feedback", async (req, res) => {
+  app.get("/api/editor/projects", async (_req, res) => {
     try {
-      const book = await storage.getBook(req.params.id);
-      if (!book) return res.status(404).json({ error: "Book not found" });
+      const projects = await prisma.project.findMany({
+        select: { id: true, title: true, genre: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+      });
+      res.json(projects);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
-      let forgeProjectId = book.forge_project_id;
-      if (!forgeProjectId && book.source_project_id) {
-        const matchedForge = await prisma.project.findUnique({ where: { id: book.source_project_id } });
-        if (matchedForge) {
-          forgeProjectId = matchedForge.id;
-          book.forge_project_id = forgeProjectId;
-          await storage.saveBook(book);
-        }
-      }
-      if (!forgeProjectId) {
-        return res.json({ linked: false, forgeProjects: await prisma.project.findMany({ select: { id: true, title: true, genre: true }, orderBy: { updatedAt: "desc" } }) });
-      }
+  app.get("/api/editor/feedback/:projectId", async (req, res) => {
+    try {
+      const project = await prisma.project.findUnique({ where: { id: req.params.projectId } });
+      if (!project) return res.status(404).json({ error: "Project not found" });
 
       const revision = await prisma.revisionVersion.findFirst({
-        where: { projectId: forgeProjectId },
+        where: { projectId: project.id },
         orderBy: { versionNumber: "desc" },
       });
       if (!revision) {
-        return res.json({ linked: true, noRevision: true });
+        return res.json({ projectTitle: project.title, noRevision: true });
       }
 
       const [betaResponses, chunks, issues, sceneAnalyses] = await Promise.all([
@@ -545,7 +544,7 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       }));
 
       res.json({
-        linked: true,
+        projectTitle: project.title,
         betaReaders,
         editorialChunks,
         issues: issuesSummary,

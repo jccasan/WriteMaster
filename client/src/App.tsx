@@ -12,7 +12,7 @@ import PipelineList from "@/pages/PipelineList";
 import ChapterAnalyzer from "@/pages/ChapterAnalyzer";
 import Books from "@/pages/Books";
 import BookWriter from "@/pages/BookWriter";
-import BookEditor from "@/pages/BookEditor";
+import Editor from "@/pages/Editor";
 import ChapterWriter from "@/pages/ChapterWriter";
 import ForgeDashboard from "@/pages/forge/ForgeDashboard";
 import ForgeProject from "@/pages/forge/ForgeProject";
@@ -40,8 +40,9 @@ function Router() {
       <Route path="/chapter-analyzer" component={ChapterAnalyzer} />
       <Route path="/chapter-analyzer/:id" component={ChapterAnalyzer} />
       <Route path="/books" component={Books} />
-      <Route path="/book/:id/editor" component={BookEditor} />
       <Route path="/book/:id" component={BookWriter} />
+      <Route path="/editor/:projectId" component={Editor} />
+      <Route path="/editor" component={Editor} />
       <Route path="/forge" component={ForgeDashboard} />
       <Route path="/forge/project/:id" component={ForgeProject} />
       <Route path="/forge/project/:id/upload" component={ForgeUpload} />

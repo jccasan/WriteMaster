@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useParams, Link } from "wouter";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,11 +15,11 @@ import {
   BookOpen,
   CheckCircle,
   XCircle,
-  Link as LinkIcon,
   Star,
   Gauge,
   Zap,
-  Eye,
+  Link as LinkIcon,
+  Anvil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
@@ -76,12 +75,12 @@ interface ForgeProject {
   id: string;
   title: string;
   genre: string;
+  updatedAt: string;
 }
 
 interface FeedbackData {
-  linked: boolean;
+  projectTitle: string;
   noRevision?: boolean;
-  forgeProjects?: ForgeProject[];
   betaReaders?: BetaReader[];
   editorialChunks?: EditorialChunk[];
   issues?: IssueSummary;
@@ -152,51 +151,110 @@ function CollapsibleSection({
   );
 }
 
-export default function BookEditor() {
-  const [, navigate] = useLocation();
-  const params = useParams<{ id: string }>();
-  const bookId = params.id;
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
 
+function ProjectPicker({ onSelect }: { onSelect: (id: string) => void }) {
+  const [projects, setProjects] = useState<ForgeProject[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/editor/projects")
+      .then((r) => r.json())
+      .then((data) => { setProjects(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+      </div>
+    );
+  }
+
+  if (projects.length === 0) {
+    return (
+      <div className="text-center py-16" data-testid="empty-no-projects">
+        <Anvil className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+        <p className="text-gray-400 mb-4">No FORGE projects found. Create a project and run analysis first.</p>
+        <Link
+          href="/forge"
+          className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
+          data-testid="link-go-to-forge"
+        >
+          Go to FORGE
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2" data-testid="project-picker">
+      {projects.map((p) => (
+        <button
+          key={p.id}
+          onClick={() => onSelect(p.id)}
+          className="w-full text-left px-4 py-3 rounded-lg border border-gray-800 hover:border-amber-900/40 hover:bg-gray-800/50 transition-colors flex items-center gap-3"
+          data-testid={`button-select-project-${p.id}`}
+        >
+          <Anvil className="w-4 h-4 text-amber-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-gray-200 font-medium text-sm truncate">{p.title}</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              {p.genre && <span className="text-gray-500 text-xs">{p.genre}</span>}
+              <span className="text-gray-600 text-xs">{formatDate(p.updatedAt)}</span>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-600" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function Editor() {
+  const [, navigate] = useLocation();
+  const params = useParams<{ projectId: string }>();
+  const projectId = params.projectId;
+
+  const [loading, setLoading] = useState(false);
   const [data, setData] = useState<FeedbackData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [linking, setLinking] = useState(false);
 
-  const fetchFeedback = useCallback(async () => {
-    if (!bookId) return;
+  const fetchFeedback = useCallback(async (pid: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/books/${bookId}/editor-feedback`);
+      const res = await fetch(`/api/editor/feedback/${pid}`);
       if (!res.ok) throw new Error("Failed to load feedback");
       setData(await res.json());
     } catch (err: any) {
       setError(err.message);
     }
     setLoading(false);
-  }, [bookId]);
+  }, []);
 
   useEffect(() => {
-    fetchFeedback();
-  }, [fetchFeedback]);
+    if (projectId) fetchFeedback(projectId);
+  }, [projectId, fetchFeedback]);
 
-  const linkForgeProject = async (forgeProjectId: string) => {
-    if (!bookId) return;
-    setLinking(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/books/${bookId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forge_project_id: forgeProjectId }),
-      });
-      if (!res.ok) throw new Error("Failed to link project");
-      await fetchFeedback();
-    } catch (err: any) {
-      setError(err.message);
-    }
-    setLinking(false);
-  };
+  if (!projectId) {
+    return (
+      <Layout>
+        <div className="max-w-3xl mx-auto animate-in fade-in duration-300">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-amber-400 mb-2" data-testid="text-editor-heading">Editor</h1>
+            <p className="text-gray-400 text-sm">Select a FORGE project to view consolidated editorial feedback — beta readers, editorial assessment, and developmental analysis.</p>
+          </div>
+          <ProjectPicker onSelect={(id) => navigate(`/editor/${id}`)} />
+        </div>
+      </Layout>
+    );
+  }
 
   if (loading) {
     return (
@@ -213,17 +271,19 @@ export default function BookEditor() {
       <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => navigate(`/book/${bookId}`)}
+            onClick={() => navigate("/editor")}
             className="text-sm font-medium text-gray-400 hover:text-amber-400 transition-colors flex items-center gap-1"
-            data-testid="button-back-book"
+            data-testid="button-back-editor"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to Book
+            <ArrowLeft className="w-4 h-4" /> All Projects
           </button>
         </div>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-amber-400 mb-2" data-testid="text-editor-heading">Editor</h1>
-          <p className="text-gray-400 text-sm">Consolidated feedback from your FORGE manuscript analysis — beta readers, editorial assessment, and developmental analysis.</p>
+          <h1 className="text-3xl font-bold text-amber-400 mb-2" data-testid="text-editor-heading">
+            {data?.projectTitle || "Editor"}
+          </h1>
+          <p className="text-gray-400 text-sm">Consolidated feedback from FORGE manuscript analysis — beta readers, editorial assessment, and developmental analysis.</p>
         </div>
 
         {error && (
@@ -232,57 +292,10 @@ export default function BookEditor() {
           </div>
         )}
 
-        {data && !data.linked && (
-          <Card className="bg-gray-900 border-amber-900/20" data-testid="link-forge-project">
-            <CardHeader>
-              <CardTitle className="text-amber-400 flex items-center gap-2">
-                <LinkIcon className="w-5 h-5" />
-                Link a FORGE Project
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-400 text-sm mb-4">
-                To view editor feedback, link this book to a FORGE project that has completed manuscript analysis.
-              </p>
-              {data.forgeProjects && data.forgeProjects.length > 0 ? (
-                <div className="space-y-2">
-                  {data.forgeProjects.map((fp) => (
-                    <button
-                      key={fp.id}
-                      onClick={() => linkForgeProject(fp.id)}
-                      disabled={linking}
-                      className="w-full text-left px-4 py-3 rounded-lg border border-gray-800 hover:border-amber-900/40 hover:bg-gray-800/50 transition-colors flex items-center gap-3"
-                      data-testid={`button-link-forge-${fp.id}`}
-                    >
-                      <BookOpen className="w-4 h-4 text-amber-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-gray-200 font-medium text-sm truncate">{fp.title}</div>
-                        {fp.genre && <div className="text-gray-500 text-xs">{fp.genre}</div>}
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-3">No FORGE projects found.</p>
-                  <Link
-                    href="/forge"
-                    className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
-                    data-testid="link-go-to-forge"
-                  >
-                    Go to FORGE
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {data && data.linked && data.noRevision && (
+        {data && data.noRevision && (
           <div className="text-center py-16" data-testid="empty-no-revision">
             <AlertTriangle className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 mb-4">The linked FORGE project has no analysis data yet.</p>
+            <p className="text-gray-400 mb-4">This project has no analysis data yet.</p>
             <Link
               href="/forge"
               className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
@@ -293,10 +306,9 @@ export default function BookEditor() {
           </div>
         )}
 
-        {data && data.linked && !data.noRevision && (
+        {data && !data.noRevision && (
           <div className="space-y-4">
 
-            {/* Beta Readers */}
             <CollapsibleSection
               title="Beta Reader Panel"
               icon={<MessageSquare className="w-5 h-5" />}
@@ -416,7 +428,6 @@ export default function BookEditor() {
               )}
             </CollapsibleSection>
 
-            {/* Editorial Assessment */}
             <CollapsibleSection
               title="Editorial Assessment"
               icon={<FileText className="w-5 h-5" />}
@@ -548,7 +559,6 @@ export default function BookEditor() {
               )}
             </CollapsibleSection>
 
-            {/* Developmental Assessment */}
             <CollapsibleSection
               title="Developmental Assessment"
               icon={<Layers className="w-5 h-5" />}
@@ -559,7 +569,6 @@ export default function BookEditor() {
                 <p className="text-gray-500 text-sm py-4">No developmental assessment data available. Run the developmental editor analysis in FORGE.</p>
               ) : (
                 <div className="space-y-4">
-                  {/* Craft Ratings Overview */}
                   {data.editorialChunks.some(c => c.pacing || c.stakes || c.causality) && (
                     <div>
                       <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Craft Ratings by Section</h4>
@@ -605,7 +614,6 @@ export default function BookEditor() {
                     </div>
                   )}
 
-                  {/* Character Arcs */}
                   {data.editorialChunks.some(c => c.characterArcs.length > 0) && (
                     <div>
                       <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Character Arcs</h4>
@@ -626,7 +634,6 @@ export default function BookEditor() {
                     </div>
                   )}
 
-                  {/* Scene Analysis */}
                   {data.scenes && data.scenes.length > 0 && (
                     <div>
                       <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">

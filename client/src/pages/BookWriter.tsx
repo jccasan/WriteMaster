@@ -415,15 +415,6 @@ export default function BookWriter() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate(`/book/${bookId}/editor`)}
-            className="gap-1"
-            data-testid="button-editor"
-          >
-            <FileText className="w-3.5 h-3.5" /> Editor
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             onClick={handleDownloadBook}
             disabled={!book.chapters.some(c => c.content)}
             className="gap-1"
