@@ -122,7 +122,7 @@ export default function Home() {
     },
     {
       title: "Editor",
-      description: "Consolidated editorial feedback from FORGE — beta reader reactions, editorial assessment, and developmental analysis.",
+      description: "Paste any chapter or passage and get instant AI feedback — editorial assessment, developmental edit, copy edit, proofreading, beta reader, or scene analysis.",
       icon: <FileText className="w-6 h-6" />,
       count: 0,
       countLabel: "",

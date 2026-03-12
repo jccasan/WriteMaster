@@ -41,7 +41,6 @@ function Router() {
       <Route path="/chapter-analyzer/:id" component={ChapterAnalyzer} />
       <Route path="/books" component={Books} />
       <Route path="/book/:id" component={BookWriter} />
-      <Route path="/editor/:projectId" component={Editor} />
       <Route path="/editor" component={Editor} />
       <Route path="/forge" component={ForgeDashboard} />
       <Route path="/forge/project/:id" component={ForgeProject} />

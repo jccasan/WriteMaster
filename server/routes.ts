@@ -438,118 +438,53 @@ Output the rewritten chapter text only, no preamble or commentary.`,
     }
   });
 
-  app.get("/api/editor/projects", async (_req, res) => {
+  app.post("/api/editor/analyze", async (req, res) => {
     try {
-      const projects = await prisma.project.findMany({
-        select: { id: true, title: true, genre: true, updatedAt: true },
-        orderBy: { updatedAt: "desc" },
-      });
-      res.json(projects);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+      const { text, module: moduleName, genre, context, betaProfile } = req.body;
+      if (!text || !moduleName) {
+        return res.status(400).json({ error: "text and module are required" });
+      }
+      const g = genre || "general fiction";
+      const ctx = context || "";
 
-  app.get("/api/editor/feedback/:projectId", async (req, res) => {
-    try {
-      const project = await prisma.project.findUnique({ where: { id: req.params.projectId } });
-      if (!project) return res.status(404).json({ error: "Project not found" });
+      let result: any;
 
-      const revision = await prisma.revisionVersion.findFirst({
-        where: { projectId: project.id },
-        orderBy: { versionNumber: "desc" },
-      });
-      if (!revision) {
-        return res.json({ projectTitle: project.title, noRevision: true });
+      switch (moduleName) {
+        case "editorial_assessment": {
+          const { runEditorialAssessment } = await import("./forge/analysis/modules/editorial-assessment");
+          result = await runEditorialAssessment(text, ctx, g, "");
+          break;
+        }
+        case "developmental_editor": {
+          const { runDevEdit } = await import("./forge/analysis/modules/developmental-editor");
+          result = await runDevEdit(text, ctx, g, "");
+          break;
+        }
+        case "copy_editor": {
+          const { runCopyEdit } = await import("./forge/analysis/modules/copy-editor");
+          result = await runCopyEdit(text, ctx, g);
+          break;
+        }
+        case "proofreader": {
+          const { runProofread } = await import("./forge/analysis/modules/proofreader");
+          result = await runProofread(text);
+          break;
+        }
+        case "beta_reader": {
+          const { runBetaReader } = await import("./forge/analysis/modules/beta-reader");
+          result = await runBetaReader(text, ctx, g, betaProfile || "genre_enthusiast");
+          break;
+        }
+        case "scene_scanner": {
+          const { runSceneScan } = await import("./forge/analysis/modules/scene-scanner");
+          result = await runSceneScan(text, ctx, g, [1]);
+          break;
+        }
+        default:
+          return res.status(400).json({ error: `Unknown module: ${moduleName}` });
       }
 
-      const [betaResponses, chunks, issues, sceneAnalyses] = await Promise.all([
-        prisma.betaReaderResponse.findMany({
-          where: { revisionVersionId: revision.id },
-          include: { profile: true },
-        }),
-        prisma.chunk.findMany({
-          where: { revisionVersionId: revision.id },
-          orderBy: { chunkIndex: "asc" },
-        }),
-        prisma.issue.findMany({
-          where: { revisionVersionId: revision.id },
-          orderBy: [{ type: "asc" }],
-        }),
-        prisma.sceneAnalysis.findMany({
-          where: { revisionVersionId: revision.id },
-          include: { chapter: true },
-        }),
-      ]);
-
-      const editorialChunks = chunks.map((c) => {
-        let summary: any = {};
-        try { summary = JSON.parse(c.summaryJson || "{}"); } catch {}
-        const ed = summary.editorial || {};
-        const dev = summary.developmental || {};
-        return {
-          chunkIndex: c.chunkIndex,
-          startChapter: c.startChapter,
-          endChapter: c.endChapter,
-          overallImpression: ed.overallImpression || null,
-          strengths: ed.strengths || [],
-          weaknesses: ed.weaknesses || [],
-          continuityNotes: ed.continuityNotes || [],
-          unresolvedQuestions: ed.unresolvedQuestions || [],
-          pacing: dev.pacing || null,
-          stakes: dev.stakes || null,
-          causality: dev.causality || null,
-          characterArcs: dev.characterArcs || [],
-          thematicNotes: dev.thematicNotes || [],
-        };
-      });
-
-      const betaReaders = betaResponses.map((br) => {
-        let response: any = {};
-        try { response = JSON.parse(br.responseJson || "{}"); } catch {}
-        return {
-          profileName: br.profile?.name || response.profileName || "Unknown",
-          profileDescription: br.profile?.description || "",
-          ...response,
-        };
-      });
-
-      const severityOrder: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
-      const sortedIssues = [...issues].sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9));
-
-      const issuesSummary = {
-        total: issues.length,
-        bySeverity: {
-          major: issues.filter((i) => i.severity === "major").length,
-          moderate: issues.filter((i) => i.severity === "moderate").length,
-          minor: issues.filter((i) => i.severity === "minor").length,
-        },
-        topIssues: sortedIssues.slice(0, 20).map((i) => ({
-          type: i.type,
-          severity: i.severity,
-          title: i.title,
-          description: i.description,
-          suggestion: i.suggestion,
-        })),
-      };
-
-      const scenes = sceneAnalyses.map((s) => ({
-        chapterNumber: s.chapter?.number,
-        chapterTitle: s.chapter?.title || "",
-        sceneIndex: s.sceneIndex,
-        purpose: s.purpose,
-        conflict: s.conflict,
-        changeOccurred: s.changeOccurred,
-        valueRating: s.valueRating,
-      }));
-
-      res.json({
-        projectTitle: project.title,
-        betaReaders,
-        editorialChunks,
-        issues: issuesSummary,
-        scenes,
-      });
+      res.json({ module: moduleName, result });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

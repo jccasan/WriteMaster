@@ -1,104 +1,104 @@
-import { useState, useEffect, useCallback } from "react";
-import { useLocation, useParams, Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
-  ArrowLeft,
-  MessageSquare,
   FileText,
   Layers,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  BookOpen,
+  MessageSquare,
+  Search,
   CheckCircle,
   XCircle,
+  AlertTriangle,
   Star,
   Gauge,
   Zap,
-  Link as LinkIcon,
-  Anvil,
+  Copy,
+  PenTool,
+  Eye,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
 
-interface BetaReader {
-  profileName: string;
-  profileDescription: string;
-  hookedAt?: string;
-  attentionSaggedAt?: string;
-  confusionPoints?: string[];
-  strongestMoments?: string[];
-  leastCredibleMoments?: string[];
-  favoriteCharacterReaction?: string;
-  wouldKeepReading?: boolean;
-  mightQuitAt?: string;
-  finalEmotionalReaction?: string;
-  recommendation?: string;
-}
+const MODULES = [
+  {
+    id: "editorial_assessment",
+    label: "Editorial Assessment",
+    description: "High-level editorial overview: strengths, weaknesses, story state tracking",
+    icon: <FileText className="w-5 h-5" />,
+  },
+  {
+    id: "developmental_editor",
+    label: "Developmental Edit",
+    description: "Narrative craft: pacing, stakes, causality, character arcs, scene construction",
+    icon: <Layers className="w-5 h-5" />,
+  },
+  {
+    id: "copy_editor",
+    label: "Copy Edit",
+    description: "Prose clarity, voice consistency, dialogue, clichés, show-don't-tell",
+    icon: <PenTool className="w-5 h-5" />,
+  },
+  {
+    id: "proofreader",
+    label: "Proofread",
+    description: "Grammar, punctuation, and formatting errors",
+    icon: <Search className="w-5 h-5" />,
+  },
+  {
+    id: "beta_reader",
+    label: "Beta Reader",
+    description: "Simulated reader reaction: hooks, confusion points, emotional response",
+    icon: <MessageSquare className="w-5 h-5" />,
+  },
+  {
+    id: "scene_scanner",
+    label: "Scene Scanner",
+    description: "Scene-by-scene breakdown: purpose, conflict, change, necessity rating",
+    icon: <Eye className="w-5 h-5" />,
+  },
+];
 
-interface EditorialChunk {
-  chunkIndex: number;
-  startChapter: number;
-  endChapter: number;
-  overallImpression: string | null;
-  strengths: string[];
-  weaknesses: string[];
-  continuityNotes: string[];
-  unresolvedQuestions: string[];
-  pacing: { rating: string; notes: string } | null;
-  stakes: { rating: string; notes: string } | null;
-  causality: { rating: string; notes: string } | null;
-  characterArcs: { character: string; arc: string; strength: string }[];
-  thematicNotes: string[];
-}
+const BETA_PROFILES = [
+  { id: "genre_enthusiast", label: "Genre Enthusiast" },
+  { id: "casual_commercial", label: "Casual Reader" },
+  { id: "emotion_first", label: "Emotion-First" },
+  { id: "pacing_sensitive", label: "Pacing-Sensitive" },
+  { id: "critical_craft", label: "Critical Craft" },
+];
 
-interface IssueSummary {
-  total: number;
-  bySeverity: { major: number; moderate: number; minor: number };
-  topIssues: { type: string; severity: string; title: string; description: string; suggestion: string }[];
-}
-
-interface Scene {
-  chapterNumber: number;
-  chapterTitle: string;
-  sceneIndex: number;
-  purpose: string;
-  conflict: string;
-  changeOccurred: boolean;
-  valueRating: string;
-}
-
-interface ForgeProject {
-  id: string;
-  title: string;
-  genre: string;
-  updatedAt: string;
-}
-
-interface FeedbackData {
-  projectTitle: string;
-  noRevision?: boolean;
-  betaReaders?: BetaReader[];
-  editorialChunks?: EditorialChunk[];
-  issues?: IssueSummary;
-  scenes?: Scene[];
-}
+const GENRES = [
+  "General Fiction", "Contemporary Thriller", "Mystery", "Romance",
+  "Science Fiction", "Fantasy", "Horror", "Literary Fiction",
+  "Historical Fiction", "Crime Fiction", "Young Adult",
+];
 
 function RatingBadge({ rating }: { rating: string }) {
   const colors: Record<string, string> = {
     strong: "bg-green-900/40 text-green-400 border-green-800/50",
     high: "bg-green-900/40 text-green-400 border-green-800/50",
+    polished: "bg-green-900/40 text-green-400 border-green-800/50",
+    consistent: "bg-green-900/40 text-green-400 border-green-800/50",
+    essential: "bg-green-900/40 text-green-400 border-green-800/50",
     adequate: "bg-yellow-900/40 text-yellow-400 border-yellow-800/50",
     medium: "bg-yellow-900/40 text-yellow-400 border-yellow-800/50",
+    mostly_consistent: "bg-yellow-900/40 text-yellow-400 border-yellow-800/50",
+    useful_but_weak: "bg-yellow-900/40 text-yellow-400 border-yellow-800/50",
     weak: "bg-red-900/40 text-red-400 border-red-800/50",
     low: "bg-red-900/40 text-red-400 border-red-800/50",
+    rough: "bg-red-900/40 text-red-400 border-red-800/50",
+    needs_work: "bg-red-900/40 text-red-400 border-red-800/50",
+    inconsistent: "bg-red-900/40 text-red-400 border-red-800/50",
+    underperforming: "bg-red-900/40 text-red-400 border-red-800/50",
+    redundant: "bg-red-900/40 text-red-400 border-red-800/50",
   };
+  const clean = rating.toLowerCase().replace(/\s+/g, "_");
   return (
-    <Badge variant="outline" className={cn("text-xs capitalize", colors[rating.toLowerCase()] || "border-gray-700 text-gray-400")}>
-      {rating}
+    <Badge variant="outline" className={cn("text-xs capitalize", colors[clean] || "border-gray-700 text-gray-400")}>
+      {rating.replace(/_/g, " ")}
     </Badge>
   );
 }
@@ -106,6 +106,7 @@ function RatingBadge({ rating }: { rating: string }) {
 function SeverityBadge({ severity }: { severity: string }) {
   const colors: Record<string, string> = {
     major: "bg-red-900/40 text-red-400 border-red-800/50",
+    critical: "bg-red-900/40 text-red-400 border-red-800/50",
     moderate: "bg-yellow-900/40 text-yellow-400 border-yellow-800/50",
     minor: "bg-blue-900/40 text-blue-400 border-blue-800/50",
   };
@@ -116,575 +117,527 @@ function SeverityBadge({ severity }: { severity: string }) {
   );
 }
 
-function CollapsibleSection({
-  title,
-  icon,
-  defaultOpen = false,
-  count,
-  children,
-  testId,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  defaultOpen?: boolean;
-  count?: number;
-  children: React.ReactNode;
-  testId: string;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+function IssueList({ issues }: { issues: any[] }) {
+  if (!issues || issues.length === 0) return null;
   return (
-    <div className="border border-amber-900/20 rounded-lg bg-gray-900/50 overflow-hidden" data-testid={testId}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-gray-800/50 transition-colors"
-        data-testid={`${testId}-toggle`}
-      >
-        <span className="text-amber-500">{icon}</span>
-        <span className="text-amber-400 font-semibold text-base flex-1">{title}</span>
-        {count !== undefined && (
-          <Badge variant="outline" className="border-amber-900/30 text-amber-400/70 text-xs">{count}</Badge>
-        )}
-        {open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-      </button>
-      {open && <div className="px-5 pb-5 pt-1">{children}</div>}
-    </div>
-  );
-}
-
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-function ProjectPicker({ onSelect }: { onSelect: (id: string) => void }) {
-  const [projects, setProjects] = useState<ForgeProject[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/editor/projects")
-      .then((r) => r.json())
-      .then((data) => { setProjects(data); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-      </div>
-    );
-  }
-
-  if (projects.length === 0) {
-    return (
-      <div className="text-center py-16" data-testid="empty-no-projects">
-        <Anvil className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-400 mb-4">No FORGE projects found. Create a project and run analysis first.</p>
-        <Link
-          href="/forge"
-          className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
-          data-testid="link-go-to-forge"
-        >
-          Go to FORGE
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2" data-testid="project-picker">
-      {projects.map((p) => (
-        <button
-          key={p.id}
-          onClick={() => onSelect(p.id)}
-          className="w-full text-left px-4 py-3 rounded-lg border border-gray-800 hover:border-amber-900/40 hover:bg-gray-800/50 transition-colors flex items-center gap-3"
-          data-testid={`button-select-project-${p.id}`}
-        >
-          <Anvil className="w-4 h-4 text-amber-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <div className="text-gray-200 font-medium text-sm truncate">{p.title}</div>
-            <div className="flex items-center gap-2 mt-0.5">
-              {p.genre && <span className="text-gray-500 text-xs">{p.genre}</span>}
-              <span className="text-gray-600 text-xs">{formatDate(p.updatedAt)}</span>
-            </div>
+    <div className="space-y-2 mt-4">
+      <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium">Issues ({issues.length})</h4>
+      {issues.map((issue: any, i: number) => (
+        <div key={i} className="border border-gray-800 rounded-lg p-3" data-testid={`issue-${i}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <SeverityBadge severity={issue.severity} />
+            <span className="text-gray-200 text-sm font-medium">{issue.title}</span>
+            <Badge variant="outline" className="border-gray-700 text-gray-500 text-[10px] ml-auto">{issue.type}</Badge>
           </div>
-          <ChevronRight className="w-4 h-4 text-gray-600" />
-        </button>
+          {issue.description && <p className="text-gray-400 text-sm mt-1">{issue.description}</p>}
+          {issue.evidence && issue.evidence.length > 0 && (
+            <div className="mt-1.5 space-y-0.5">
+              {issue.evidence.map((e: string, j: number) => (
+                <p key={j} className="text-gray-500 text-xs italic border-l-2 border-gray-700 pl-2">"{e}"</p>
+              ))}
+            </div>
+          )}
+          {issue.suggestion && (
+            <p className="text-amber-400/70 text-sm mt-1.5 flex items-start gap-1.5">
+              <Zap className="w-3 h-3 mt-0.5 shrink-0" />
+              {issue.suggestion}
+            </p>
+          )}
+        </div>
       ))}
     </div>
   );
 }
 
+function EditorialResult({ result }: { result: any }) {
+  return (
+    <div className="space-y-4">
+      {result.overallImpression && (
+        <div className="bg-gray-800/50 border border-gray-800 rounded-lg p-4">
+          <h4 className="text-amber-300 text-xs uppercase tracking-wider font-medium mb-2">Overall Impression</h4>
+          <p className="text-gray-300 text-sm leading-relaxed">{result.overallImpression}</p>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {result.strengths?.length > 0 && (
+          <div>
+            <h4 className="text-green-400 text-xs uppercase tracking-wider font-medium mb-1">Strengths</h4>
+            <ul className="space-y-1">
+              {result.strengths.map((s: string, i: number) => (
+                <li key={i} className="text-gray-300 text-sm flex items-start gap-1.5">
+                  <CheckCircle className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {result.weaknesses?.length > 0 && (
+          <div>
+            <h4 className="text-red-400 text-xs uppercase tracking-wider font-medium mb-1">Weaknesses</h4>
+            <ul className="space-y-1">
+              {result.weaknesses.map((w: string, i: number) => (
+                <li key={i} className="text-gray-300 text-sm flex items-start gap-1.5">
+                  <AlertTriangle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                  <span>{w}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      {result.continuityNotes?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-1">Continuity Notes</h4>
+          <ul className="space-y-0.5">{result.continuityNotes.map((n: string, i: number) => <li key={i} className="text-gray-400 text-sm">{n}</li>)}</ul>
+        </div>
+      )}
+      {result.unresolvedQuestions?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-1">Unresolved Questions</h4>
+          <ul className="space-y-0.5">{result.unresolvedQuestions.map((q: string, i: number) => <li key={i} className="text-gray-400 text-sm">{q}</li>)}</ul>
+        </div>
+      )}
+      <IssueList issues={result.issues} />
+    </div>
+  );
+}
+
+function DevEditResult({ result }: { result: any }) {
+  return (
+    <div className="space-y-4">
+      {(result.pacing || result.stakes || result.causality) && (
+        <div className="grid grid-cols-3 gap-3">
+          {result.pacing && (
+            <div className="border border-gray-800 rounded-lg p-3">
+              <div className="flex items-center gap-1.5 mb-1"><Gauge className="w-3 h-3 text-gray-500" /><span className="text-gray-500 text-xs">Pacing</span></div>
+              <RatingBadge rating={result.pacing.rating} />
+              {result.pacing.notes && <p className="text-gray-400 text-xs mt-1.5">{result.pacing.notes}</p>}
+            </div>
+          )}
+          {result.stakes && (
+            <div className="border border-gray-800 rounded-lg p-3">
+              <div className="flex items-center gap-1.5 mb-1"><Zap className="w-3 h-3 text-gray-500" /><span className="text-gray-500 text-xs">Stakes</span></div>
+              <RatingBadge rating={result.stakes.rating} />
+              {result.stakes.notes && <p className="text-gray-400 text-xs mt-1.5">{result.stakes.notes}</p>}
+            </div>
+          )}
+          {result.causality && (
+            <div className="border border-gray-800 rounded-lg p-3">
+              <div className="flex items-center gap-1.5 mb-1"><Sparkles className="w-3 h-3 text-gray-500" /><span className="text-gray-500 text-xs">Causality</span></div>
+              <RatingBadge rating={result.causality.rating} />
+              {result.causality.notes && <p className="text-gray-400 text-xs mt-1.5">{result.causality.notes}</p>}
+            </div>
+          )}
+        </div>
+      )}
+      {result.characterArcs?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Character Arcs</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {result.characterArcs.map((arc: any, i: number) => (
+              <div key={i} className="border border-gray-800 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-amber-300 text-sm font-medium">{arc.character}</span>
+                  {arc.strength && <RatingBadge rating={arc.strength} />}
+                </div>
+                {arc.arc && <p className="text-gray-400 text-sm">{arc.arc}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {result.sceneByScene?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Scene Breakdown</h4>
+          <div className="space-y-2">
+            {result.sceneByScene.map((s: any, i: number) => (
+              <div key={i} className="border border-gray-800 rounded-lg p-3 flex items-start gap-3">
+                <span className="text-amber-400/60 text-xs font-mono mt-0.5">S{s.sceneIndex + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-gray-200 text-sm font-medium">{s.purpose}</span>
+                    <RatingBadge rating={s.rating} />
+                  </div>
+                  <p className="text-gray-500 text-xs">{s.conflict}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {s.change ? <CheckCircle className="w-3 h-3 text-green-400" /> : <XCircle className="w-3 h-3 text-red-400/50" />}
+                    <span className="text-gray-500 text-xs">{s.change ? "Change occurred" : "No change"}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {result.thematicNotes?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-1">Thematic Notes</h4>
+          {result.thematicNotes.map((n: string, i: number) => <p key={i} className="text-gray-400 text-sm italic">{n}</p>)}
+        </div>
+      )}
+      <IssueList issues={result.issues} />
+    </div>
+  );
+}
+
+function CopyEditResult({ result }: { result: any }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {result.proseQuality && (
+          <div className="border border-gray-800 rounded-lg p-3">
+            <span className="text-gray-500 text-xs">Prose Quality</span>
+            <div className="mt-1"><RatingBadge rating={result.proseQuality.rating} /></div>
+            {result.proseQuality.notes && <p className="text-gray-400 text-xs mt-1.5">{result.proseQuality.notes}</p>}
+          </div>
+        )}
+        {result.voiceConsistency && (
+          <div className="border border-gray-800 rounded-lg p-3">
+            <span className="text-gray-500 text-xs">Voice Consistency</span>
+            <div className="mt-1"><RatingBadge rating={result.voiceConsistency.rating} /></div>
+            {result.voiceConsistency.notes && <p className="text-gray-400 text-xs mt-1.5">{result.voiceConsistency.notes}</p>}
+          </div>
+        )}
+      </div>
+      {result.dialogueNotes?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-1">Dialogue Notes</h4>
+          <ul className="space-y-0.5">{result.dialogueNotes.map((n: string, i: number) => <li key={i} className="text-gray-300 text-sm">{n}</li>)}</ul>
+        </div>
+      )}
+      {result.cliches?.length > 0 && (
+        <div>
+          <h4 className="text-red-400 text-xs uppercase tracking-wider font-medium mb-1">Clichés Found</h4>
+          <ul className="space-y-0.5">{result.cliches.map((c: string, i: number) => <li key={i} className="text-gray-400 text-sm italic border-l-2 border-red-800/30 pl-2">{c}</li>)}</ul>
+        </div>
+      )}
+      {result.showDontTell?.length > 0 && (
+        <div>
+          <h4 className="text-yellow-400 text-xs uppercase tracking-wider font-medium mb-1">Show Don't Tell</h4>
+          <ul className="space-y-0.5">{result.showDontTell.map((s: string, i: number) => <li key={i} className="text-gray-400 text-sm italic border-l-2 border-yellow-800/30 pl-2">{s}</li>)}</ul>
+        </div>
+      )}
+      <IssueList issues={result.issues} />
+    </div>
+  );
+}
+
+function ProofreadResult({ result }: { result: any }) {
+  return (
+    <div className="space-y-4">
+      {result.grammarIssues?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Grammar ({result.grammarIssues.length})</h4>
+          <div className="space-y-1.5">
+            {result.grammarIssues.map((g: any, i: number) => (
+              <div key={i} className="border border-gray-800 rounded-lg p-2.5 text-sm">
+                <p className="text-red-300 italic">"{g.text}"</p>
+                <p className="text-gray-400 text-xs mt-0.5">{g.issue}</p>
+                <p className="text-green-400/80 text-xs mt-0.5">→ {g.suggestion}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {result.punctuationIssues?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Punctuation ({result.punctuationIssues.length})</h4>
+          <div className="space-y-1.5">
+            {result.punctuationIssues.map((p: any, i: number) => (
+              <div key={i} className="border border-gray-800 rounded-lg p-2.5 text-sm">
+                <p className="text-red-300 italic">"{p.text}"</p>
+                <p className="text-gray-400 text-xs mt-0.5">{p.issue}</p>
+                <p className="text-green-400/80 text-xs mt-0.5">→ {p.suggestion}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {result.formattingNotes?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-1">Formatting Notes</h4>
+          <ul className="space-y-0.5">{result.formattingNotes.map((n: string, i: number) => <li key={i} className="text-gray-400 text-sm">{n}</li>)}</ul>
+        </div>
+      )}
+      <IssueList issues={result.issues} />
+    </div>
+  );
+}
+
+function BetaReaderResult({ result }: { result: any }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-amber-300 font-semibold text-sm">{result.profileName}</h4>
+        {result.wouldKeepReading !== undefined && (
+          <div className="flex items-center gap-1.5">
+            {result.wouldKeepReading ? <CheckCircle className="w-4 h-4 text-green-400" /> : <XCircle className="w-4 h-4 text-red-400" />}
+            <span className={cn("text-xs font-medium", result.wouldKeepReading ? "text-green-400" : "text-red-400")}>
+              {result.wouldKeepReading ? "Would keep reading" : "Might stop reading"}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        {result.hookedAt && <div><span className="text-gray-500 text-xs uppercase tracking-wider">Hooked at</span><p className="text-gray-300 mt-0.5">{result.hookedAt}</p></div>}
+        {result.attentionSaggedAt && <div><span className="text-gray-500 text-xs uppercase tracking-wider">Attention sagged</span><p className="text-gray-300 mt-0.5">{result.attentionSaggedAt}</p></div>}
+        {result.favoriteCharacterReaction && <div className="md:col-span-2"><span className="text-gray-500 text-xs uppercase tracking-wider">Favorite character reaction</span><p className="text-gray-300 mt-0.5">{result.favoriteCharacterReaction}</p></div>}
+        {result.strongestMoments?.length > 0 && (
+          <div><span className="text-gray-500 text-xs uppercase tracking-wider">Strongest moments</span>
+            <ul className="mt-1 space-y-0.5">{result.strongestMoments.map((m: string, j: number) => <li key={j} className="text-gray-300 flex items-start gap-1.5"><Star className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" /><span>{m}</span></li>)}</ul>
+          </div>
+        )}
+        {result.confusionPoints?.length > 0 && (
+          <div><span className="text-gray-500 text-xs uppercase tracking-wider">Confusion points</span>
+            <ul className="mt-1 space-y-0.5">{result.confusionPoints.map((m: string, j: number) => <li key={j} className="text-gray-300 flex items-start gap-1.5"><AlertTriangle className="w-3 h-3 text-yellow-500 mt-0.5 shrink-0" /><span>{m}</span></li>)}</ul>
+          </div>
+        )}
+        {result.leastCredibleMoments?.length > 0 && (
+          <div className="md:col-span-2"><span className="text-gray-500 text-xs uppercase tracking-wider">Least credible moments</span>
+            <ul className="mt-1 space-y-0.5">{result.leastCredibleMoments.map((m: string, j: number) => <li key={j} className="text-red-300 flex items-start gap-1.5"><XCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" /><span>{m}</span></li>)}</ul>
+          </div>
+        )}
+        {result.finalEmotionalReaction && <div className="md:col-span-2"><span className="text-gray-500 text-xs uppercase tracking-wider">Final emotional reaction</span><p className="text-gray-300 mt-0.5 italic">"{result.finalEmotionalReaction}"</p></div>}
+        {result.recommendation && <div className="md:col-span-2"><span className="text-gray-500 text-xs uppercase tracking-wider">Recommendation</span><p className="text-gray-300 mt-0.5">{result.recommendation}</p></div>}
+        {result.mightQuitAt && <div className="md:col-span-2"><span className="text-gray-500 text-xs uppercase tracking-wider">Might quit at</span><p className="text-red-300 mt-0.5">{result.mightQuitAt}</p></div>}
+      </div>
+    </div>
+  );
+}
+
+function SceneScanResult({ result }: { result: any }) {
+  return (
+    <div className="space-y-4">
+      {result.scenes?.length > 0 && (
+        <div>
+          <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Scenes ({result.scenes.length})</h4>
+          <div className="space-y-2">
+            {result.scenes.map((s: any, i: number) => (
+              <div key={i} className="border border-gray-800 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-amber-400/60 text-xs font-mono">S{s.sceneIndex + 1}</span>
+                  <span className="text-gray-200 text-sm font-medium flex-1">{s.purpose}</span>
+                  <RatingBadge rating={s.necessityRating} />
+                </div>
+                <p className="text-gray-500 text-xs mb-1.5">{s.conflict}</p>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div><span className="text-gray-600">Plot:</span> <span className="text-gray-400">{s.plotValue}</span></div>
+                  <div><span className="text-gray-600">Character:</span> <span className="text-gray-400">{s.characterValue}</span></div>
+                  <div><span className="text-gray-600">Theme:</span> <span className="text-gray-400">{s.thematicValue}</span></div>
+                </div>
+                <div className="flex items-center gap-1 mt-1.5">
+                  {s.changeOccurred ? <CheckCircle className="w-3 h-3 text-green-400" /> : <XCircle className="w-3 h-3 text-red-400/50" />}
+                  <span className="text-gray-500 text-xs">{s.changeOccurred ? "Change occurred" : "No change"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {result.redundantScenes?.length > 0 && (
+        <div>
+          <h4 className="text-red-400 text-xs uppercase tracking-wider font-medium mb-1">Potentially Redundant</h4>
+          <ul className="space-y-0.5">{result.redundantScenes.map((r: string, i: number) => <li key={i} className="text-gray-400 text-sm">{r}</li>)}</ul>
+        </div>
+      )}
+      <IssueList issues={result.issues} />
+    </div>
+  );
+}
+
+function ResultRenderer({ moduleName, result }: { moduleName: string; result: any }) {
+  switch (moduleName) {
+    case "editorial_assessment": return <EditorialResult result={result} />;
+    case "developmental_editor": return <DevEditResult result={result} />;
+    case "copy_editor": return <CopyEditResult result={result} />;
+    case "proofreader": return <ProofreadResult result={result} />;
+    case "beta_reader": return <BetaReaderResult result={result} />;
+    case "scene_scanner": return <SceneScanResult result={result} />;
+    default: return <pre className="text-gray-300 text-xs whitespace-pre-wrap">{JSON.stringify(result, null, 2)}</pre>;
+  }
+}
+
 export default function Editor() {
-  const [, navigate] = useLocation();
-  const params = useParams<{ projectId: string }>();
-  const projectId = params.projectId;
-
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<FeedbackData | null>(null);
+  const [text, setText] = useState("");
+  const [selectedModule, setSelectedModule] = useState("editorial_assessment");
+  const [genre, setGenre] = useState("General Fiction");
+  const [context, setContext] = useState("");
+  const [betaProfile, setBetaProfile] = useState("genre_enthusiast");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [result, setResult] = useState<{ module: string; result: any } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showContext, setShowContext] = useState(false);
 
-  const fetchFeedback = useCallback(async (pid: string) => {
-    setLoading(true);
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+  const analyze = async () => {
+    if (!text.trim()) return;
+    setAnalyzing(true);
     setError(null);
+    setResult(null);
     try {
-      const res = await fetch(`/api/editor/feedback/${pid}`);
-      if (!res.ok) throw new Error("Failed to load feedback");
-      setData(await res.json());
+      const res = await fetch("/api/editor/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          module: selectedModule,
+          genre: genre.toLowerCase(),
+          context: context || undefined,
+          betaProfile: selectedModule === "beta_reader" ? betaProfile : undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Analysis failed");
+      }
+      setResult(await res.json());
     } catch (err: any) {
       setError(err.message);
     }
-    setLoading(false);
-  }, []);
+    setAnalyzing(false);
+  };
 
-  useEffect(() => {
-    if (projectId) fetchFeedback(projectId);
-  }, [projectId, fetchFeedback]);
-
-  if (!projectId) {
-    return (
-      <Layout>
-        <div className="max-w-3xl mx-auto animate-in fade-in duration-300">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-amber-400 mb-2" data-testid="text-editor-heading">Editor</h1>
-            <p className="text-gray-400 text-sm">Select a FORGE project to view consolidated editorial feedback — beta readers, editorial assessment, and developmental analysis.</p>
-          </div>
-          <ProjectPicker onSelect={(id) => navigate(`/editor/${id}`)} />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-        </div>
-      </Layout>
-    );
-  }
+  const moduleLabel = MODULES.find(m => m.id === selectedModule)?.label || selectedModule;
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => navigate("/editor")}
-            className="text-sm font-medium text-gray-400 hover:text-amber-400 transition-colors flex items-center gap-1"
-            data-testid="button-back-editor"
-          >
-            <ArrowLeft className="w-4 h-4" /> All Projects
-          </button>
+      <div className="max-w-5xl mx-auto animate-in fade-in duration-300">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-editor-heading">Editor</h1>
+          <p className="text-muted-foreground text-sm">Paste a chapter or passage and run any of the FORGE feedback modules to get instant AI analysis.</p>
         </div>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-amber-400 mb-2" data-testid="text-editor-heading">
-            {data?.projectTitle || "Editor"}
-          </h1>
-          <p className="text-gray-400 text-sm">Consolidated feedback from FORGE manuscript analysis — beta readers, editorial assessment, and developmental analysis.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-foreground">Your Text</label>
+                <span className="text-xs text-muted-foreground">{wordCount.toLocaleString()} words</span>
+              </div>
+              <Textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Paste your chapter, passage, or scene here..."
+                className="min-h-[300px] font-serif text-sm leading-relaxed resize-y"
+                data-testid="input-editor-text"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Genre</label>
+                <select
+                  value={genre}
+                  onChange={(e) => setGenre(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  data-testid="select-genre"
+                >
+                  {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              {selectedModule === "beta_reader" && (
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Reader Profile</label>
+                  <select
+                    value={betaProfile}
+                    onChange={(e) => setBetaProfile(e.target.value)}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    data-testid="select-beta-profile"
+                  >
+                    {BETA_PROFILES.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">&nbsp;</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowContext(!showContext)}
+                  className="h-9 text-xs"
+                  data-testid="button-toggle-context"
+                >
+                  {showContext ? "Hide" : "Add"} Context
+                </Button>
+              </div>
+            </div>
+
+            {showContext && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Previous Context (optional)</label>
+                <Textarea
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  placeholder="Briefly describe what happened before this passage (helps the AI understand continuity)..."
+                  className="min-h-[80px] text-sm resize-y"
+                  data-testid="input-context"
+                />
+              </div>
+            )}
+
+            <Button
+              onClick={analyze}
+              disabled={analyzing || !text.trim()}
+              className="w-full gap-2"
+              size="lg"
+              data-testid="button-analyze"
+            >
+              {analyzing ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing with {moduleLabel}...</>
+              ) : (
+                <><Sparkles className="w-4 h-4" /> Run {moduleLabel}</>
+              )}
+            </Button>
+
+            {error && (
+              <div className="bg-red-900/20 border border-red-800/40 rounded-lg p-4 text-red-300 text-sm" data-testid="text-error">
+                {error}
+              </div>
+            )}
+
+            {result && (
+              <Card className="border-border/60" data-testid="result-panel">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-primary">{MODULES.find(m => m.id === result.module)?.icon}</span>
+                    <h3 className="font-semibold text-foreground">{MODULES.find(m => m.id === result.module)?.label} Results</h3>
+                  </div>
+                  <ResultRenderer moduleName={result.module} result={result.result} />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground block mb-1">Feedback Module</label>
+            {MODULES.map((mod) => (
+              <button
+                key={mod.id}
+                onClick={() => setSelectedModule(mod.id)}
+                disabled={analyzing}
+                className={cn(
+                  "w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex items-start gap-3",
+                  selectedModule === mod.id
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-border/40 hover:border-border/80 hover:bg-muted/30"
+                )}
+                data-testid={`button-module-${mod.id}`}
+              >
+                <span className={cn("mt-0.5 shrink-0", selectedModule === mod.id ? "text-primary" : "text-muted-foreground")}>
+                  {mod.icon}
+                </span>
+                <div>
+                  <div className={cn("text-sm font-medium", selectedModule === mod.id ? "text-foreground" : "text-foreground/80")}>
+                    {mod.label}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{mod.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-
-        {error && (
-          <div className="bg-red-900/20 border border-red-800/40 rounded-lg p-4 mb-6 text-red-300 text-sm" data-testid="text-error">
-            {error}
-          </div>
-        )}
-
-        {data && data.noRevision && (
-          <div className="text-center py-16" data-testid="empty-no-revision">
-            <AlertTriangle className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 mb-4">This project has no analysis data yet.</p>
-            <Link
-              href="/forge"
-              className="inline-flex items-center gap-2 rounded-md border border-amber-900/30 text-amber-400 hover:bg-amber-600/20 transition-colors text-sm font-medium h-9 px-4 no-underline"
-              data-testid="link-go-to-forge"
-            >
-              Open FORGE to run analysis
-            </Link>
-          </div>
-        )}
-
-        {data && !data.noRevision && (
-          <div className="space-y-4">
-
-            <CollapsibleSection
-              title="Beta Reader Panel"
-              icon={<MessageSquare className="w-5 h-5" />}
-              count={data.betaReaders?.length}
-              defaultOpen={true}
-              testId="section-beta-readers"
-            >
-              {!data.betaReaders || data.betaReaders.length === 0 ? (
-                <p className="text-gray-500 text-sm py-4">No beta reader feedback available. Run the beta reader analysis in FORGE.</p>
-              ) : (
-                <div className="space-y-3">
-                  {data.betaReaders.map((br, i) => (
-                    <Card key={i} className="bg-gray-800/50 border-gray-800" data-testid={`card-beta-reader-${i}`}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <h4 className="text-amber-300 font-semibold text-sm">{br.profileName}</h4>
-                            {br.profileDescription && (
-                              <p className="text-gray-500 text-xs mt-0.5">{br.profileDescription}</p>
-                            )}
-                          </div>
-                          {br.wouldKeepReading !== undefined && (
-                            <div className="flex items-center gap-1.5">
-                              {br.wouldKeepReading ? (
-                                <CheckCircle className="w-4 h-4 text-green-400" />
-                              ) : (
-                                <XCircle className="w-4 h-4 text-red-400" />
-                              )}
-                              <span className={cn("text-xs font-medium", br.wouldKeepReading ? "text-green-400" : "text-red-400")}>
-                                {br.wouldKeepReading ? "Would keep reading" : "Might stop reading"}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                          {br.hookedAt && (
-                            <div>
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Hooked at</span>
-                              <p className="text-gray-300 mt-0.5">{br.hookedAt}</p>
-                            </div>
-                          )}
-                          {br.attentionSaggedAt && (
-                            <div>
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Attention sagged</span>
-                              <p className="text-gray-300 mt-0.5">{br.attentionSaggedAt}</p>
-                            </div>
-                          )}
-                          {br.favoriteCharacterReaction && (
-                            <div className="md:col-span-2">
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Favorite character reaction</span>
-                              <p className="text-gray-300 mt-0.5">{br.favoriteCharacterReaction}</p>
-                            </div>
-                          )}
-                          {br.strongestMoments && br.strongestMoments.length > 0 && (
-                            <div>
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Strongest moments</span>
-                              <ul className="mt-1 space-y-0.5">
-                                {br.strongestMoments.map((m, j) => (
-                                  <li key={j} className="text-gray-300 flex items-start gap-1.5">
-                                    <Star className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-                                    <span>{m}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {br.confusionPoints && br.confusionPoints.length > 0 && (
-                            <div>
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Confusion points</span>
-                              <ul className="mt-1 space-y-0.5">
-                                {br.confusionPoints.map((m, j) => (
-                                  <li key={j} className="text-gray-300 flex items-start gap-1.5">
-                                    <AlertTriangle className="w-3 h-3 text-yellow-500 mt-0.5 shrink-0" />
-                                    <span>{m}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {br.leastCredibleMoments && br.leastCredibleMoments.length > 0 && (
-                            <div className="md:col-span-2">
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Least credible moments</span>
-                              <ul className="mt-1 space-y-0.5">
-                                {br.leastCredibleMoments.map((m, j) => (
-                                  <li key={j} className="text-red-300 flex items-start gap-1.5">
-                                    <XCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-                                    <span>{m}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {br.finalEmotionalReaction && (
-                            <div className="md:col-span-2">
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Final emotional reaction</span>
-                              <p className="text-gray-300 mt-0.5 italic">"{br.finalEmotionalReaction}"</p>
-                            </div>
-                          )}
-                          {br.recommendation && (
-                            <div className="md:col-span-2">
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Recommendation</span>
-                              <p className="text-gray-300 mt-0.5">{br.recommendation}</p>
-                            </div>
-                          )}
-                          {br.mightQuitAt && (
-                            <div className="md:col-span-2">
-                              <span className="text-gray-500 text-xs uppercase tracking-wider">Might quit at</span>
-                              <p className="text-red-300 mt-0.5">{br.mightQuitAt}</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title="Editorial Assessment"
-              icon={<FileText className="w-5 h-5" />}
-              count={data.editorialChunks?.length}
-              defaultOpen={false}
-              testId="section-editorial"
-            >
-              {!data.editorialChunks || data.editorialChunks.length === 0 ? (
-                <p className="text-gray-500 text-sm py-4">No editorial assessment data available. Run the editorial assessment analysis in FORGE.</p>
-              ) : (
-                <div className="space-y-4">
-                  {data.issues && data.issues.total > 0 && (
-                    <div className="flex items-center gap-4 px-4 py-3 rounded-lg bg-gray-800/50 border border-gray-800">
-                      <span className="text-gray-400 text-sm font-medium">Issues Found:</span>
-                      <div className="flex items-center gap-3">
-                        {data.issues.bySeverity.major > 0 && (
-                          <span className="text-red-400 text-sm font-medium">{data.issues.bySeverity.major} major</span>
-                        )}
-                        {data.issues.bySeverity.moderate > 0 && (
-                          <span className="text-yellow-400 text-sm font-medium">{data.issues.bySeverity.moderate} moderate</span>
-                        )}
-                        {data.issues.bySeverity.minor > 0 && (
-                          <span className="text-blue-400 text-sm font-medium">{data.issues.bySeverity.minor} minor</span>
-                        )}
-                      </div>
-                      <span className="text-gray-500 text-xs ml-auto">{data.issues.total} total</span>
-                    </div>
-                  )}
-
-                  {data.editorialChunks.map((chunk, i) => (
-                    <div key={i} className="border border-gray-800 rounded-lg p-4" data-testid={`editorial-chunk-${i}`}>
-                      <h4 className="text-amber-300 font-medium text-sm mb-3">
-                        Chapters {chunk.startChapter}–{chunk.endChapter}
-                      </h4>
-
-                      {chunk.overallImpression && (
-                        <p className="text-gray-300 text-sm mb-3 leading-relaxed">{chunk.overallImpression}</p>
-                      )}
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {chunk.strengths.length > 0 && (
-                          <div>
-                            <span className="text-green-400 text-xs uppercase tracking-wider font-medium">Strengths</span>
-                            <ul className="mt-1 space-y-1">
-                              {chunk.strengths.map((s, j) => (
-                                <li key={j} className="text-gray-300 text-sm flex items-start gap-1.5">
-                                  <CheckCircle className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
-                                  <span>{s}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {chunk.weaknesses.length > 0 && (
-                          <div>
-                            <span className="text-red-400 text-xs uppercase tracking-wider font-medium">Weaknesses</span>
-                            <ul className="mt-1 space-y-1">
-                              {chunk.weaknesses.map((w, j) => (
-                                <li key={j} className="text-gray-300 text-sm flex items-start gap-1.5">
-                                  <AlertTriangle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-                                  <span>{w}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {chunk.continuityNotes.length > 0 && (
-                          <div>
-                            <span className="text-gray-500 text-xs uppercase tracking-wider font-medium">Continuity Notes</span>
-                            <ul className="mt-1 space-y-1">
-                              {chunk.continuityNotes.map((n, j) => (
-                                <li key={j} className="text-gray-400 text-sm">{n}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {chunk.unresolvedQuestions.length > 0 && (
-                          <div>
-                            <span className="text-gray-500 text-xs uppercase tracking-wider font-medium">Unresolved Questions</span>
-                            <ul className="mt-1 space-y-1">
-                              {chunk.unresolvedQuestions.map((q, j) => (
-                                <li key={j} className="text-gray-400 text-sm">{q}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-
-                      {chunk.thematicNotes.length > 0 && (
-                        <div className="mt-3">
-                          <span className="text-gray-500 text-xs uppercase tracking-wider font-medium">Thematic Notes</span>
-                          <div className="mt-1 space-y-1">
-                            {chunk.thematicNotes.map((n, j) => (
-                              <p key={j} className="text-gray-400 text-sm italic">{n}</p>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {data.issues && data.issues.topIssues.length > 0 && (
-                    <div>
-                      <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Top Issues</h4>
-                      <div className="space-y-2">
-                        {data.issues.topIssues.map((issue, i) => (
-                          <div key={i} className="border border-gray-800 rounded-lg p-3" data-testid={`issue-${i}`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <SeverityBadge severity={issue.severity} />
-                              <span className="text-gray-200 text-sm font-medium">{issue.title}</span>
-                              <Badge variant="outline" className="border-gray-700 text-gray-500 text-[10px] ml-auto">{issue.type}</Badge>
-                            </div>
-                            {issue.description && <p className="text-gray-400 text-sm mt-1">{issue.description}</p>}
-                            {issue.suggestion && (
-                              <p className="text-amber-400/70 text-sm mt-1.5 flex items-start gap-1.5">
-                                <Zap className="w-3 h-3 mt-0.5 shrink-0" />
-                                {issue.suggestion}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title="Developmental Assessment"
-              icon={<Layers className="w-5 h-5" />}
-              defaultOpen={false}
-              testId="section-developmental"
-            >
-              {!data.editorialChunks || data.editorialChunks.every(c => !c.pacing && !c.stakes && !c.causality && c.characterArcs.length === 0) ? (
-                <p className="text-gray-500 text-sm py-4">No developmental assessment data available. Run the developmental editor analysis in FORGE.</p>
-              ) : (
-                <div className="space-y-4">
-                  {data.editorialChunks.some(c => c.pacing || c.stakes || c.causality) && (
-                    <div>
-                      <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Craft Ratings by Section</h4>
-                      <div className="space-y-2">
-                        {data.editorialChunks.filter(c => c.pacing || c.stakes || c.causality).map((chunk, i) => (
-                          <div key={i} className="border border-gray-800 rounded-lg p-3" data-testid={`craft-chunk-${i}`}>
-                            <div className="text-amber-300 text-xs font-medium mb-2">Ch. {chunk.startChapter}–{chunk.endChapter}</div>
-                            <div className="grid grid-cols-3 gap-3">
-                              {chunk.pacing && (
-                                <div>
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    <Gauge className="w-3 h-3 text-gray-500" />
-                                    <span className="text-gray-500 text-xs">Pacing</span>
-                                  </div>
-                                  <RatingBadge rating={chunk.pacing.rating} />
-                                  {chunk.pacing.notes && <p className="text-gray-400 text-xs mt-1">{chunk.pacing.notes}</p>}
-                                </div>
-                              )}
-                              {chunk.stakes && (
-                                <div>
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    <Zap className="w-3 h-3 text-gray-500" />
-                                    <span className="text-gray-500 text-xs">Stakes</span>
-                                  </div>
-                                  <RatingBadge rating={chunk.stakes.rating} />
-                                  {chunk.stakes.notes && <p className="text-gray-400 text-xs mt-1">{chunk.stakes.notes}</p>}
-                                </div>
-                              )}
-                              {chunk.causality && (
-                                <div>
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    <LinkIcon className="w-3 h-3 text-gray-500" />
-                                    <span className="text-gray-500 text-xs">Causality</span>
-                                  </div>
-                                  <RatingBadge rating={chunk.causality.rating} />
-                                  {chunk.causality.notes && <p className="text-gray-400 text-xs mt-1">{chunk.causality.notes}</p>}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {data.editorialChunks.some(c => c.characterArcs.length > 0) && (
-                    <div>
-                      <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">Character Arcs</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {data.editorialChunks.flatMap((chunk) =>
-                          chunk.characterArcs.map((arc, j) => (
-                            <div key={`${chunk.chunkIndex}-${j}`} className="border border-gray-800 rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-amber-300 text-sm font-medium">{arc.character}</span>
-                                {arc.strength && <RatingBadge rating={arc.strength} />}
-                              </div>
-                              {arc.arc && <p className="text-gray-400 text-sm">{arc.arc}</p>}
-                              <span className="text-gray-600 text-[10px]">Ch. {chunk.startChapter}–{chunk.endChapter}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {data.scenes && data.scenes.length > 0 && (
-                    <div>
-                      <h4 className="text-gray-400 text-xs uppercase tracking-wider font-medium mb-2">
-                        Scene Analysis ({data.scenes.length} scenes)
-                      </h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-800">
-                              <th className="text-left text-gray-500 text-xs py-2 pr-3">Chapter</th>
-                              <th className="text-left text-gray-500 text-xs py-2 pr-3">Scene</th>
-                              <th className="text-left text-gray-500 text-xs py-2 pr-3">Purpose</th>
-                              <th className="text-left text-gray-500 text-xs py-2 pr-3">Conflict</th>
-                              <th className="text-left text-gray-500 text-xs py-2 pr-3">Change</th>
-                              <th className="text-left text-gray-500 text-xs py-2">Rating</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {data.scenes.slice(0, 30).map((scene, i) => (
-                              <tr key={i} className="border-b border-gray-800/50" data-testid={`scene-row-${i}`}>
-                                <td className="py-2 pr-3 text-amber-300/80 text-xs whitespace-nowrap">
-                                  {scene.chapterNumber}. {scene.chapterTitle}
-                                </td>
-                                <td className="py-2 pr-3 text-gray-400 text-xs">{scene.sceneIndex + 1}</td>
-                                <td className="py-2 pr-3 text-gray-300 text-xs max-w-[200px] truncate">{scene.purpose}</td>
-                                <td className="py-2 pr-3 text-gray-400 text-xs max-w-[150px] truncate">{scene.conflict}</td>
-                                <td className="py-2 pr-3">
-                                  {scene.changeOccurred ? (
-                                    <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                                  ) : (
-                                    <XCircle className="w-3.5 h-3.5 text-red-400/50" />
-                                  )}
-                                </td>
-                                <td className="py-2">
-                                  <RatingBadge rating={scene.valueRating} />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {data.scenes.length > 30 && (
-                          <p className="text-gray-500 text-xs mt-2">Showing first 30 of {data.scenes.length} scenes</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CollapsibleSection>
-          </div>
-        )}
       </div>
     </Layout>
   );
