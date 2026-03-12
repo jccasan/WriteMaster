@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Scissors, Library, Loader2, ChevronRight, Clock, BookOpen, PenTool, Anvil } from "lucide-react";
+import { Sparkles, Scissors, Library, Loader2, ChevronRight, Clock, BookOpen, PenTool, Anvil, FileText } from "lucide-react";
 import Layout from "@/components/Layout";
 
 interface RecentItem {
@@ -119,6 +119,16 @@ export default function Home() {
       route: "/books",
       cta: "Write Books",
       testId: "card-module-books",
+    },
+    {
+      title: "Editor",
+      description: "Consolidated editorial feedback from FORGE — beta reader reactions, editorial assessment, and developmental analysis for your books.",
+      icon: <FileText className="w-6 h-6" />,
+      count: counts.books,
+      countLabel: "books",
+      route: "/books",
+      cta: "Open Editor",
+      testId: "card-module-editor",
     },
     {
       title: "Story Forge",
