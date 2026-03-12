@@ -478,20 +478,22 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       const editorialChunks = chunks.map((c) => {
         let summary: any = {};
         try { summary = JSON.parse(c.summaryJson || "{}"); } catch {}
+        const ed = summary.editorial || {};
+        const dev = summary.developmental || {};
         return {
           chunkIndex: c.chunkIndex,
           startChapter: c.startChapter,
           endChapter: c.endChapter,
-          overallImpression: summary.overallImpression || null,
-          strengths: summary.strengths || [],
-          weaknesses: summary.weaknesses || [],
-          continuityNotes: summary.continuityNotes || [],
-          unresolvedQuestions: summary.unresolvedQuestions || [],
-          pacing: summary.pacing || null,
-          stakes: summary.stakes || null,
-          causality: summary.causality || null,
-          characterArcs: summary.characterArcs || [],
-          thematicNotes: summary.thematicNotes || [],
+          overallImpression: ed.overallImpression || null,
+          strengths: ed.strengths || [],
+          weaknesses: ed.weaknesses || [],
+          continuityNotes: ed.continuityNotes || [],
+          unresolvedQuestions: ed.unresolvedQuestions || [],
+          pacing: dev.pacing || null,
+          stakes: dev.stakes || null,
+          causality: dev.causality || null,
+          characterArcs: dev.characterArcs || [],
+          thematicNotes: dev.thematicNotes || [],
         };
       });
 

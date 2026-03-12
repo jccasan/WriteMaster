@@ -140,6 +140,20 @@ async function runModule(
           });
         }
       }
+      const existingChunk = await prisma.chunk.findUnique({ where: { id: chunk.id } });
+      let existingSummary: any = {};
+      try { existingSummary = JSON.parse(existingChunk?.summaryJson || "{}"); } catch {}
+      existingSummary.developmental = {
+        pacing: result.pacing,
+        stakes: result.stakes,
+        causality: result.causality,
+        characterArcs: result.characterArcs,
+        thematicNotes: result.thematicNotes,
+      };
+      await prisma.chunk.update({
+        where: { id: chunk.id },
+        data: { summaryJson: JSON.stringify(existingSummary) },
+      });
       break;
     }
 
