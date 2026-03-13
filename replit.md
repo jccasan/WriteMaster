@@ -39,6 +39,7 @@ Two parallel apps in one repo: **StoryDossier** (AI writing studio) and **STORY 
 - `/forge/project/:id/scenes` — Scene purpose analysis
 - `/forge/project/:id/fact-check` — Fact check results
 - `/forge/project/:id/beta-readers` — Beta reader responses
+- `/forge/project/:id/chat` — Chat with AI about your manuscript (context-aware: characters, issues, editorial summaries)
 
 ## StoryDossier Modules
 

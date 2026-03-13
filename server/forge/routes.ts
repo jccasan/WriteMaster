@@ -584,6 +584,130 @@ Use the passage and feedback as context. Give specific, actionable craft advice.
   }
 });
 
+router.post("/projects/:id/chat", async (req: Request, res: Response) => {
+  try {
+    const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const { messages } = req.body;
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "messages array is required" });
+    }
+
+    const MAX_MESSAGES = 50;
+    const MAX_CONTENT_LENGTH = 10000;
+    const validRoles = new Set(["user", "assistant"]);
+    const validated = messages.slice(-MAX_MESSAGES).filter((m: any) =>
+      m && typeof m.content === "string" && validRoles.has(m.role) && m.content.length <= MAX_CONTENT_LENGTH
+    );
+    if (validated.length === 0) {
+      return res.status(400).json({ error: "No valid messages provided" });
+    }
+
+    const revision = await prisma.revisionVersion.findFirst({
+      where: { projectId: project.id },
+      orderBy: { versionNumber: "desc" },
+    });
+
+    let contextParts: string[] = [];
+    contextParts.push(`PROJECT: "${project.title}" (${project.genre || "fiction"})`);
+    if (project.description) contextParts.push(`DESCRIPTION: ${project.description}`);
+
+    if (revision) {
+      const [chapters, characters, issues, chunks] = await Promise.all([
+        prisma.chapter.findMany({
+          where: { revisionVersionId: revision.id },
+          orderBy: { number: "asc" },
+          select: { number: true, title: true, wordCount: true },
+        }),
+        prisma.characterRecord.findMany({
+          where: { revisionVersionId: revision.id },
+          select: { name: true, description: true, traits: true, goals: true, relationships: true },
+        }),
+        prisma.issue.findMany({
+          where: { revisionVersionId: revision.id },
+          orderBy: { severity: "asc" },
+          take: 30,
+          select: { type: true, severity: true, title: true, description: true, suggestion: true },
+        }),
+        prisma.chunk.findMany({
+          where: { revisionVersionId: revision.id, status: "analyzed" },
+          orderBy: { chunkIndex: "asc" },
+          select: { startChapter: true, endChapter: true, summaryJson: true },
+        }),
+      ]);
+
+      if (chapters.length > 0) {
+        contextParts.push(`\nCHAPTERS (${chapters.length}):\n` +
+          chapters.map(c => `  Ch${c.number}: "${c.title || "Untitled"}" (${c.wordCount} words)`).join("\n"));
+      }
+
+      if (characters.length > 0) {
+        contextParts.push(`\nCHARACTERS (${characters.length}):\n` +
+          characters.map(c => {
+            let line = `  ${c.name}`;
+            if (c.description) line += ` — ${c.description}`;
+            let traits: string[] = [];
+            try { traits = JSON.parse(c.traits || "[]"); } catch {}
+            if (traits.length) line += ` [Traits: ${traits.join(", ")}]`;
+            let goals: string[] = [];
+            try { goals = JSON.parse(c.goals || "[]"); } catch {}
+            if (goals.length) line += ` [Goals: ${goals.join(", ")}]`;
+            return line;
+          }).join("\n"));
+      }
+
+      if (chunks.length > 0) {
+        const summaries = chunks.map(c => {
+          let s: any = {};
+          try { s = JSON.parse(c.summaryJson || "{}"); } catch {}
+          const ed = s.editorial || {};
+          return ed.overallImpression
+            ? `  Ch${c.startChapter}-${c.endChapter}: ${ed.overallImpression}`
+            : null;
+        }).filter(Boolean);
+        if (summaries.length) {
+          contextParts.push(`\nEDITORIAL SUMMARIES:\n` + summaries.join("\n"));
+        }
+      }
+
+      if (issues.length > 0) {
+        contextParts.push(`\nTOP ISSUES (${issues.length}):\n` +
+          issues.slice(0, 15).map(i => `  [${i.severity}] ${i.title}: ${i.description}`).join("\n"));
+      }
+    }
+
+    const systemPrompt = `You are an expert fiction editor and writing consultant. You have full context about the user's manuscript project and its analysis results. Use this context to give specific, actionable advice.
+
+Be direct, specific, and reference characters, chapters, and issues by name when relevant. Avoid generic writing advice — ground your responses in the actual manuscript data you have.
+
+PROJECT CONTEXT:
+${contextParts.join("\n")}`;
+
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const anthropic = new Anthropic({
+      apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+    });
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: validated.map((m: any) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+    });
+
+    const reply = response.content[0].type === "text" ? response.content[0].text : "";
+    res.json({ reply });
+  } catch (err: any) {
+    console.error("[forge chat] Error:", err.message);
+    res.status(500).json({ error: "Chat request failed. Please try again." });
+  }
+});
+
 router.post("/seed", async (_req: Request, res: Response) => {
   try {
     await seedDemoProject();

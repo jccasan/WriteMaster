@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   Anvil, LayoutDashboard, Upload, Zap, FileText, AlertTriangle,
-  Users, GitBranch, Film, Search, BookOpen, ArrowLeft, MessageSquare, Home
+  Users, GitBranch, Film, Search, BookOpen, ArrowLeft, MessageSquare, Home, Bot
 } from "lucide-react";
 
 interface NavItem {
@@ -24,6 +24,7 @@ function getProjectNav(projectId: string): NavItem[] {
     { label: "Scenes", path: `${base}/scenes`, icon: <Film className="w-4 h-4" /> },
     { label: "Fact Check", path: `${base}/fact-check`, icon: <Search className="w-4 h-4" /> },
     { label: "Beta Readers", path: `${base}/beta-readers`, icon: <BookOpen className="w-4 h-4" /> },
+    { label: "Chat with AI", path: `${base}/chat`, icon: <Bot className="w-4 h-4" /> },
   ];
 }
 
