@@ -622,7 +622,7 @@ router.post("/projects/:id/chat", async (req: Request, res: Response) => {
         }),
         prisma.characterRecord.findMany({
           where: { revisionVersionId: revision.id },
-          select: { name: true, description: true, traits: true, goals: true, relationships: true },
+          select: { name: true, description: true, traitsJson: true, goalsJson: true, relationshipsJson: true },
         }),
         prisma.issue.findMany({
           where: { revisionVersionId: revision.id },
@@ -648,10 +648,10 @@ router.post("/projects/:id/chat", async (req: Request, res: Response) => {
             let line = `  ${c.name}`;
             if (c.description) line += ` — ${c.description}`;
             let traits: string[] = [];
-            try { traits = JSON.parse(c.traits || "[]"); } catch {}
+            try { traits = JSON.parse(c.traitsJson || "[]"); } catch {}
             if (traits.length) line += ` [Traits: ${traits.join(", ")}]`;
             let goals: string[] = [];
-            try { goals = JSON.parse(c.goals || "[]"); } catch {}
+            try { goals = JSON.parse(c.goalsJson || "[]"); } catch {}
             if (goals.length) line += ` [Goals: ${goals.join(", ")}]`;
             return line;
           }).join("\n"));
