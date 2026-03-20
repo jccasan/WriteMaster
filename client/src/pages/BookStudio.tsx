@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Layout from "@/components/Layout";
+import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import { cn } from "@/lib/utils";
 import {
   Loader2, ArrowLeft, Upload, FileText, Trash2, Send, BookOpen,
@@ -61,6 +62,7 @@ export default function BookStudio() {
 
   const [activeChapter, setActiveChapter] = useState<number | null>(null);
   const [prompt, setPrompt] = useState("");
+  const [sliders, setSliders] = useState<NarrativeSliderValues>({ ...DEFAULT_SLIDERS });
   const [writing, setWriting] = useState(false);
   const [docsExpanded, setDocsExpanded] = useState(true);
 
@@ -164,7 +166,7 @@ export default function BookStudio() {
       const res = await fetch(`/api/books/${bookId}/write-from-prompt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, sliders }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       const data = await res.json();
@@ -506,6 +508,7 @@ export default function BookStudio() {
 
             <div className="border-t p-4 shrink-0">
               <div className="max-w-3xl mx-auto">
+                <NarrativeSliders values={sliders} onChange={setSliders} />
                 {writing && (
                   <div className="flex items-center gap-2 mb-3 text-sm text-primary" data-testid="text-writing-status">
                     <Loader2 className="w-4 h-4 animate-spin" />
