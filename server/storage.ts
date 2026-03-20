@@ -64,6 +64,14 @@ export interface BookChapter {
   sliders?: NarrativeSliders | null;
 }
 
+export interface BookDocument {
+  id: string;
+  name: string;
+  content: string;
+  type: "story_bible" | "character_sheet" | "world_doc" | "outline" | "notes" | "other";
+  added_at: string;
+}
+
 export interface BookProject {
   id: string;
   title: string;
@@ -74,6 +82,7 @@ export interface BookProject {
   brain_dump: string;
   dossier: string;
   chapters: BookChapter[];
+  documents?: BookDocument[];
 }
 
 export interface IStorage {

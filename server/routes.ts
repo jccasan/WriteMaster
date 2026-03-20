@@ -3,8 +3,9 @@ import { createServer, type Server } from "http";
 import { readFile, writeFile, readdir, mkdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import multer from "multer";
 import { storage } from "./storage";
-import type { BookChapter, NarrativeSliders } from "./storage";
+import type { BookChapter, BookDocument, NarrativeSliders } from "./storage";
 import { runStep, getStepName } from "./pipeline";
 import { callLLM } from "./llm";
 import { prisma } from "./forge/db";
@@ -16,6 +17,19 @@ import {
 
 const DRAFTS_DIR = path.resolve("data/chapter-drafts");
 if (!existsSync(DRAFTS_DIR)) mkdir(DRAFTS_DIR, { recursive: true }).catch(() => {});
+
+const BOOK_UPLOADS_DIR = path.resolve("data/book-uploads");
+if (!existsSync(BOOK_UPLOADS_DIR)) mkdir(BOOK_UPLOADS_DIR, { recursive: true }).catch(() => {});
+const bookUpload = multer({
+  dest: BOOK_UPLOADS_DIR,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req: any, file: any, cb: any) => {
+    const allowed = [".txt", ".md", ".docx"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error("Only .txt, .md, and .docx files are supported"));
+  },
+});
 
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 
@@ -361,14 +375,11 @@ Output the rewritten chapter text only, no preamble or commentary.`,
   app.post("/api/books", async (req, res) => {
     try {
       const { source_project_id, brain_dump, dossier, title } = req.body;
-      if (!brain_dump || !dossier) {
-        return res.status(400).json({ error: "brain_dump and dossier are required" });
-      }
 
       const book = await storage.createBook(
         source_project_id || null,
-        brain_dump,
-        dossier,
+        brain_dump || "",
+        dossier || "",
         title || "Untitled Book"
       );
       res.json(book);
@@ -434,6 +445,214 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       if (!deleted) return res.status(404).json({ error: "Book not found" });
       res.json({ success: true });
     } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/documents", bookUpload.single("file"), async (req: any, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      let content = "";
+      let name = "Untitled Document";
+      const docType = (req.body.type || "other") as BookDocument["type"];
+
+      if (req.file) {
+        name = req.file.originalname || "Uploaded File";
+        const filePath = req.file.path;
+        const buffer = await readFile(filePath);
+
+        if (name.endsWith(".docx")) {
+          const mammoth = await import("mammoth");
+          const result = await mammoth.default.convertToMarkdown({ buffer });
+          content = result.value;
+        } else {
+          content = buffer.toString("utf-8");
+        }
+
+        await unlink(filePath).catch(() => {});
+      } else if (req.body.content) {
+        content = req.body.content;
+        name = req.body.name || "Pasted Document";
+      } else {
+        return res.status(400).json({ error: "Either a file upload or content text is required" });
+      }
+
+      if (!book.documents) book.documents = [];
+
+      const doc: BookDocument = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        name,
+        content,
+        type: docType,
+        added_at: new Date().toISOString(),
+      };
+
+      book.documents.push(doc);
+      await storage.saveBook(book);
+      res.json({ document: { id: doc.id, name: doc.name, type: doc.type, added_at: doc.added_at, length: doc.content.length }, book_id: book.id });
+    } catch (err: any) {
+      console.error("[Document Upload Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/books/:id/documents", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+      const docs = (book.documents || []).map(d => ({
+        id: d.id, name: d.name, type: d.type, added_at: d.added_at, length: d.content.length,
+      }));
+      res.json(docs);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/books/:id/documents/:docId", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+      if (!book.documents) return res.status(404).json({ error: "Document not found" });
+      const idx = book.documents.findIndex(d => d.id === req.params.docId);
+      if (idx === -1) return res.status(404).json({ error: "Document not found" });
+      book.documents.splice(idx, 1);
+      await storage.saveBook(book);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/write-from-prompt", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const { prompt, genre, sliders } = req.body;
+      if (!prompt) return res.status(400).json({ error: "prompt is required" });
+
+      const nextNum = book.chapters.length + 1;
+      const previousSummaries = buildPreviousSummariesContext(book.chapters, nextNum);
+      const slidersBlock = sliders ? formatSlidersBlock(sliders) : "";
+
+      let docsContext = "";
+      if (book.documents && book.documents.length > 0) {
+        docsContext = "\n\nREFERENCE DOCUMENTS:\n" + book.documents.map(d =>
+          `--- ${d.name} (${d.type.replace(/_/g, " ")}) ---\n${d.content}`
+        ).join("\n\n");
+      }
+
+      let dossierContext = "";
+      if (book.dossier) {
+        dossierContext = `\n\nSTORY DOSSIER:\n${book.dossier}`;
+      }
+
+      const fullPrompt = `You are a skilled novelist writing the next chapter of a book. Write Chapter ${nextNum} based on the author's prompt and all available context.
+
+${CONTEXT_ENGINEERING_RULES}
+${dossierContext}
+${docsContext}
+
+PREVIOUS CHAPTER SUMMARIES (what has happened so far):
+${previousSummaries}
+${slidersBlock}
+
+AUTHOR'S PROMPT FOR THIS CHAPTER:
+${prompt}
+
+${AUTHOR_VOICE_CONTRACT}
+
+${AI_WRITING_RULES}
+
+${SCENE_WRITING_RULES}
+
+${DEFAULT_DECISION_RULE}
+
+${LAYERED_GENERATION_WORKFLOW}
+
+INSTRUCTIONS:
+- Write the full chapter as polished prose, ready for a reader
+- The author's prompt describes what they want to happen — interpret it creatively and expand it into a full chapter
+- Use the reference documents (story bible, character sheets, etc.) for consistency with established lore, characters, and world details
+- Maintain continuity with everything in previous chapter summaries
+- Apply scene engineering: every scene must have Goal → Conflict → Outcome with a value shift
+- Include concrete sensory details across multiple senses
+- The chapter should be 2000-4000 words
+- Start with a chapter title as a heading (# Chapter ${nextNum}: [Title])
+- Write immersive, engaging fiction — not a summary or treatment
+- Do NOT include author notes, meta-commentary, or section labels within the prose
+
+SELF-EDIT PASS (apply before outputting):
+- Remove lines that explain what behavior already shows
+- Replace at least one abstract "meaning" line with concrete action or sensation
+- Break any accidental sentence pattern symmetry
+- Confirm action clarity in physical sequences
+
+${ANTI_SLOP_FILTER}
+
+Output only the chapter text.`;
+
+      const newChapter: BookChapter = {
+        chapter_number: nextNum,
+        title: `Chapter ${nextNum}`,
+        outline: prompt,
+        content: null,
+        summary: null,
+        status: "writing",
+      };
+      if (sliders) newChapter.sliders = sliders;
+      book.chapters.push(newChapter);
+      await storage.saveBook(book);
+
+      const result = await callLLM(fullPrompt, "powerful", undefined, 16384);
+
+      if (!result || !result.trim()) {
+        newChapter.status = "outlined";
+        newChapter.content = null;
+        await storage.saveBook(book);
+        return res.status(500).json({ error: "AI returned empty chapter. Please try again." });
+      }
+
+      const titleMatch = result.match(/^#\s*(?:Chapter\s*\d+[:\s]*)?(.+)/m);
+      if (titleMatch) newChapter.title = titleMatch[1].trim();
+      newChapter.content = result;
+      newChapter.status = "written";
+      await storage.saveBook(book);
+
+      try {
+        const summaryResult = await callLLM(
+          `You are a story continuity editor. Read the chapter below and produce a structured continuity snapshot that will be used as context for writing subsequent chapters.
+
+CHAPTER ${nextNum}: ${newChapter.title}
+${result}
+
+${CHAPTER_SUMMARY_TEMPLATE}
+
+CRITICAL: Be specific and factual. Reference character names and concrete details. This snapshot will be the ONLY context the next chapter's AI has about this chapter. Track every detail that could create a continuity error if forgotten.`,
+          "powerful"
+        );
+
+        newChapter.summary = summaryResult;
+        await storage.saveBook(book);
+      } catch (sumErr: any) {
+        console.error("[Summary generation failed, chapter saved without summary]", sumErr.message);
+      }
+
+      const freshBook = await storage.getBook(req.params.id);
+      res.json({ chapter: newChapter, book: freshBook || book });
+    } catch (err: any) {
+      console.error("[Write From Prompt Error]", err);
+      const book = await storage.getBook(req.params.id);
+      if (book) {
+        const lastChapter = book.chapters[book.chapters.length - 1];
+        if (lastChapter && lastChapter.status === "writing") {
+          lastChapter.status = "outlined";
+          await storage.saveBook(book);
+        }
+      }
       res.status(500).json({ error: err.message });
     }
   });

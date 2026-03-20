@@ -9,6 +9,8 @@ import {
   Clock,
   BookOpen,
   ChevronRight,
+  PenTool,
+  Sparkles,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 
@@ -31,6 +33,25 @@ export default function Books() {
   const [, navigate] = useLocation();
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+
+  const createStandaloneBook = async () => {
+    setCreating(true);
+    try {
+      const res = await fetch("/api/books", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brain_dump: "", dossier: "", title: "Untitled Book" }),
+      });
+      if (res.ok) {
+        const book = await res.json();
+        navigate(`/book/${book.id}/studio`);
+      }
+    } catch (err) {
+      console.error("Create error:", err);
+    }
+    setCreating(false);
+  };
 
   const fetchBooks = useCallback(async () => {
     try {
@@ -74,15 +95,28 @@ export default function Books() {
           </p>
         </div>
 
-        <Button
-          onClick={() => navigate("/pipeline/new")}
-          size="lg"
-          className="w-full h-14 text-base gap-2 mb-8"
-          data-testid="button-new-book"
-        >
-          <Plus className="w-5 h-5" />
-          New Book (via Story Pipeline)
-        </Button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+          <Button
+            onClick={createStandaloneBook}
+            size="lg"
+            className="h-14 text-base gap-2"
+            disabled={creating}
+            data-testid="button-new-studio-book"
+          >
+            {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : <PenTool className="w-5 h-5" />}
+            New Book (with Story Bible)
+          </Button>
+          <Button
+            onClick={() => navigate("/pipeline/new")}
+            size="lg"
+            variant="outline"
+            className="h-14 text-base gap-2"
+            data-testid="button-new-book"
+          >
+            <Sparkles className="w-5 h-5" />
+            New Book (via Story Pipeline)
+          </Button>
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -102,7 +136,7 @@ export default function Books() {
               <Card
                 key={book.id}
                 className="border-border/60 hover:border-primary/30 transition-all cursor-pointer group"
-                onClick={() => navigate(`/book/${book.id}`)}
+                onClick={() => navigate(`/book/${book.id}/studio`)}
                 data-testid={`card-book-${book.id}`}
               >
                 <CardContent className="p-4 flex items-center gap-3">
