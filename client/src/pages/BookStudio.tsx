@@ -10,7 +10,8 @@ import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@
 import { cn } from "@/lib/utils";
 import {
   Loader2, ArrowLeft, Upload, FileText, Trash2, Send, BookOpen,
-  ChevronDown, ChevronUp, Plus, Download, Copy, Check, Pencil, X
+  ChevronDown, ChevronUp, Plus, Download, Copy, Check, Pencil, X,
+  RefreshCw, Link2, Unlink, RotateCcw, Save, Eye, Edit3
 } from "lucide-react";
 
 interface BookDocument {
@@ -39,6 +40,7 @@ interface Book {
   dossier: string;
   chapters: BookChapter[];
   documents?: BookDocument[];
+  google_doc_id?: string;
 }
 
 const DOC_TYPES = [
@@ -77,20 +79,41 @@ export default function BookStudio() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
 
+  const [googleDocUrl, setGoogleDocUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [googleDocLinked, setGoogleDocLinked] = useState(false);
+  const [googleDocId, setGoogleDocId] = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+
+  const [editMode, setEditMode] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [rewriteMode, setRewriteMode] = useState(false);
+  const [rewriteInstructions, setRewriteInstructions] = useState("");
+  const [rewriting, setRewriting] = useState(false);
+
+  const [summarizingAll, setSummarizingAll] = useState(false);
+
   const initialLoadDone = useRef(false);
 
   const fetchBook = useCallback(async () => {
     if (!bookId) return;
     try {
-      const [bookRes, docsRes] = await Promise.all([
+      const [bookRes, docsRes, gdocRes] = await Promise.all([
         fetch(`/api/books/${bookId}`),
         fetch(`/api/books/${bookId}/documents`),
+        fetch(`/api/books/${bookId}/google-doc-status`),
       ]);
       if (!bookRes.ok) throw new Error("Book not found");
       const bookData = await bookRes.json();
       const docsData = docsRes.ok ? await docsRes.json() : [];
+      const gdocData = gdocRes.ok ? await gdocRes.json() : { linked: false };
       setBook(bookData);
       setDocuments(docsData);
+      setGoogleDocLinked(gdocData.linked);
+      setGoogleDocId(gdocData.docId || null);
       if (!initialLoadDone.current && bookData.chapters.length > 0) {
         setActiveChapter(bookData.chapters.length - 1);
         initialLoadDone.current = true;
@@ -217,6 +240,113 @@ export default function BookStudio() {
     URL.revokeObjectURL(url);
   };
 
+  const importGoogleDoc = async () => {
+    if (!googleDocUrl.trim() || !bookId) return;
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/import-google-doc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: googleDocUrl }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setBook(data.book);
+      setGoogleDocLinked(true);
+      setGoogleDocId(data.docId);
+      setGoogleDocUrl("");
+      setShowImportDialog(false);
+      initialLoadDone.current = false;
+      if (data.book.chapters.length > 0) {
+        setActiveChapter(0);
+        initialLoadDone.current = true;
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setImporting(false);
+  };
+
+  const syncToGoogleDoc = async () => {
+    if (!bookId) return;
+    setSyncing(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/sync-to-google-doc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setSyncing(false);
+  };
+
+  const saveChapterEdit = async () => {
+    if (!book || !bookId || activeChapter === null) return;
+    const chapter = book.chapters[activeChapter];
+    if (!chapter) return;
+    setSavingEdit(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/chapters/${chapter.chapter_number}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editContent }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      await fetchBook();
+      setEditMode(false);
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setSavingEdit(false);
+  };
+
+  const rewriteChapter = async () => {
+    if (!book || !bookId || activeChapter === null || !rewriteInstructions.trim()) return;
+    const chapter = book.chapters[activeChapter];
+    if (!chapter) return;
+    setRewriting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/rewrite-chapter/${chapter.chapter_number}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instructions: rewriteInstructions, sliders }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setBook(data.book);
+      setRewriteMode(false);
+      setRewriteInstructions("");
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setRewriting(false);
+  };
+
+  const summarizeAll = async () => {
+    if (!bookId) return;
+    setSummarizingAll(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/summarize-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setBook(data.book);
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setSummarizingAll(false);
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -241,6 +371,7 @@ export default function BookStudio() {
   const currentChapter = activeChapter !== null ? book.chapters[activeChapter] : null;
   const writtenCount = book.chapters.filter(c => c.status === "written").length;
   const totalWords = book.chapters.reduce((sum, c) => sum + (c.content?.split(/\s+/).length || 0), 0);
+  const unsummarizedCount = book.chapters.filter(c => c.content && !c.summary).length;
 
   return (
     <Layout>
@@ -272,6 +403,53 @@ export default function BookStudio() {
             </h1>
           )}
           <div className="flex-1" />
+
+          {googleDocLinked && (
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 px-2.5 py-1 rounded-full border border-green-200 dark:border-green-800" data-testid="badge-google-doc-linked">
+                <Link2 className="w-3 h-3" />
+                Google Docs linked
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={syncToGoogleDoc}
+                disabled={syncing || writtenCount === 0}
+                className="h-8 text-xs"
+                data-testid="button-sync-google-doc"
+              >
+                {syncing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                Sync to Doc
+              </Button>
+            </div>
+          )}
+
+          {!googleDocLinked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImportDialog(!showImportDialog)}
+              className="h-8 text-xs"
+              data-testid="button-import-google-doc"
+            >
+              <Link2 className="w-3 h-3 mr-1" /> Import Google Doc
+            </Button>
+          )}
+
+          {unsummarizedCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={summarizeAll}
+              disabled={summarizingAll}
+              className="h-8 text-xs"
+              data-testid="button-summarize-all"
+            >
+              {summarizingAll ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <BookOpen className="w-3 h-3 mr-1" />}
+              Build Memory ({unsummarizedCount})
+            </Button>
+          )}
+
           <span className="text-sm text-muted-foreground" data-testid="text-book-stats">
             {writtenCount} chapter{writtenCount !== 1 ? "s" : ""} · {totalWords.toLocaleString()} words
           </span>
@@ -281,6 +459,52 @@ export default function BookStudio() {
             </Button>
           )}
         </div>
+
+        {showImportDialog && (
+          <div className="px-4 py-3 border-b bg-muted/30 shrink-0">
+            <div className="max-w-2xl mx-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Link2 className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Import from Google Docs</span>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Paste the link to your Google Doc. The system will split it into chapters and build continuity memory for each one. You can then edit and rewrite chapters with full story context, and sync changes back to your doc.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={googleDocUrl}
+                  onChange={(e) => setGoogleDocUrl(e.target.value)}
+                  placeholder="https://docs.google.com/document/d/..."
+                  className="flex-1"
+                  disabled={importing}
+                  onKeyDown={(e) => e.key === "Enter" && importGoogleDoc()}
+                  data-testid="input-google-doc-url"
+                />
+                <Button
+                  onClick={importGoogleDoc}
+                  disabled={importing || !googleDocUrl.trim()}
+                  data-testid="button-confirm-import"
+                >
+                  {importing ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+                  {importing ? "Importing..." : "Import"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => { setShowImportDialog(false); setGoogleDocUrl(""); }}
+                  data-testid="button-cancel-import"
+                >
+                  Cancel
+                </Button>
+              </div>
+              {importing && (
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Reading your Google Doc and splitting into chapters...
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-1 overflow-hidden">
           <aside className="w-72 border-r flex flex-col overflow-hidden shrink-0">
@@ -411,13 +635,16 @@ export default function BookStudio() {
                         ? "bg-primary/10 text-primary font-medium"
                         : "hover:bg-muted/50 text-muted-foreground"
                     )}
-                    onClick={() => setActiveChapter(i)}
+                    onClick={() => { setActiveChapter(i); setEditMode(false); setRewriteMode(false); }}
                     data-testid={`button-chapter-${ch.chapter_number}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="truncate">{ch.title}</span>
-                      {ch.status === "writing" && <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
-                      {ch.status === "written" && <Check className="w-3 h-3 text-green-500 shrink-0" />}
+                      <div className="flex items-center gap-1">
+                        {ch.summary && <BookOpen className="w-2.5 h-2.5 text-blue-400 shrink-0" title="Has memory" />}
+                        {ch.status === "writing" && <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
+                        {ch.status === "written" && <Check className="w-3 h-3 text-green-500 shrink-0" />}
+                      </div>
                     </div>
                     {ch.outline && (
                       <div className="text-xs text-muted-foreground mt-0.5 truncate">{ch.outline.substring(0, 60)}...</div>
@@ -426,7 +653,7 @@ export default function BookStudio() {
                 ))}
                 {book.chapters.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4 px-2">
-                    No chapters yet. Upload your reference docs, then write your first chapter below.
+                    No chapters yet. Import a Google Doc or write your first chapter below.
                   </p>
                 )}
               </div>
@@ -443,29 +670,150 @@ export default function BookStudio() {
                       <span className="text-sm text-muted-foreground">
                         {currentChapter.content.split(/\s+/).length.toLocaleString()} words
                       </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => copyChapter(currentChapter.content!)}
-                        data-testid="button-copy-chapter"
-                      >
-                        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                      </Button>
+                      {!editMode && !rewriteMode && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditMode(true);
+                              setEditContent(currentChapter.content || "");
+                              setRewriteMode(false);
+                            }}
+                            title="Edit chapter"
+                            data-testid="button-edit-chapter"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setRewriteMode(true);
+                              setEditMode(false);
+                            }}
+                            title="AI Rewrite"
+                            data-testid="button-rewrite-chapter"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => copyChapter(currentChapter.content!)}
+                            data-testid="button-copy-chapter"
+                          >
+                            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="text-xs text-muted-foreground mb-4 p-3 rounded-md bg-muted/30 border">
-                    <span className="font-medium">Prompt:</span> {currentChapter.outline}
-                  </div>
-                  <div className="prose prose-sm max-w-none dark:prose-invert" data-testid="text-chapter-content">
-                    {currentChapter.content.split("\n").map((line, i) => {
-                      if (line.startsWith("# ")) return <h1 key={i} className="text-2xl font-bold mt-6 mb-4">{line.slice(2)}</h1>;
-                      if (line.startsWith("## ")) return <h2 key={i} className="text-xl font-semibold mt-5 mb-3">{line.slice(3)}</h2>;
-                      if (line.startsWith("### ")) return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{line.slice(4)}</h3>;
-                      if (line.trim() === "") return <div key={i} className="h-4" />;
-                      return <p key={i} className="mb-3 leading-relaxed">{line}</p>;
-                    })}
-                  </div>
-                  {currentChapter.summary && (
+
+                  {rewriteMode && (
+                    <div className="mb-6 border rounded-lg p-4 bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800" data-testid="rewrite-panel">
+                      <div className="flex items-center gap-2 mb-3">
+                        <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <span className="text-sm font-medium text-amber-800 dark:text-amber-300">AI Rewrite</span>
+                      </div>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+                        Tell the AI how to rewrite this chapter. It has full memory of all other chapters and your reference docs for consistency.
+                      </p>
+                      <Textarea
+                        value={rewriteInstructions}
+                        onChange={(e) => setRewriteInstructions(e.target.value)}
+                        placeholder="e.g., Make the dialogue more tense. Add more sensory details about the setting. Show Sarah's internal conflict more clearly. Change the ending so they don't resolve their argument yet."
+                        className="min-h-[100px] mb-3 text-sm"
+                        disabled={rewriting}
+                        data-testid="input-rewrite-instructions"
+                      />
+                      <NarrativeSliders values={sliders} onChange={setSliders} />
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          onClick={rewriteChapter}
+                          disabled={rewriting || !rewriteInstructions.trim()}
+                          data-testid="button-confirm-rewrite"
+                        >
+                          {rewriting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                              Rewriting...
+                            </>
+                          ) : (
+                            <>
+                              <RotateCcw className="w-4 h-4 mr-1" />
+                              Rewrite Chapter
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => { setRewriteMode(false); setRewriteInstructions(""); }}
+                          disabled={rewriting}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                      {rewriting && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1.5">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Rewriting with full story context... This may take a minute.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {editMode ? (
+                    <div data-testid="edit-panel">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Edit3 className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium">Editing Chapter</span>
+                        <div className="flex-1" />
+                        <Button
+                          size="sm"
+                          onClick={saveChapterEdit}
+                          disabled={savingEdit}
+                          data-testid="button-save-edit"
+                        >
+                          {savingEdit ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditMode(false)}
+                          disabled={savingEdit}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="min-h-[500px] font-mono text-sm leading-relaxed"
+                        data-testid="textarea-edit-chapter"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      {currentChapter.outline && (
+                        <div className="text-xs text-muted-foreground mb-4 p-3 rounded-md bg-muted/30 border">
+                          <span className="font-medium">Prompt:</span> {currentChapter.outline}
+                        </div>
+                      )}
+                      <div className="prose prose-sm max-w-none dark:prose-invert" data-testid="text-chapter-content">
+                        {currentChapter.content.split("\n").map((line, i) => {
+                          if (line.startsWith("# ")) return <h1 key={i} className="text-2xl font-bold mt-6 mb-4">{line.slice(2)}</h1>;
+                          if (line.startsWith("## ")) return <h2 key={i} className="text-xl font-semibold mt-5 mb-3">{line.slice(3)}</h2>;
+                          if (line.startsWith("### ")) return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{line.slice(4)}</h3>;
+                          if (line.trim() === "") return <div key={i} className="h-4" />;
+                          return <p key={i} className="mb-3 leading-relaxed">{line}</p>;
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {currentChapter.summary && !editMode && (
                     <details className="mt-8 border rounded-lg p-4">
                       <summary className="cursor-pointer text-sm font-medium text-muted-foreground" data-testid="button-toggle-summary">
                         Continuity Summary
@@ -484,12 +832,22 @@ export default function BookStudio() {
                   {book.chapters.length === 0 ? (
                     <>
                       <h2 className="text-lg font-semibold mb-2">Ready to Write</h2>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-muted-foreground text-sm mb-4">
                         {documents.length === 0
-                          ? "Upload your story bible and reference docs in the sidebar, then describe what should happen in your first chapter."
+                          ? "Import a Google Doc, upload reference docs, or describe your first chapter below."
                           : `You have ${documents.length} reference doc${documents.length > 1 ? "s" : ""} loaded. Describe what should happen in your first chapter below.`
                         }
                       </p>
+                      {!googleDocLinked && (
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowImportDialog(true)}
+                          className="mb-2"
+                          data-testid="button-import-cta"
+                        >
+                          <Link2 className="w-4 h-4 mr-2" /> Import from Google Docs
+                        </Button>
+                      )}
                     </>
                   ) : (
                     <>
@@ -508,7 +866,7 @@ export default function BookStudio() {
 
             <div className="border-t p-4 shrink-0">
               <div className="max-w-3xl mx-auto">
-                <NarrativeSliders values={sliders} onChange={setSliders} />
+                {!rewriteMode && <NarrativeSliders values={sliders} onChange={setSliders} />}
                 {writing && (
                   <div className="flex items-center gap-2 mb-3 text-sm text-primary" data-testid="text-writing-status">
                     <Loader2 className="w-4 h-4 animate-spin" />

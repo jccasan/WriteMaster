@@ -9,6 +9,7 @@ import type { BookChapter, BookDocument, NarrativeSliders } from "./storage";
 import { runStep, getStepName } from "./pipeline";
 import { callLLM } from "./llm";
 import { prisma } from "./forge/db";
+import { readGoogleDoc, writeGoogleDoc, extractDocId } from "./google-docs";
 import {
   AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, SCENE_WRITING_RULES, STORY_ARCHITECTURE_RULES,
   CHAPTER_SUMMARY_TEMPLATE, NARRATIVE_SLIDER_RULES, ANTI_SLOP_FILTER,
@@ -522,6 +523,283 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       await storage.saveBook(book);
       res.json({ success: true });
     } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/import-google-doc", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const { url } = req.body;
+      if (!url) return res.status(400).json({ error: "Google Doc URL is required" });
+
+      const { title, text, docId } = await readGoogleDoc(url);
+
+      const chapterSplits = text.split(/\n(?=(?:Chapter\s+\d+|CHAPTER\s+\d+|#\s+))/i);
+      const chapters: { title: string; content: string }[] = [];
+
+      if (chapterSplits.length > 1) {
+        for (const segment of chapterSplits) {
+          const trimmed = segment.trim();
+          if (!trimmed) continue;
+          const firstLine = trimmed.split("\n")[0].trim();
+          const chTitle = firstLine.replace(/^#+\s*/, "").substring(0, 100) || `Chapter ${chapters.length + 1}`;
+          chapters.push({ title: chTitle, content: trimmed });
+        }
+      } else {
+        const paras = text.split(/\n\n+/);
+        const CHUNK_SIZE = 20;
+        for (let i = 0; i < paras.length; i += CHUNK_SIZE) {
+          const chunk = paras.slice(i, i + CHUNK_SIZE).join("\n\n");
+          if (chunk.trim()) {
+            chapters.push({
+              title: `Chapter ${Math.floor(i / CHUNK_SIZE) + 1}`,
+              content: chunk.trim(),
+            });
+          }
+        }
+      }
+
+      if (chapters.length === 0) {
+        chapters.push({ title: "Chapter 1", content: text });
+      }
+
+      (book as any).google_doc_id = docId;
+      book.title = book.title === "Untitled Book" ? title : book.title;
+      book.chapters = chapters.map((ch, i) => ({
+        chapter_number: i + 1,
+        title: ch.title,
+        outline: "",
+        content: ch.content,
+        summary: null,
+        status: "written" as const,
+      }));
+      await storage.saveBook(book);
+
+      console.log(`[Google Docs] Imported "${title}" (${docId}) — ${chapters.length} chapters`);
+      res.json({ book, chaptersImported: chapters.length, docId });
+    } catch (err: any) {
+      console.error("[Google Docs Import Error]", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/sync-to-google-doc", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const docId = (book as any).google_doc_id;
+      if (!docId) return res.status(400).json({ error: "No Google Doc linked. Import a doc first." });
+
+      const fullText = book.chapters
+        .filter(c => c.content)
+        .map(c => `# ${c.title}\n\n${c.content}`)
+        .join("\n\n---\n\n");
+
+      await writeGoogleDoc(docId, fullText);
+
+      console.log(`[Google Docs] Synced "${book.title}" back to doc ${docId}`);
+      res.json({ success: true, docId, chaptersWritten: book.chapters.filter(c => c.content).length });
+    } catch (err: any) {
+      console.error("[Google Docs Sync Error]", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/books/:id/google-doc-status", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+      const docId = (book as any).google_doc_id || null;
+      res.json({ linked: !!docId, docId });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/rewrite-chapter/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+      if (!chapter.content) return res.status(400).json({ error: "Chapter has no content to rewrite" });
+
+      const { instructions, sliders } = req.body;
+      if (!instructions) return res.status(400).json({ error: "Rewrite instructions are required" });
+
+      const previousSummaries = buildPreviousSummariesContext(book.chapters, chapterNum);
+      const slidersBlock = sliders ? formatSlidersBlock(sliders) : "";
+
+      let docsContext = "";
+      if (book.documents && book.documents.length > 0) {
+        docsContext = "\n\nREFERENCE DOCUMENTS:\n" + book.documents.map(d =>
+          `--- ${d.name} (${d.type.replace(/_/g, " ")}) ---\n${d.content}`
+        ).join("\n\n");
+      }
+
+      let dossierContext = "";
+      if (book.dossier) {
+        dossierContext = `\n\nSTORY DOSSIER:\n${book.dossier}`;
+      }
+
+      const laterSummaries = book.chapters
+        .filter(c => c.chapter_number > chapterNum && c.summary)
+        .sort((a, b) => a.chapter_number - b.chapter_number)
+        .slice(0, 3)
+        .map(c => `### Chapter ${c.chapter_number}: ${c.title}\n${c.summary}`)
+        .join("\n\n");
+
+      const result = await callLLM(
+        `You are a skilled novelist rewriting a chapter of a book. Rewrite Chapter ${chapterNum} based on the author's instructions while maintaining continuity with the rest of the book.
+
+${CONTEXT_ENGINEERING_RULES}
+${dossierContext}
+${docsContext}
+
+PREVIOUS CHAPTER SUMMARIES (what happened before this chapter):
+${previousSummaries}
+
+${laterSummaries ? `LATER CHAPTER SUMMARIES (what happens after — maintain consistency):\n${laterSummaries}\n` : ""}
+
+CURRENT CHAPTER ${chapterNum} TEXT (the chapter to rewrite):
+${chapter.content}
+${slidersBlock}
+
+AUTHOR'S REWRITE INSTRUCTIONS:
+${instructions}
+
+${AUTHOR_VOICE_CONTRACT}
+
+${AI_WRITING_RULES}
+
+${SCENE_WRITING_RULES}
+
+${DEFAULT_DECISION_RULE}
+
+${LAYERED_GENERATION_WORKFLOW}
+
+INSTRUCTIONS:
+- Rewrite the chapter following the author's instructions
+- Preserve the essential story beats unless the instructions say otherwise
+- Maintain continuity with previous AND later chapters
+- Use reference documents for character/world consistency
+- The rewritten chapter should be similar length to the original (2000-4000 words)
+- Start with the chapter title as a heading
+- Write immersive, engaging fiction
+
+SELF-EDIT PASS:
+- Remove lines that explain what behavior already shows
+- Replace abstract lines with concrete action or sensation
+- Break accidental sentence pattern symmetry
+- Confirm action clarity in physical sequences
+
+${ANTI_SLOP_FILTER}
+
+Output only the rewritten chapter text.`,
+        "powerful",
+        undefined,
+        16384
+      );
+
+      if (!result || !result.trim()) {
+        return res.status(500).json({ error: "AI returned empty rewrite. Please try again." });
+      }
+
+      const titleMatch = result.match(/^#\s*(?:Chapter\s*\d+[:\s]*)?(.+)/m);
+      if (titleMatch) chapter.title = titleMatch[1].trim();
+      chapter.content = result;
+      chapter.status = "written";
+      await storage.saveBook(book);
+
+      try {
+        const summaryResult = await callLLM(
+          `You are a story continuity editor. Read the chapter below and produce a structured continuity snapshot.
+
+CHAPTER ${chapterNum}: ${chapter.title}
+${result}
+
+${CHAPTER_SUMMARY_TEMPLATE}
+
+CRITICAL: Be specific and factual. Track every detail that could create a continuity error if forgotten.`,
+          "powerful"
+        );
+        chapter.summary = summaryResult;
+        await storage.saveBook(book);
+      } catch (sumErr: any) {
+        console.error("[Rewrite summary failed]", sumErr.message);
+      }
+
+      const freshBook = await storage.getBook(req.params.id);
+      res.json({ chapter, book: freshBook || book });
+    } catch (err: any) {
+      console.error("[Rewrite Chapter Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/books/:id/chapters/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+
+      const { content, title } = req.body;
+      if (content !== undefined) {
+        chapter.content = content;
+        chapter.summary = null;
+      }
+      if (title !== undefined) chapter.title = title;
+      chapter.status = "written";
+      await storage.saveBook(book);
+
+      const freshBook = await storage.getBook(req.params.id);
+      res.json({ chapter, book: freshBook || book });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/summarize-all", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const unsummarized = book.chapters.filter(c => c.content && !c.summary);
+      if (unsummarized.length === 0) return res.json({ summarized: 0, book });
+
+      for (const chapter of unsummarized) {
+        try {
+          const summaryResult = await callLLM(
+            `You are a story continuity editor. Read the chapter below and produce a structured continuity snapshot.
+
+CHAPTER ${chapter.chapter_number}: ${chapter.title}
+${chapter.content}
+
+${CHAPTER_SUMMARY_TEMPLATE}
+
+CRITICAL: Be specific and factual. Reference character names and concrete details. Track every detail that could create a continuity error.`,
+            "powerful"
+          );
+          chapter.summary = summaryResult;
+          await storage.saveBook(book);
+        } catch (sumErr: any) {
+          console.error(`[Summarize chapter ${chapter.chapter_number} failed]`, sumErr.message);
+        }
+      }
+
+      const freshBook = await storage.getBook(req.params.id);
+      res.json({ summarized: unsummarized.length, book: freshBook || book });
+    } catch (err: any) {
+      console.error("[Summarize All Error]", err);
       res.status(500).json({ error: err.message });
     }
   });

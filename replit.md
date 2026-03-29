@@ -26,7 +26,7 @@ Two parallel apps in one repo: **StoryDossier** (AI writing studio) and **STORY 
 
 ## STORY FORGE Routes
 
-- `/book/:id/studio` — Book Studio: prompt-driven chapter writing with story bible uploads, full memory
+- `/book/:id/studio` — Book Studio: prompt-driven chapter writing with story bible uploads, Google Docs import/sync, chapter editing, AI rewriting with full memory
 
 - `/forge` — FORGE dashboard with project cards
 - `/forge/quick-feedback` — Paste-and-analyze: editorial + beta reader feedback on any passage, with AI discussion chat
