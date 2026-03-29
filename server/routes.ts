@@ -537,28 +537,36 @@ Output the rewritten chapter text only, no preamble or commentary.`,
 
       const { title, text, docId } = await readGoogleDoc(url);
 
-      const chapterSplits = text.split(/\n(?=(?:Chapter\s+\d+|CHAPTER\s+\d+|#\s+))/i);
+      const lines = text.split("\n");
       const chapters: { title: string; content: string }[] = [];
+      let currentTitle = "";
+      let currentLines: string[] = [];
 
-      if (chapterSplits.length > 1) {
-        for (const segment of chapterSplits) {
-          const trimmed = segment.trim();
-          if (!trimmed) continue;
-          const firstLine = trimmed.split("\n")[0].trim();
-          const chTitle = firstLine.replace(/^#+\s*/, "").substring(0, 100) || `Chapter ${chapters.length + 1}`;
-          chapters.push({ title: chTitle, content: trimmed });
-        }
-      } else {
-        const paras = text.split(/\n\n+/);
-        const CHUNK_SIZE = 20;
-        for (let i = 0; i < paras.length; i += CHUNK_SIZE) {
-          const chunk = paras.slice(i, i + CHUNK_SIZE).join("\n\n");
-          if (chunk.trim()) {
-            chapters.push({
-              title: `Chapter ${Math.floor(i / CHUNK_SIZE) + 1}`,
-              content: chunk.trim(),
-            });
+      for (const line of lines) {
+        if (/^#\s+/.test(line)) {
+          if (currentLines.length > 0) {
+            const body = currentLines.join("\n").trim();
+            if (body) {
+              chapters.push({
+                title: currentTitle || `Chapter ${chapters.length + 1}`,
+                content: body,
+              });
+            }
           }
+          currentTitle = line.replace(/^#\s+/, "").trim().substring(0, 100);
+          currentLines = [];
+        } else {
+          currentLines.push(line);
+        }
+      }
+
+      if (currentLines.length > 0) {
+        const body = currentLines.join("\n").trim();
+        if (body) {
+          chapters.push({
+            title: currentTitle || `Chapter ${chapters.length + 1}`,
+            content: body,
+          });
         }
       }
 
