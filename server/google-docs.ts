@@ -66,10 +66,24 @@ function extractTextFromElements(elements: any[]): string {
   let text = "";
   for (const el of elements) {
     if (el.paragraph) {
+      const style = el.paragraph.paragraphStyle?.namedStyleType || "";
       const paraText = el.paragraph.elements
         ?.map((e: any) => e.textRun?.content || "")
         .join("") || "";
-      text += paraText;
+      const trimmedPara = paraText.replace(/\n$/, "");
+      if (trimmedPara.trim()) {
+        if (style === "HEADING_1") {
+          text += "# " + trimmedPara + "\n";
+        } else if (style === "HEADING_2") {
+          text += "## " + trimmedPara + "\n";
+        } else if (style === "HEADING_3") {
+          text += "### " + trimmedPara + "\n";
+        } else {
+          text += paraText;
+        }
+      } else {
+        text += paraText;
+      }
     } else if (el.table) {
       for (const row of el.table.tableRows || []) {
         for (const cell of row.tableCells || []) {
