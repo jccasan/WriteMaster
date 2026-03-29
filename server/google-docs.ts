@@ -124,19 +124,57 @@ export async function writeGoogleDoc(docId: string, newText: string): Promise<vo
     });
   }
 
-  if (newText.trim()) {
-    requests.push({
-      insertText: {
-        location: { index: 1 },
-        text: newText,
-      },
-    });
+  if (!newText.trim()) {
+    if (requests.length > 0) {
+      await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests } });
+    }
+    return;
   }
 
-  if (requests.length > 0) {
-    await docs.documents.batchUpdate({
-      documentId: docId,
-      requestBody: { requests },
-    });
+  const cleanText = newText.replace(/^# /gm, "").replace(/^## /gm, "").replace(/^### /gm, "");
+  requests.push({
+    insertText: {
+      location: { index: 1 },
+      text: cleanText,
+    },
+  });
+
+  await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests } });
+
+  const lines = newText.split("\n");
+  let charIndex = 1;
+  const styleRequests: any[] = [];
+
+  for (const line of lines) {
+    let style: string | null = null;
+    let rawLine = line;
+    if (line.startsWith("# ")) {
+      style = "HEADING_1";
+      rawLine = line.slice(2);
+    } else if (line.startsWith("## ")) {
+      style = "HEADING_2";
+      rawLine = line.slice(3);
+    } else if (line.startsWith("### ")) {
+      style = "HEADING_3";
+      rawLine = line.slice(4);
+    }
+
+    const lineLen = rawLine.length + 1;
+
+    if (style && rawLine.trim()) {
+      styleRequests.push({
+        updateParagraphStyle: {
+          range: { startIndex: charIndex, endIndex: charIndex + rawLine.length },
+          paragraphStyle: { namedStyleType: style },
+          fields: "namedStyleType",
+        },
+      });
+    }
+
+    charIndex += lineLen;
+  }
+
+  if (styleRequests.length > 0) {
+    await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: styleRequests } });
   }
 }

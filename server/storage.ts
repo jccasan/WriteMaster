@@ -83,6 +83,7 @@ export interface BookProject {
   dossier: string;
   chapters: BookChapter[];
   documents?: BookDocument[];
+  google_doc_id?: string | null;
 }
 
 export interface IStorage {

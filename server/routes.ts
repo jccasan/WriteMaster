@@ -574,7 +574,7 @@ Output the rewritten chapter text only, no preamble or commentary.`,
         chapters.push({ title: "Chapter 1", content: text });
       }
 
-      (book as any).google_doc_id = docId;
+      book.google_doc_id = docId;
       book.title = book.title === "Untitled Book" ? title : book.title;
       book.chapters = chapters.map((ch, i) => ({
         chapter_number: i + 1,
@@ -599,7 +599,7 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       const book = await storage.getBook(req.params.id);
       if (!book) return res.status(404).json({ error: "Book not found" });
 
-      const docId = (book as any).google_doc_id;
+      const docId = book.google_doc_id;
       if (!docId) return res.status(400).json({ error: "No Google Doc linked. Import a doc first." });
 
       const fullText = book.chapters
@@ -621,7 +621,7 @@ Output the rewritten chapter text only, no preamble or commentary.`,
     try {
       const book = await storage.getBook(req.params.id);
       if (!book) return res.status(404).json({ error: "Book not found" });
-      const docId = (book as any).google_doc_id || null;
+      const docId = book.google_doc_id || null;
       res.json({ linked: !!docId, docId });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
