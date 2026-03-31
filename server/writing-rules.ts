@@ -85,6 +85,14 @@ THINGS TO ABSOLUTELY NEVER DO:
 - Never end a chapter with a character reflecting on what it all means
 - Never have a character deliver a monologue about the stakes — show the stakes through action and consequence
 - Never describe a character's smile as "warm" or "genuine" — describe what the smile DOES to their face
+- Never use "nestled" to describe a location
+- Never use "in the heart of" for geography or setting
+- Never use "a testament to" anything
+- Never use "underscores" or "highlights" when narrating significance
+- Never use "landscape" metaphorically ("the political landscape," "the evolving landscape")
+- Never use "indelible mark" or "deeply rooted"
+- Never use "diverse array" or "rich tapestry"
+- Never use "boasts" to mean "has" or "features"
 `;
 
 export const AI_WRITING_RULES = `
@@ -111,12 +119,22 @@ PROSE STYLE:
 - Avoid starting sentences with "And then," "Suddenly," "Without warning," or "In that moment."
 - Do not use "a newfound sense of" anything.
 - Do not end chapters or sections with heavy-handed thematic statements that spell out the moral.
-- BANNED PHRASES — never use these: "it is important to note," "in conclusion," "in today's world," "in today's fast-paced world," "as an AI," "it's worth noting," "needless to say," "at the end of the day," "only time will tell."
+- AI-TELL VOCABULARY — hard ban, never use these words/phrases:
+  WORDS: delve, pivotal, crucial, vibrant, underscores, highlights, bolstered, garner, foster/fostering, enhance/enhancing, enduring, showcasing, exemplifies, encompassing, nestled, groundbreaking, renowned, profound, indelible
+  PHRASES: "a testament to," "serves as," "stands as," "marks a [shift/moment/turning point]," "represents a," "commitment to," "in the heart of," "setting the stage," "shaping the," "focal point," "deeply rooted," "evolving landscape," "diverse array," "it is important to note," "it's worth noting," "needless to say," "at the end of the day," "only time will tell," "valuable insights," "align with," "resonate with," "a rich history," "cultural heritage," "natural beauty," "in conclusion," "in today's world"
+  SENTENCE OPENERS: Never start a sentence with "Additionally," "Furthermore," or "Moreover" — these are AI transition crutches. Restructure the sentence or use a natural bridge.
+- AI-TELL PATTERNS — hard ban, these structural habits are AI fingerprints:
+  * "Not just X, but Y" / "Not only X, but also Y" — the single most recognizable AI construction. Rewrite to direct statement.
+  * Rule-of-three padding: "adjective, adjective, and adjective" or "phrase, phrase, and phrase" when two items make the point. Use the exact number needed.
+  * Participial (-ing) tails that editorialize: "...highlighting the importance of..." / "...underscoring the significance of..." / "...reflecting broader trends in..." — cut entirely.
+  * Copula avoidance: using "serves as / stands as / marks / represents / features / offers / boasts" when "is" or "has" works. Say "is" when you mean "is."
+  * "Despite X, Y continues to..." — the manufactured resilience formula.
+  * Hedging-then-puffing: "While relatively unknown, X has had a profound impact..." — either show the impact or don't claim it.
+  * Elegant variation (thesaurus cycling): "the city" → "the metropolis" → "the urban center" → "the municipality." Repeat the natural word. Readers don't notice reasonable repetition; they notice synonym gymnastics.
 - Vary sentence length deliberately. Short sentences for urgency. Longer ones for atmosphere. Break patterns — if three sentences start the same way, rewrite at least one.
 - End sentences on the strongest word. Order clauses to build anticipation and land emphasis. Avoid trailing prepositional phrase chains.
 - Show, don't tell at emotional moments. "John was angry" fails. "John's knuckles whitened on the table edge. A muscle twitched in his jaw." succeeds. Reserve telling for efficiency in transitions.
 - Avoid em-dashes unless absolutely necessary. Use commas or break into two sentences wherever possible. Em-dash overuse is an AI tell.
-- Avoid "it was not just X, but Y" constructions unless intentionally styled. This balanced rhetorical pattern is a hallmark of AI prose.
 - Prefer specific nouns and verbs over adverbs. "He sprinted" beats "He ran quickly." "The Glock" beats "the gun."
 
 STRUCTURE:
@@ -273,6 +291,15 @@ Scan the output and reduce or eliminate:
 - Obvious AI symmetry: two-sentence pairs where the second mirrors or completes the first in a predictable pattern
 - Generic transition phrases ("As the sun set," "With that," "And with that," "Little did they know")
 - Characters who all react with the same emotional register to different stimuli
+
+AI-TELL WORD SCAN — flag and replace any occurrence of:
+  delve, pivotal, crucial, vibrant, underscores, highlights, bolstered, garner, foster/fostering, enhance/enhancing, enduring, showcasing, exemplifies, encompassing, nestled, groundbreaking, renowned, profound, indelible, tapestry, landscape (metaphorical), testament, focal point, diverse array
+- Check for "Additionally/Furthermore/Moreover" starting sentences — restructure
+- Check for participial (-ing) phrases tacked onto sentence ends that editorialize: "...highlighting...", "...underscoring...", "...reflecting...", "...showcasing...", "...emphasizing..." — cut or rewrite as direct statement
+- Check for copula avoidance: "serves as," "stands as," "marks a," "represents a" where "is" works — simplify
+- Check for "Not just X but Y" / "Not only X but also Y" parallelisms — rewrite
+- Check for thesaurus cycling (elegant variation) — if the same thing is called three different fancy names in three sentences, pick one and stick with it
+- Check for rule-of-three padding — if a list has three items but two make the point, cut the weakest
 `;
 
 export const CONTEXT_ENGINEERING_RULES = `
