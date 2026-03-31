@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { BookOpen, Scissors, Library, Sparkles, PenTool, Anvil, FileText } from "lucide-react";
 
@@ -54,7 +54,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, fullScreen = false }: LayoutProps) {
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
 
   const isActive = (item: NavItem) =>
     item.matchPaths.some(p => location === p || location.startsWith(p + "/") || (p.endsWith("/") && location.startsWith(p)));
@@ -64,26 +64,24 @@ export default function Layout({ children, fullScreen = false }: LayoutProps) {
       <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50" data-testid="nav-header">
         <div className="container max-w-[1400px] mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => navigate("/")}
-              role="button"
-              tabIndex={0}
+            <Link
+              href="/"
+              className="flex items-center gap-2 no-underline"
               data-testid="nav-home"
             >
               <div className="w-7 h-7 bg-primary rounded-sm flex items-center justify-center text-primary-foreground font-serif font-bold text-lg leading-none">
                 S
               </div>
-              <span className="font-serif font-semibold text-lg tracking-tight hidden sm:inline">StoryDossier</span>
-            </div>
+              <span className="font-serif font-semibold text-lg tracking-tight hidden sm:inline text-foreground">StoryDossier</span>
+            </Link>
 
             <nav className="flex items-center gap-1" data-testid="nav-links">
               {NAV_ITEMS.map((item) => (
-                <button
+                <Link
                   key={item.path}
-                  onClick={() => navigate(item.path)}
+                  href={item.path}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors no-underline",
                     isActive(item)
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -92,7 +90,7 @@ export default function Layout({ children, fullScreen = false }: LayoutProps) {
                 >
                   {item.icon}
                   {item.label}
-                </button>
+                </Link>
               ))}
             </nav>
           </div>
