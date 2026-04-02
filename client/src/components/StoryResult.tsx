@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import RichTextEditor from "@/components/RichTextEditor";
+import ProseText from "@/components/ProseText";
 import { Download, Copy, Check, Loader2, RotateCcw, BookOpen, Pencil, X } from "lucide-react";
 
 interface StoryResultProps {
@@ -200,9 +201,10 @@ export default function StoryResult({ projectId, onReset }: StoryResultProps) {
               <TabsContent value="pitch" className="mt-0 focus-visible:outline-none">
                 <div className="bg-muted/10 border border-border/50 rounded-lg p-6">
                   <h3 className="text-xl font-serif font-semibold text-primary mb-4">Selected Best Pitch</h3>
-                  <div className="text-base text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                    {bestPitch}
-                  </div>
+                  <ProseText
+                    text={bestPitch}
+                    className="text-base text-foreground/90"
+                  />
                 </div>
               </TabsContent>
 

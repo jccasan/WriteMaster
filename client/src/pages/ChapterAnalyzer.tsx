@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import RichTextEditor from "@/components/RichTextEditor";
+import ProseText from "@/components/ProseText";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import Layout from "@/components/Layout";
 import {
@@ -615,7 +616,7 @@ export default function ChapterAnalyzer() {
                           <h4 className="text-sm font-semibold text-primary uppercase tracking-wider mb-1">
                             {el.label}
                           </h4>
-                          <p className="text-sm text-foreground/90 whitespace-pre-wrap">{el.value}</p>
+                          <ProseText text={el.value} className="text-sm text-foreground/90" paragraphClassName="mb-2" />
                         </div>
                         <div className="flex gap-1 shrink-0">
                           <Button

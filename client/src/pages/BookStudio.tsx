@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Layout from "@/components/Layout";
+import ProseText from "@/components/ProseText";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import { cn } from "@/lib/utils";
 import {
@@ -801,15 +802,11 @@ export default function BookStudio() {
                           <span className="font-medium">Prompt:</span> {currentChapter.outline}
                         </div>
                       )}
-                      <div className="prose prose-sm max-w-none dark:prose-invert" data-testid="text-chapter-content">
-                        {currentChapter.content.split("\n").map((line, i) => {
-                          if (line.startsWith("# ")) return <h1 key={i} className="text-2xl font-bold mt-6 mb-4">{line.slice(2)}</h1>;
-                          if (line.startsWith("## ")) return <h2 key={i} className="text-xl font-semibold mt-5 mb-3">{line.slice(3)}</h2>;
-                          if (line.startsWith("### ")) return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{line.slice(4)}</h3>;
-                          if (line.trim() === "") return <div key={i} className="h-4" />;
-                          return <p key={i} className="mb-3 leading-relaxed">{line}</p>;
-                        })}
-                      </div>
+                      <ProseText
+                        text={currentChapter.content}
+                        className="prose prose-sm max-w-none dark:prose-invert"
+                        data-testid="text-chapter-content"
+                      />
                     </>
                   )}
 
@@ -818,9 +815,12 @@ export default function BookStudio() {
                       <summary className="cursor-pointer text-sm font-medium text-muted-foreground" data-testid="button-toggle-summary">
                         Continuity Summary
                       </summary>
-                      <div className="mt-3 text-sm text-muted-foreground whitespace-pre-wrap" data-testid="text-chapter-summary">
-                        {currentChapter.summary}
-                      </div>
+                      <ProseText
+                        text={currentChapter.summary}
+                        className="mt-3 text-sm text-muted-foreground"
+                        paragraphClassName="mb-2"
+                        data-testid="text-chapter-summary"
+                      />
                     </details>
                   )}
                 </div>

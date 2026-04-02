@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import RichTextEditor from "@/components/RichTextEditor";
+import ProseText from "@/components/ProseText";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import {
   Loader2,
@@ -438,9 +439,11 @@ export default function BookWriter() {
               {dossierExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
             {dossierExpanded && (
-              <div className="mb-3 text-xs text-foreground/70 bg-background border border-border/40 rounded p-2 max-h-60 overflow-y-auto whitespace-pre-wrap">
-                {book.dossier.substring(0, 2000)}
-                {book.dossier.length > 2000 && "..."}
+              <div className="mb-3 text-xs text-foreground/70 bg-background border border-border/40 rounded p-2 max-h-60 overflow-y-auto">
+                <ProseText
+                  text={book.dossier.substring(0, 2000) + (book.dossier.length > 2000 ? "..." : "")}
+                  paragraphClassName="mb-1.5"
+                />
               </div>
             )}
 
@@ -644,9 +647,11 @@ export default function BookWriter() {
                   ) : (
                     <Card className="border-border/40 bg-muted/20">
                       <CardContent className="p-4">
-                        <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                          {currentChapter.outline}
-                        </div>
+                        <ProseText
+                          text={currentChapter.outline}
+                          className="text-sm text-foreground/80"
+                          paragraphClassName="mb-2"
+                        />
                       </CardContent>
                     </Card>
                   )}
@@ -936,8 +941,8 @@ export default function BookWriter() {
                             <summary className="cursor-pointer text-foreground/60 hover:text-foreground transition-colors py-1">
                               Ch. {c.chapter_number}: {c.title}
                             </summary>
-                            <div className="mt-1 pl-3 border-l-2 border-border/30 text-foreground/50 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
-                              {c.summary}
+                            <div className="mt-1 pl-3 border-l-2 border-border/30 text-foreground/50 max-h-40 overflow-y-auto">
+                              <ProseText text={c.summary} paragraphClassName="mb-1" />
                             </div>
                           </details>
                         ))}
