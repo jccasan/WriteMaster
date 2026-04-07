@@ -371,6 +371,42 @@ AI-TELL WORD SCAN — flag and replace any occurrence of:
 - Check for thesaurus cycling (elegant variation) — if the same thing is called three different fancy names in three sentences, pick one and stick with it
 - Check for rule-of-three padding — if a list has three items but two make the point, cut the weakest
 - TENSE DRIFT CHECK: Flag any present-tense narration verbs in past-tense scenes. Internal direct-thought fragments may use present tense, but surrounding narration must stay in past tense. Correct all drift to past tense.
+- OVER-EXPLAINED EMOTIONS: Characters who narrate their own feelings as if explaining to a concussed five-year-old. "She felt angry because he had betrayed her trust" — the reader can infer this. Show the anger physically, cut the because-clause.
+- BEIGE PASSAGES: Prose that is technically competent but has zero friction, zero surprise, zero personality. Polite, safe, forgettable writing where nothing is at stake and nothing is specific. If a passage could appear in any book by any author about any character, it's beige. Rewrite with voice and specificity.
+- FRICTIONLESS FILLER: Passages where nothing changes for the reader — no new information, no emotional shift, no tension adjustment. Characters walking through doors, sitting down, exchanging pleasantries. Unless the mundane detail does character work, cut it.
+- ROBOTIC TRANSITIONS: "Meanwhile," "Back at," "Across town," "As this was happening" — these are screenplay sluglines disguised as prose. Transition through sensory detail, character action, or hard scene breaks instead.
+- STATUS QUO SCENES: Scenes that end exactly where they started emotionally and informationally. If the reader could skip the scene and miss nothing, the scene has failed. Every scene must shift something.
+`;
+
+export const READER_VALUE_TEST = `
+READER VALUE TEST — THE $10 TEST:
+Before finalizing any passage, apply this filter: "Would a stranger who paid $10 for this book feel ripped off reading this page?"
+
+PAGE-LEVEL VALUE CHECK:
+- Every page must deliver at least one of: a revelation, a character shift, sensory immersion, tension escalation, or emotional payoff
+- If a page is purely transitional (moving characters from A to B), it must do character work simultaneously — reveal personality, build relationship dynamics, or plant seeds for later payoff
+- "Filler" is any passage where NOTHING CHANGES for the reader — no new information, no emotional shift, no tension movement. Cut or rewrite filler ruthlessly
+- A scene that exists only because the outline says it should is not earning its pages. Every scene must justify its existence through reader value
+
+THE SKIM TEST:
+- Would a reader skim this paragraph? If yes, it's not pulling its weight. Either compress it, add a hook, or cut it
+- Long descriptions earn their length only when they create atmosphere the reader FEELS, not when they catalog details the reader processes
+- Dialogue earns its length only when it contains subtext, conflict, or character revelation — not when characters exchange information the reader already has
+`;
+
+export const RAW_MATERIAL_MINDSET = `
+RAW MATERIAL MINDSET:
+Treat every first-pass output as RAW MATERIAL, not finished prose. The goal is to produce workable clay, not a polished sculpture.
+
+KEEP / REWRITE / CUT FRAMEWORK:
+- KEEP: Passages with genuine voice, surprising specificity, or earned emotional weight. These are the gold in the raw material.
+- REWRITE: Passages that have the right idea but weak execution — generic descriptions that could be specific, dialogue that conveys information but lacks subtext, action sequences that tell instead of show.
+- CUT: Passages that exist because an AI would put them there, not because the story needs them — unnecessary transitions, emotional recaps of what just happened, characters reflecting on what the reader just witnessed.
+
+VOLUME-THEN-JUDGMENT:
+- Generate boldly in the first pass. Don't self-censor interesting ideas because they feel risky.
+- Then judge ruthlessly. The best writers produce more than they keep. The ratio of generated-to-kept material is a sign of quality, not waste.
+- A mediocre passage that stays is worse than a bold passage that gets cut. Always err toward ambition.
 `;
 
 export const CONTEXT_ENGINEERING_RULES = `
@@ -415,5 +451,14 @@ PHASE 3 — PROSE EXPANSION: Expand the dialogue skeleton into full scene prose.
 
 PHASE 4 — DRAMATIC INTEGRATION: Strengthen climactic beats, emotional transitions, scene endings, tonal consistency, and thematic resonance without making the prose purple or overwritten.
 
-PHASE 5 — NARROW CHECK PASSES: Before outputting, run targeted checks: adverb cleanup, AI-ism detection, continuity check, plausibility check, dialogue naturalness check. Fix issues without rewriting broadly.
+PHASE 5 — SELF-DEBUGGING PASS (ATTACK YOUR OWN OUTPUT): Before outputting, actively attack your draft. This is not a gentle polish — it is adversarial self-review:
+  a) PLOT HOLE SCAN: Does any character know something they shouldn't? Does any event depend on coincidence? Does the timeline work?
+  b) GENERIC PASSAGE FLAG: Find every paragraph where you could swap in different character names and it would still work. Those passages have no voice. Rewrite with character-specific detail.
+  c) "WOULD A READER SKIM THIS?" TEST: Identify passages where a reader's attention would drift. Either sharpen with a hook, compress, or cut.
+  d) CONVENIENCE CHECK: Does anything happen because it's convenient for the plot rather than because characters drove it there? Flag and fix.
+  e) EMOTIONAL TRUTH CHECK: Are characters reacting the way real people would, or the way a story needs them to? If the reaction serves the plot but not the character, rewrite.
+  f) ADVERB CLEANUP: Flag adverbs. Keep only the ones that change meaning (not emphasis).
+  g) AI-ISM DETECTION: Run the anti-slop word/pattern scan. Fix all hits.
+  h) CONTINUITY CHECK: Verify against provided summaries — locations, injuries, knowledge states, timeline.
+  i) DIALOGUE NATURALNESS: Read dialogue aloud mentally. Does it sound like speech or like writing? Fix anything that sounds written.
 `;

@@ -95,6 +95,10 @@ export default function BookStudio() {
   const [rewriteInstructions, setRewriteInstructions] = useState("");
   const [rewriting, setRewriting] = useState(false);
 
+  const [generatingVariants, setGeneratingVariants] = useState(false);
+  const [variants, setVariants] = useState<{ lens: string; content: string }[] | null>(null);
+  const [activeVariantTab, setActiveVariantTab] = useState(0);
+
   const [summarizingAll, setSummarizingAll] = useState(false);
 
   const initialLoadDone = useRef(false);
@@ -322,6 +326,53 @@ export default function BookStudio() {
       if (!res.ok) throw new Error((await res.json()).error);
       const data = await res.json();
       setBook(data.book);
+      setRewriteMode(false);
+      setRewriteInstructions("");
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setRewriting(false);
+  };
+
+  const generateVariants = async () => {
+    if (!book || !bookId || activeChapter === null || !rewriteInstructions.trim()) return;
+    const chapter = book.chapters[activeChapter];
+    if (!chapter) return;
+    setGeneratingVariants(true);
+    setError(null);
+    setVariants(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/rewrite-chapter-variants/${chapter.chapter_number}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instructions: rewriteInstructions, sliders }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setVariants(data.variants);
+      setActiveVariantTab(0);
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setGeneratingVariants(false);
+  };
+
+  const selectVariant = async (variantContent: string) => {
+    if (!book || !bookId || activeChapter === null) return;
+    const chapter = book.chapters[activeChapter];
+    if (!chapter) return;
+    setRewriting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/chapters/${chapter.chapter_number}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: variantContent }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setBook(data.book);
+      setVariants(null);
       setRewriteMode(false);
       setRewriteInstructions("");
     } catch (err: any) {
@@ -729,10 +780,10 @@ export default function BookStudio() {
                         data-testid="input-rewrite-instructions"
                       />
                       <NarrativeSliders values={sliders} onChange={setSliders} />
-                      <div className="flex gap-2 mt-3">
+                      <div className="flex gap-2 mt-3 flex-wrap">
                         <Button
                           onClick={rewriteChapter}
-                          disabled={rewriting || !rewriteInstructions.trim()}
+                          disabled={rewriting || generatingVariants || !rewriteInstructions.trim()}
                           data-testid="button-confirm-rewrite"
                         >
                           {rewriting ? (
@@ -748,18 +799,86 @@ export default function BookStudio() {
                           )}
                         </Button>
                         <Button
+                          variant="outline"
+                          onClick={generateVariants}
+                          disabled={rewriting || generatingVariants || !rewriteInstructions.trim()}
+                          data-testid="button-generate-variants"
+                        >
+                          {generatingVariants ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                              Generating 3 Variants...
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4 mr-1" />
+                              Generate Variants
+                            </>
+                          )}
+                        </Button>
+                        <Button
                           variant="ghost"
-                          onClick={() => { setRewriteMode(false); setRewriteInstructions(""); }}
-                          disabled={rewriting}
+                          onClick={() => { setRewriteMode(false); setRewriteInstructions(""); setVariants(null); }}
+                          disabled={rewriting || generatingVariants}
                         >
                           Cancel
                         </Button>
                       </div>
-                      {rewriting && (
+                      {(rewriting || generatingVariants) && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1.5">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          Rewriting with full story context... This may take a minute.
+                          {generatingVariants
+                            ? "Generating 3 variant rewrites in parallel... This may take a couple minutes."
+                            : "Rewriting with full story context... This may take a minute."}
                         </p>
+                      )}
+
+                      {variants && variants.length > 0 && (
+                        <div className="mt-4 border rounded-lg overflow-hidden" data-testid="variant-comparison">
+                          <div className="flex border-b bg-muted/30">
+                            {variants.map((v, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setActiveVariantTab(i)}
+                                className={cn(
+                                  "flex-1 px-3 py-2 text-xs font-medium transition-colors",
+                                  activeVariantTab === i
+                                    ? "bg-background text-foreground border-b-2 border-primary"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                )}
+                                data-testid={`tab-variant-${i}`}
+                              >
+                                {v.lens}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="p-4">
+                            <ProseText
+                              text={variants[activeVariantTab].content}
+                              className="prose prose-sm max-w-none dark:prose-invert mb-4"
+                              data-testid={`text-variant-content-${activeVariantTab}`}
+                            />
+                            <div className="flex gap-2 pt-3 border-t">
+                              <Button
+                                size="sm"
+                                onClick={() => selectVariant(variants[activeVariantTab].content)}
+                                disabled={rewriting}
+                                data-testid={`button-use-variant-${activeVariantTab}`}
+                              >
+                                {rewriting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
+                                Use This Version
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setVariants(null)}
+                                data-testid="button-dismiss-variants"
+                              >
+                                Dismiss
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}

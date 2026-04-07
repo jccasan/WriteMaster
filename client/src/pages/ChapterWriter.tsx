@@ -6,8 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, PenTool, Copy, Check, Download, RotateCcw, Clock, Trash2 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
+import ProseText from "@/components/ProseText";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import Layout from "@/components/Layout";
+import { cn } from "@/lib/utils";
 
 interface SavedDraft {
   id: string;
@@ -28,6 +30,9 @@ export default function ChapterWriter() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [generatingVariants, setGeneratingVariants] = useState(false);
+  const [variants, setVariants] = useState<{ lens: string; content: string }[] | null>(null);
+  const [activeVariantTab, setActiveVariantTab] = useState(0);
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
 
@@ -104,6 +109,38 @@ export default function ChapterWriter() {
     setPrompt("");
     setGenre("");
     setSliders({ ...DEFAULT_SLIDERS });
+    setVariants(null);
+  };
+
+  const handleWriteVariants = async () => {
+    if (!prompt.trim()) return;
+    setGeneratingVariants(true);
+    setError(null);
+    setVariants(null);
+    try {
+      const res = await fetch("/api/chapter/write-standalone-variants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          genre: genre.trim() || undefined,
+          sliders,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate variants");
+      setVariants(data.variants);
+      setActiveVariantTab(0);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setGeneratingVariants(false);
+    }
+  };
+
+  const selectVariant = (variantContent: string) => {
+    setContent(variantContent);
+    setVariants(null);
   };
 
   const loadDraft = (draft: SavedDraft) => {
@@ -129,6 +166,65 @@ export default function ChapterWriter() {
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
       " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   };
+
+  if (variants && variants.length > 0) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-serif font-bold text-foreground" data-testid="text-variant-heading">
+                Compare Variants
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                3 different creative approaches — pick the one that works best
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setVariants(null)} className="gap-2" data-testid="button-back-from-variants">
+              <RotateCcw className="w-4 h-4" /> Back
+            </Button>
+          </div>
+
+          <div className="bg-card border border-border shadow-xl rounded-xl overflow-hidden">
+            <div className="flex border-b bg-muted/30">
+              {variants.map((v, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveVariantTab(i)}
+                  className={cn(
+                    "flex-1 px-4 py-3 text-sm font-medium transition-colors",
+                    activeVariantTab === i
+                      ? "bg-background text-foreground border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                  data-testid={`tab-variant-${i}`}
+                >
+                  {v.lens}
+                </button>
+              ))}
+            </div>
+            <div className="p-6">
+              <ProseText
+                text={variants[activeVariantTab].content}
+                className="prose prose-sm max-w-none dark:prose-invert mb-6"
+                data-testid={`text-variant-content-${activeVariantTab}`}
+              />
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  size="sm"
+                  onClick={() => selectVariant(variants[activeVariantTab].content)}
+                  data-testid={`button-use-variant-${activeVariantTab}`}
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  Use This Version
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (content) {
     return (
@@ -262,25 +358,53 @@ export default function ChapterWriter() {
             onChange={setSliders}
           />
 
-          <Button
-            onClick={handleWrite}
-            size="lg"
-            disabled={!prompt.trim() || generating}
-            className="w-full h-14 text-base gap-2"
-            data-testid="button-write-chapter"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Writing your chapter...
-              </>
-            ) : (
-              <>
-                <PenTool className="w-5 h-5" />
-                Write Chapter
-              </>
-            )}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={handleWrite}
+              size="lg"
+              disabled={!prompt.trim() || generating || generatingVariants}
+              className="flex-1 h-14 text-base gap-2"
+              data-testid="button-write-chapter"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Writing your chapter...
+                </>
+              ) : (
+                <>
+                  <PenTool className="w-5 h-5" />
+                  Write Chapter
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={handleWriteVariants}
+              size="lg"
+              variant="outline"
+              disabled={!prompt.trim() || generating || generatingVariants}
+              className="h-14 text-base gap-2 px-6"
+              data-testid="button-write-variants"
+            >
+              {generatingVariants ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Copy className="w-5 h-5" />
+                  3 Variants
+                </>
+              )}
+            </Button>
+          </div>
+          {generatingVariants && (
+            <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Generating 3 variant chapters in parallel... This may take a couple minutes.
+            </p>
+          )}
 
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm px-4 py-3 rounded-lg" data-testid="text-error">

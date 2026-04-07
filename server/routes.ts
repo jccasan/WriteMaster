@@ -13,7 +13,8 @@ import { readGoogleDoc, writeGoogleDoc, extractDocId } from "./google-docs";
 import {
   AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, SCENE_WRITING_RULES, STORY_ARCHITECTURE_RULES,
   CHAPTER_SUMMARY_TEMPLATE, NARRATIVE_SLIDER_RULES, ANTI_SLOP_FILTER,
-  CONTEXT_ENGINEERING_RULES, DEFAULT_DECISION_RULE, LAYERED_GENERATION_WORKFLOW
+  CONTEXT_ENGINEERING_RULES, DEFAULT_DECISION_RULE, LAYERED_GENERATION_WORKFLOW,
+  READER_VALUE_TEST, RAW_MATERIAL_MINDSET
 } from "./writing-rules";
 
 const DRAFTS_DIR = path.resolve("data/chapter-drafts");
@@ -324,6 +325,10 @@ ${SCENE_WRITING_RULES}
 ${DEFAULT_DECISION_RULE}
 
 ${LAYERED_GENERATION_WORKFLOW}
+
+${READER_VALUE_TEST}
+
+${RAW_MATERIAL_MINDSET}
 
 INSTRUCTIONS:
 - Rewrite the entire chapter so it naturally embodies every element listed above
@@ -692,6 +697,10 @@ ${DEFAULT_DECISION_RULE}
 
 ${LAYERED_GENERATION_WORKFLOW}
 
+${READER_VALUE_TEST}
+
+${RAW_MATERIAL_MINDSET}
+
 INSTRUCTIONS:
 - Rewrite the chapter following the author's instructions
 - Preserve the essential story beats unless the instructions say otherwise
@@ -986,6 +995,10 @@ ${SCENE_WRITING_RULES}
 ${DEFAULT_DECISION_RULE}
 
 ${LAYERED_GENERATION_WORKFLOW}
+
+${READER_VALUE_TEST}
+
+${RAW_MATERIAL_MINDSET}
 
 INSTRUCTIONS:
 - Write the full chapter as polished prose, ready for a reader
@@ -1319,6 +1332,10 @@ ${DEFAULT_DECISION_RULE}
 
 ${LAYERED_GENERATION_WORKFLOW}
 
+${READER_VALUE_TEST}
+
+${RAW_MATERIAL_MINDSET}
+
 INSTRUCTIONS:
 - Write the full chapter as polished prose, ready for a reader
 - Follow the outline's scenes and emotional beats faithfully
@@ -1466,6 +1483,10 @@ ${DEFAULT_DECISION_RULE}
 
 ${LAYERED_GENERATION_WORKFLOW}
 
+${READER_VALUE_TEST}
+
+${RAW_MATERIAL_MINDSET}
+
 INSTRUCTIONS:
 - Write a complete, polished chapter (2000-4000 words) based on the author's prompt
 - Extract characters, setting, conflict, and tone from whatever the author has given you — whether that's a detailed outline or just a raw idea
@@ -1499,6 +1520,215 @@ Output only the chapter text.`,
       res.json({ content: result });
     } catch (err: any) {
       console.error("[Standalone Chapter Write Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  const VARIANT_LENSES = [
+    { name: "Tighter Pacing", instruction: "CREATIVE LENS — TIGHTER PACING: Compress transitions, shorten dialogue exchanges, increase the pace of reveals and complications. Every paragraph must earn its space. Cut breathing room in favor of momentum. The reader should feel pulled through the chapter." },
+    { name: "More Atmospheric", instruction: "CREATIVE LENS — MORE ATMOSPHERIC: Lean into environmental texture, sensory layering, and mood. Let the setting become a character. Expand quiet moments with physical detail that creates dread, wonder, or unease. The reader should feel the world pressing in." },
+    { name: "Stronger Dialogue Focus", instruction: "CREATIVE LENS — STRONGER DIALOGUE FOCUS: Let conversation drive the scene. Reduce narration between dialogue beats. Make characters reveal themselves through what they say, dodge, interrupt, and refuse to say. Subtext carries the weight. The chapter should feel like eavesdropping." },
+  ];
+
+  app.post("/api/books/:id/rewrite-chapter-variants/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+      if (!chapter.content) return res.status(400).json({ error: "Chapter has no content to rewrite" });
+
+      const { instructions, sliders } = req.body;
+      if (!instructions) return res.status(400).json({ error: "Rewrite instructions are required" });
+
+      const previousSummaries = buildPreviousSummariesContext(book.chapters, chapterNum);
+      const slidersBlock = sliders ? formatSlidersBlock(sliders) : "";
+
+      let docsContext = "";
+      if (book.documents && book.documents.length > 0) {
+        docsContext = "\n\nREFERENCE DOCUMENTS:\n" + book.documents.map(d =>
+          `--- ${d.name} (${d.type.replace(/_/g, " ")}) ---\n${d.content}`
+        ).join("\n\n");
+      }
+
+      let dossierContext = "";
+      if (book.dossier) {
+        dossierContext = `\n\nSTORY DOSSIER:\n${book.dossier}`;
+      }
+
+      const laterSummaries = book.chapters
+        .filter(c => c.chapter_number > chapterNum && c.summary)
+        .sort((a, b) => a.chapter_number - b.chapter_number)
+        .slice(0, 3)
+        .map(c => `### Chapter ${c.chapter_number}: ${c.title}\n${c.summary}`)
+        .join("\n\n");
+
+      const variantPromises = VARIANT_LENSES.map(lens =>
+        callLLM(
+          `You are a skilled novelist rewriting a chapter of a book. Rewrite Chapter ${chapterNum} based on the author's instructions while maintaining continuity with the rest of the book.
+
+${lens.instruction}
+
+${CONTEXT_ENGINEERING_RULES}
+${dossierContext}
+${docsContext}
+
+PREVIOUS CHAPTER SUMMARIES (what happened before this chapter):
+${previousSummaries}
+
+${laterSummaries ? `LATER CHAPTER SUMMARIES (what happens after — maintain consistency):\n${laterSummaries}\n` : ""}
+
+CURRENT CHAPTER ${chapterNum} TEXT (the chapter to rewrite):
+${chapter.content}
+${slidersBlock}
+
+AUTHOR'S REWRITE INSTRUCTIONS:
+${instructions}
+
+${AUTHOR_VOICE_CONTRACT}
+
+${AI_WRITING_RULES}
+
+${SCENE_WRITING_RULES}
+
+${DEFAULT_DECISION_RULE}
+
+${LAYERED_GENERATION_WORKFLOW}
+
+${READER_VALUE_TEST}
+
+${RAW_MATERIAL_MINDSET}
+
+INSTRUCTIONS:
+- Rewrite the chapter following the author's instructions AND the creative lens above
+- The creative lens should noticeably shape the output — this variant should feel different from other approaches
+- Preserve the essential story beats unless the instructions say otherwise
+- Maintain continuity with previous AND later chapters
+- Use reference documents for character/world consistency
+- The rewritten chapter should be similar length to the original (2000-4000 words)
+- Start with the chapter title as a heading
+- Write immersive, engaging fiction
+
+SELF-EDIT PASS:
+- Remove lines that explain what behavior already shows
+- Replace abstract lines with concrete action or sensation
+- Break accidental sentence pattern symmetry
+- Confirm action clarity in physical sequences
+
+${ANTI_SLOP_FILTER}
+
+Output only the rewritten chapter text.`,
+          "powerful",
+          undefined,
+          16384
+        ).then(result => ({
+          lens: lens.name,
+          content: result?.trim() || "",
+        })).catch(err => ({
+          lens: lens.name,
+          content: "",
+          error: err.message,
+        }))
+      );
+
+      const variants = await Promise.all(variantPromises);
+      const successfulVariants = variants.filter(v => v.content);
+
+      if (successfulVariants.length === 0) {
+        return res.status(500).json({ error: "All variant generations failed. Please try again." });
+      }
+
+      res.json({ variants: successfulVariants });
+    } catch (err: any) {
+      console.error("[Chapter Variant Rewrite Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/chapter/write-standalone-variants", async (req, res) => {
+    try {
+      const { prompt, genre, sliders } = req.body;
+      if (!prompt || !prompt.trim()) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+
+      const slidersBlock = formatSlidersBlock(sliders);
+      const genreHint = genre ? `\nGENRE CONTEXT: ${genre}\n` : "";
+
+      const variantPromises = VARIANT_LENSES.map(lens =>
+        callLLM(
+          `You are a skilled novelist writing a standalone chapter from the author's creative prompt.
+
+${lens.instruction}
+
+${CONTEXT_ENGINEERING_RULES}
+
+AUTHOR'S CREATIVE PROMPT:
+${prompt}
+${genreHint}
+${slidersBlock}
+
+${AUTHOR_VOICE_CONTRACT}
+
+${AI_WRITING_RULES}
+
+${SCENE_WRITING_RULES}
+
+${DEFAULT_DECISION_RULE}
+
+${LAYERED_GENERATION_WORKFLOW}
+
+${READER_VALUE_TEST}
+
+${RAW_MATERIAL_MINDSET}
+
+INSTRUCTIONS:
+- Write a complete, polished chapter (2000-4000 words) based on the author's prompt AND the creative lens above
+- The creative lens should noticeably shape the output — this variant should feel different from other approaches
+- Extract characters, setting, conflict, and tone from whatever the author has given you
+- Structure the chapter with proper scene engineering: Goal → Conflict → Outcome with value shifts
+- Apply the double-up rule: each scene serves at least two functions simultaneously
+- Begin scenes late, end them early
+- End the chapter on an open circuit
+- Include concrete sensory details across multiple senses
+- Write immersive, engaging fiction
+- Start with a chapter title as a heading
+- Do NOT include author notes, meta-commentary, or section labels within the prose
+
+SELF-EDIT PASS (apply before outputting):
+- Remove lines that explain what behavior already shows
+- Replace at least one abstract "meaning" line with concrete action or sensation
+- Break any accidental sentence pattern symmetry
+- Confirm action clarity in physical sequences
+
+${ANTI_SLOP_FILTER}
+
+Output only the chapter text.`,
+          "powerful",
+          undefined,
+          16384
+        ).then(result => ({
+          lens: lens.name,
+          content: result?.trim() || "",
+        })).catch(err => ({
+          lens: lens.name,
+          content: "",
+          error: err.message,
+        }))
+      );
+
+      const variants = await Promise.all(variantPromises);
+      const successfulVariants = variants.filter(v => v.content);
+
+      if (successfulVariants.length === 0) {
+        return res.status(500).json({ error: "All variant generations failed. Please try again." });
+      }
+
+      res.json({ variants: successfulVariants });
+    } catch (err: any) {
+      console.error("[Standalone Variant Write Error]", err);
       res.status(500).json({ error: err.message });
     }
   });
