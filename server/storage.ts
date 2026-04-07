@@ -54,14 +54,22 @@ export interface NarrativeSliders {
   hope: number;
 }
 
+export interface ChapterAnalysis {
+  type: "beta_reader" | "editorial_assessment" | "developmental_assessment";
+  profile?: string;
+  result: any;
+  ran_at: string;
+}
+
 export interface BookChapter {
   chapter_number: number;
   title: string;
   outline: string;
   content: string | null;
   summary: string | null;
-  status: "outlined" | "writing" | "written";
+  status: "outlined" | "writing" | "written" | "committed";
   sliders?: NarrativeSliders | null;
+  analyses?: ChapterAnalysis[];
 }
 
 export interface BookDocument {
@@ -266,7 +274,7 @@ export class FileStorage implements IStorage {
           created_at: data.created_at,
           updated_at: data.updated_at,
           chapter_count: data.chapters.length,
-          chapters_written: data.chapters.filter(c => c.status === "written").length,
+          chapters_written: data.chapters.filter(c => c.status === "written" || c.status === "committed").length,
         });
       } catch {
         continue;

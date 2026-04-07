@@ -760,18 +760,146 @@ CRITICAL: Be specific and factual. Track every detail that could create a contin
       const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
       if (!chapter) return res.status(404).json({ error: "Chapter not found" });
 
-      const { content, title } = req.body;
+      const { content, title, summary, sliders } = req.body;
+
+      if (chapter.status === "committed" && (content !== undefined || summary !== undefined)) {
+        return res.status(409).json({ error: "Chapter is committed and locked. Unlock it before editing content or summary." });
+      }
+
       if (content !== undefined) {
         chapter.content = content;
         chapter.summary = null;
+        chapter.status = "written";
       }
       if (title !== undefined) chapter.title = title;
+      if (summary !== undefined) chapter.summary = summary;
+      if (sliders !== undefined) chapter.sliders = sliders;
+      if (content === undefined && summary === undefined && chapter.status !== "committed") {
+        chapter.status = "written";
+      }
+      await storage.saveBook(book);
+
+      const freshBook = await storage.getBook(req.params.id);
+      res.json({ chapter, book: freshBook || book });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/commit-chapter/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+      if (!chapter.content) return res.status(400).json({ error: "Chapter has no content to commit" });
+      if (chapter.status !== "written") return res.status(400).json({ error: "Only written chapters can be committed" });
+
+      const summaryResult = await callLLM(
+        `You are a story continuity editor. Read the chapter below and produce a structured continuity snapshot.
+
+CHAPTER ${chapterNum}: ${chapter.title}
+${chapter.content}
+
+${CHAPTER_SUMMARY_TEMPLATE}
+
+CRITICAL: Be specific and factual. Track every detail that could create a continuity error if forgotten.`,
+        "powerful"
+      );
+      chapter.summary = summaryResult;
+      chapter.status = "committed";
+      await storage.saveBook(book);
+
+      const freshBook = await storage.getBook(req.params.id);
+      res.json({ chapter, book: freshBook || book });
+    } catch (err: any) {
+      console.error("[Commit Chapter Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/unlock-chapter/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+      if (chapter.status !== "committed") return res.status(400).json({ error: "Chapter is not committed" });
+
       chapter.status = "written";
       await storage.saveBook(book);
 
       const freshBook = await storage.getBook(req.params.id);
       res.json({ chapter, book: freshBook || book });
     } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/books/:id/analyze-chapter/:chapterNum", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+      if (!chapter.content) return res.status(400).json({ error: "Chapter has no content to analyze" });
+      if (chapter.status !== "committed") return res.status(400).json({ error: "Only committed chapters can be analyzed" });
+
+      const { analysisType, betaProfile } = req.body;
+      if (!analysisType) return res.status(400).json({ error: "analysisType is required" });
+
+      const previousContext = book.chapters
+        .filter(c => c.chapter_number < chapterNum && c.summary)
+        .sort((a, b) => a.chapter_number - b.chapter_number)
+        .map(c => `Chapter ${c.chapter_number}: ${c.title}\n${c.summary}`)
+        .join("\n\n");
+
+      const genre = "general fiction";
+      let result: any;
+      let profile: string | undefined;
+
+      if (analysisType === "beta_reader") {
+        const { runBetaReader } = await import("./forge/analysis/modules/beta-reader");
+        const profileKey = betaProfile || "genre_enthusiast";
+        profile = profileKey;
+        result = await runBetaReader(chapter.content, previousContext, genre, profileKey);
+      } else if (analysisType === "editorial_assessment") {
+        const { runEditorialAssessment } = await import("./forge/analysis/modules/editorial-assessment");
+        result = await runEditorialAssessment(chapter.content, previousContext, genre, "");
+      } else if (analysisType === "developmental_assessment") {
+        const { runDevEdit } = await import("./forge/analysis/modules/developmental-editor");
+        result = await runDevEdit(chapter.content, previousContext, genre, "");
+      } else {
+        return res.status(400).json({ error: `Unknown analysisType: ${analysisType}` });
+      }
+
+      if (!chapter.analyses) chapter.analyses = [];
+      const existingIdx = chapter.analyses.findIndex(
+        a => a.type === analysisType && (analysisType !== "beta_reader" || a.profile === profile)
+      );
+      const analysisEntry = {
+        type: analysisType as "beta_reader" | "editorial_assessment" | "developmental_assessment",
+        profile,
+        result,
+        ran_at: new Date().toISOString(),
+      };
+      if (existingIdx >= 0) {
+        chapter.analyses[existingIdx] = analysisEntry;
+      } else {
+        chapter.analyses.push(analysisEntry);
+      }
+      await storage.saveBook(book);
+
+      const freshBook = await storage.getBook(req.params.id);
+      res.json({ chapter, book: freshBook || book, analysisResult: result });
+    } catch (err: any) {
+      console.error("[Analyze Chapter Error]", err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -1059,9 +1187,9 @@ ${NARRATIVE_SLIDER_RULES}`;
       if (!book) return res.status(404).json({ error: "Book not found" });
 
       const lastChapter = book.chapters[book.chapters.length - 1];
-      if (lastChapter && (lastChapter.status !== "written" || !lastChapter.summary)) {
+      if (lastChapter && (lastChapter.status !== "committed")) {
         return res.status(400).json({
-          error: `Chapter ${lastChapter.chapter_number} must be written and summarized before generating the next outline.`
+          error: `Chapter ${lastChapter.chapter_number} must be committed before generating the next chapter outline.`
         });
       }
 

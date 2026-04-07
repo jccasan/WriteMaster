@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import RichTextEditor from "@/components/RichTextEditor";
 import ProseText from "@/components/ProseText";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
@@ -25,9 +25,22 @@ import {
   ChevronDown,
   ChevronUp,
   Scissors,
+  Lock,
+  Unlock,
+  GitCommit,
+  Users,
+  ClipboardList,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
+
+interface ChapterAnalysis {
+  type: "beta_reader" | "editorial_assessment" | "developmental_assessment";
+  profile?: string;
+  result: any;
+  ran_at: string;
+}
 
 interface BookChapter {
   chapter_number: number;
@@ -35,8 +48,9 @@ interface BookChapter {
   outline: string;
   content: string | null;
   summary: string | null;
-  status: "outlined" | "writing" | "written";
+  status: "outlined" | "writing" | "written" | "committed";
   sliders?: NarrativeSliderValues | null;
+  analyses?: ChapterAnalysis[];
 }
 
 interface BookProject {
@@ -50,6 +64,14 @@ interface BookProject {
   chapters: BookChapter[];
 }
 
+const BETA_PROFILES = [
+  { key: "genre_enthusiast", label: "Genre Enthusiast" },
+  { key: "casual_commercial", label: "Casual Commercial" },
+  { key: "emotion_first", label: "Emotion-First" },
+  { key: "pacing_sensitive", label: "Pacing-Sensitive" },
+  { key: "critical_craft", label: "Critical Craft" },
+];
+
 export default function BookWriter() {
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
@@ -59,7 +81,7 @@ export default function BookWriter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeChapter, setActiveChapter] = useState<number>(0);
-  const [generating, setGenerating] = useState<"outline" | "writing" | "summarizing" | null>(null);
+  const [generating, setGenerating] = useState<"outline" | "writing" | "summarizing" | "committing" | "analyzing" | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [editingOutline, setEditingOutline] = useState(false);
@@ -75,6 +97,11 @@ export default function BookWriter() {
   const autopilotCancelRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentDraftRef = useRef<string>("");
+
+  const [rightPanelTab, setRightPanelTab] = useState<"summary" | "analysis">("summary");
+  const [activeAnalysisType, setActiveAnalysisType] = useState<"beta_reader" | "editorial_assessment" | "developmental_assessment">("beta_reader");
+  const [activeBetaProfile, setActiveBetaProfile] = useState("genre_enthusiast");
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
   const fetchBook = useCallback(async () => {
     if (!bookId) return;
@@ -103,7 +130,16 @@ export default function BookWriter() {
     setEditingSummary(false);
     setEditingOutline(false);
     setEditingChapterTitle(false);
+    setAnalyzeError(null);
   }, [activeChapter]);
+
+  useEffect(() => {
+    if (currentChapter?.status === "committed") {
+      setRightPanelTab("analysis");
+    } else {
+      setRightPanelTab("summary");
+    }
+  }, [activeChapter, currentChapter?.status]);
 
   const saveBookUpdate = useCallback(async (updates: Partial<BookProject>) => {
     if (!bookId) return;
@@ -211,6 +247,71 @@ export default function BookWriter() {
     setGenerating(null);
   };
 
+  const handleCommitChapter = async () => {
+    if (!bookId || !currentChapter) return;
+    setGenerating("committing");
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/commit-chapter/${currentChapter.chapter_number}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to commit chapter");
+      }
+      const data = await res.json();
+      setBook(data.book);
+      setRightPanelTab("analysis");
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setGenerating(null);
+  };
+
+  const handleUnlockChapter = async () => {
+    if (!bookId || !currentChapter) return;
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/unlock-chapter/${currentChapter.chapter_number}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to unlock chapter");
+      }
+      const data = await res.json();
+      setBook(data.book);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleRunAnalysis = async () => {
+    if (!bookId || !currentChapter) return;
+    setGenerating("analyzing");
+    setAnalyzeError(null);
+    try {
+      const body: any = { analysisType: activeAnalysisType };
+      if (activeAnalysisType === "beta_reader") body.betaProfile = activeBetaProfile;
+      const res = await fetch(`/api/books/${bookId}/analyze-chapter/${currentChapter.chapter_number}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Analysis failed");
+      }
+      const data = await res.json();
+      setBook(data.book);
+    } catch (err: any) {
+      setAnalyzeError(err.message);
+    }
+    setGenerating(null);
+  };
+
   const handleAutopilot = async (maxChapters: number = 32) => {
     if (!bookId || !book) return;
     autopilotCancelRef.current = false;
@@ -225,9 +326,10 @@ export default function BookWriter() {
         if (autopilotCancelRef.current) break;
 
         const lastCh = currentBook.chapters[currentBook.chapters.length - 1];
-        const needsOutline = !lastCh || (lastCh.status === "written" && lastCh.summary);
+        const lastChIsComplete = !lastCh || lastCh.status === "committed";
+        const needsOutline = lastChIsComplete;
         const needsWrite = lastCh && lastCh.status === "outlined";
-        const needsSummary = lastCh && lastCh.status === "written" && !lastCh.summary;
+        const needsCommit = lastCh && lastCh.status === "written";
 
         if (needsOutline) {
           const nextNum = (lastCh?.chapter_number || 0) + 1;
@@ -261,16 +363,16 @@ export default function BookWriter() {
           currentBook = data.book;
           setBook(data.book);
           setGenerating(null);
-        } else if (needsSummary) {
-          setAutopilotStatus(`Summarizing chapter ${lastCh.chapter_number}...`);
-          setGenerating("summarizing");
-          const res = await fetch(`/api/books/${bookId}/summarize-chapter/${lastCh.chapter_number}`, {
+        } else if (needsCommit) {
+          setAutopilotStatus(`Committing chapter ${lastCh.chapter_number}...`);
+          setGenerating("committing");
+          const res = await fetch(`/api/books/${bookId}/commit-chapter/${lastCh.chapter_number}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
           });
           if (!res.ok) {
             const data = await res.json();
-            throw new Error(data.error || "Failed to summarize chapter");
+            throw new Error(data.error || "Failed to commit chapter");
           }
           const data = await res.json();
           currentBook = data.book;
@@ -344,8 +446,15 @@ export default function BookWriter() {
 
   const canGenerateNext = book && (
     book.chapters.length === 0 ||
-    (book.chapters[book.chapters.length - 1].status === "written" && book.chapters[book.chapters.length - 1].summary)
+    book.chapters[book.chapters.length - 1].status === "committed"
   );
+
+  const getChapterAnalysis = (chapter: BookChapter, type: string, profile?: string) => {
+    if (!chapter.analyses) return null;
+    return chapter.analyses.find(a =>
+      a.type === type && (type !== "beta_reader" || a.profile === profile)
+    ) || null;
+  };
 
   if (loading) {
     return (
@@ -367,6 +476,8 @@ export default function BookWriter() {
   }
 
   if (!book) return null;
+
+  const isCommitted = currentChapter?.status === "committed";
 
   return (
     <Layout fullScreen>
@@ -411,7 +522,10 @@ export default function BookWriter() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
-            {book.chapters.filter(c => c.status === "written").length}/{book.chapters.length} chapters written
+            {book.chapters.filter(c => c.status === "written" || c.status === "committed").length}/{book.chapters.length} chapters written
+            {book.chapters.filter(c => c.status === "committed").length > 0 && (
+              <> · {book.chapters.filter(c => c.status === "committed").length} committed</>
+            )}
           </span>
           <Button
             variant="outline"
@@ -466,6 +580,9 @@ export default function BookWriter() {
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-mono text-muted-foreground w-4">{ch.chapter_number}</span>
                     <span className="truncate flex-1 text-xs">{ch.title}</span>
+                    {ch.status === "committed" && (
+                      <Lock className="w-3 h-3 text-blue-500 shrink-0" />
+                    )}
                     {ch.status === "written" && ch.summary && (
                       <Check className="w-3 h-3 text-green-500 shrink-0" />
                     )}
@@ -516,7 +633,7 @@ export default function BookWriter() {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAutopilot()}
-                disabled={generating !== null || (!canGenerateNext && !(currentChapter && (currentChapter.status === "outlined" || (currentChapter.status === "written" && !currentChapter.summary))))}
+                disabled={generating !== null || (!canGenerateNext && !(currentChapter && (currentChapter.status === "outlined" || currentChapter.status === "written")))}
                 className="w-full mt-1 gap-1 text-xs text-muted-foreground"
                 data-testid="button-autopilot-sidebar"
               >
@@ -578,13 +695,18 @@ export default function BookWriter() {
                       Chapter {currentChapter.chapter_number}
                     </span>
                     {currentChapter.status === "outlined" && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Outlined</span>
+                      <Badge variant="secondary" className="text-xs py-0 h-5" data-testid="badge-status-outlined">Outlined</Badge>
                     )}
                     {currentChapter.status === "writing" && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600">Writing...</span>
+                      <Badge className="text-xs py-0 h-5 bg-yellow-500/10 text-yellow-600 border-yellow-500/20" data-testid="badge-status-writing">Writing...</Badge>
                     )}
                     {currentChapter.status === "written" && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">Written</span>
+                      <Badge className="text-xs py-0 h-5 bg-green-500/10 text-green-600 border-green-500/20" data-testid="badge-status-written">Written</Badge>
+                    )}
+                    {currentChapter.status === "committed" && (
+                      <Badge className="text-xs py-0 h-5 bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1" data-testid="badge-status-committed">
+                        <Lock className="w-2.5 h-2.5" /> Committed
+                      </Badge>
                     )}
                   </div>
                   {editingChapterTitle ? (
@@ -606,11 +728,16 @@ export default function BookWriter() {
                     </div>
                   ) : (
                     <h2
-                      className="text-2xl font-serif font-bold text-foreground cursor-pointer hover:text-primary/80 transition-colors group flex items-center gap-2"
-                      onClick={() => { setChapterTitleDraft(currentChapter.title); setEditingChapterTitle(true); }}
+                      className={cn(
+                        "text-2xl font-serif font-bold text-foreground flex items-center gap-2",
+                        !isCommitted && "cursor-pointer hover:text-primary/80 transition-colors group"
+                      )}
+                      onClick={() => {
+                        if (!isCommitted) { setChapterTitleDraft(currentChapter.title); setEditingChapterTitle(true); }
+                      }}
                     >
                       {currentChapter.title}
-                      <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
+                      {!isCommitted && <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />}
                     </h2>
                   )}
                 </div>
@@ -704,74 +831,96 @@ export default function BookWriter() {
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Chapter Text</h3>
                       <div className="flex items-center gap-1">
-                        {editingContent ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => {
-                                saveChapterUpdate(currentChapter.chapter_number, { content: contentDraftRef.current });
-                                setEditingContent(false);
-                              }}
-                              className="h-7 gap-1 text-xs"
-                              data-testid="button-save-content"
-                            >
-                              <Check className="w-3 h-3" /> Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingContent(false)}
-                              className="h-7 gap-1 text-xs"
-                            >
-                              <X className="w-3 h-3" /> Cancel
-                            </Button>
-                          </>
+                        {isCommitted ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleUnlockChapter}
+                            className="h-7 gap-1 text-xs text-amber-600 border-amber-500/30 hover:bg-amber-50"
+                            data-testid="button-unlock-chapter"
+                          >
+                            <Unlock className="w-3 h-3" /> Unlock to Edit
+                          </Button>
                         ) : (
                           <>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                contentDraftRef.current = currentChapter.content || "";
-                                setEditingContent(true);
-                              }}
-                              className="h-7 gap-1 text-xs"
-                              data-testid="button-edit-content"
-                            >
-                              <Pencil className="w-3 h-3" /> Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={handleCopyChapter}
-                              className="h-7 gap-1 text-xs"
-                              data-testid="button-copy-chapter"
-                            >
-                              {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
-                              {copied ? "Copied" : "Copy"}
-                            </Button>
-                            {currentChapter.content && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  sessionStorage.setItem("analyzer_import_text", currentChapter.content || "");
-                                  navigate("/chapter-analyzer");
-                                }}
-                                className="h-7 gap-1 text-xs"
-                                data-testid="button-analyze-chapter"
-                              >
-                                <Scissors className="w-3 h-3" /> Analyze
-                              </Button>
+                            {editingContent ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => {
+                                    saveChapterUpdate(currentChapter.chapter_number, { content: contentDraftRef.current });
+                                    setEditingContent(false);
+                                  }}
+                                  className="h-7 gap-1 text-xs"
+                                  data-testid="button-save-content"
+                                >
+                                  <Check className="w-3 h-3" /> Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingContent(false)}
+                                  className="h-7 gap-1 text-xs"
+                                >
+                                  <X className="w-3 h-3" /> Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    contentDraftRef.current = currentChapter.content || "";
+                                    setEditingContent(true);
+                                  }}
+                                  className="h-7 gap-1 text-xs"
+                                  data-testid="button-edit-content"
+                                >
+                                  <Pencil className="w-3 h-3" /> Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={handleCopyChapter}
+                                  className="h-7 gap-1 text-xs"
+                                  data-testid="button-copy-chapter"
+                                >
+                                  {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                                  {copied ? "Copied" : "Copy"}
+                                </Button>
+                                {currentChapter.content && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      sessionStorage.setItem("analyzer_import_text", currentChapter.content || "");
+                                      navigate("/chapter-analyzer");
+                                    }}
+                                    className="h-7 gap-1 text-xs"
+                                    data-testid="button-analyze-chapter"
+                                  >
+                                    <Scissors className="w-3 h-3" /> Analyze
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </>
                         )}
                       </div>
                     </div>
+
+                    {isCommitted && (
+                      <div className="mb-3 flex items-center gap-2 p-2.5 bg-blue-500/5 border border-blue-500/20 rounded-lg text-xs text-blue-700">
+                        <Lock className="w-3.5 h-3.5 shrink-0" />
+                        <span>This chapter is committed and locked. Click "Unlock to Edit" to make changes.</span>
+                      </div>
+                    )}
+
                     <RichTextEditor
                       content={currentChapter.content}
-                      readOnly={!editingContent}
+                      readOnly={!editingContent || isCommitted}
                       onChange={(_html, plain) => {
                         contentDraftRef.current = plain;
                       }}
@@ -780,6 +929,38 @@ export default function BookWriter() {
                       placeholder="Chapter content..."
                       data-testid="editor-chapter-content"
                     />
+                  </div>
+                )}
+
+                {/* Commit Button — shown when written and has content, not yet committed */}
+                {currentChapter.status === "written" && currentChapter.content && !editingContent && (
+                  <div className="mb-6 p-4 border border-border/40 rounded-lg bg-muted/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Ready to commit this chapter?</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Committing auto-generates a continuity summary, locks the chapter, and unlocks the next chapter prompt.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleCommitChapter}
+                        disabled={generating !== null}
+                        className="gap-2 ml-4 bg-blue-600 hover:bg-blue-700 text-white"
+                        data-testid="button-commit-chapter"
+                      >
+                        {generating === "committing" ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Committing...
+                          </>
+                        ) : (
+                          <>
+                            <GitCommit className="w-4 h-4" />
+                            Commit Chapter
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -811,142 +992,528 @@ export default function BookWriter() {
             )}
           </div>
 
-          {/* RIGHT PANEL — Summary & Context */}
+          {/* RIGHT PANEL — Summary & Analysis */}
           <div className="w-80 shrink-0 overflow-y-auto bg-muted/10">
             {currentChapter ? (
               <div className="p-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                  Chapter {currentChapter.chapter_number} Summary
-                </h3>
+                {/* Tab switcher */}
+                <div className="flex gap-1 mb-4 bg-muted/40 rounded-lg p-1">
+                  <button
+                    onClick={() => setRightPanelTab("summary")}
+                    className={cn(
+                      "flex-1 text-xs py-1.5 px-2 rounded-md transition-colors font-medium",
+                      rightPanelTab === "summary"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    data-testid="tab-summary"
+                  >
+                    Summary
+                  </button>
+                  <button
+                    onClick={() => setRightPanelTab("analysis")}
+                    className={cn(
+                      "flex-1 text-xs py-1.5 px-2 rounded-md transition-colors font-medium flex items-center justify-center gap-1",
+                      rightPanelTab === "analysis"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                      !isCommitted && "opacity-50"
+                    )}
+                    data-testid="tab-analysis"
+                    title={!isCommitted ? "Commit the chapter to run analysis" : undefined}
+                  >
+                    <BarChart3 className="w-3 h-3" /> Analysis
+                  </button>
+                </div>
 
-                {currentChapter.status === "written" && !currentChapter.summary && (
-                  <div className="mb-4">
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Generate a summary so the next chapter can build on this one.
-                    </p>
-                    <Button
-                      onClick={handleSummarize}
-                      disabled={generating !== null}
-                      size="sm"
-                      className="w-full gap-1"
-                      data-testid="button-summarize"
-                    >
-                      {generating === "summarizing" ? (
-                        <>
-                          <Loader2 className="w-3 h-3 animate-spin" /> Summarizing...
-                        </>
-                      ) : (
-                        <>
-                          <FileText className="w-3 h-3" /> Generate Summary
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                {rightPanelTab === "summary" && (
+                  <>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                      Chapter {currentChapter.chapter_number} Summary
+                    </h3>
+
+                    {currentChapter.status === "written" && !currentChapter.summary && (
+                      <div className="mb-4">
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Generate a summary so the next chapter can build on this one. Or commit the chapter to auto-generate it.
+                        </p>
+                        <Button
+                          onClick={handleSummarize}
+                          disabled={generating !== null}
+                          size="sm"
+                          className="w-full gap-1"
+                          data-testid="button-summarize"
+                        >
+                          {generating === "summarizing" ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" /> Summarizing...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-3 h-3" /> Generate Summary
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+
+                    {currentChapter.summary ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-1 mb-1">
+                          {editingSummary ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => {
+                                  saveChapterUpdate(currentChapter.chapter_number, { summary: contentDraftRef.current });
+                                  setEditingSummary(false);
+                                }}
+                                className="h-6 gap-1 text-[10px]"
+                                data-testid="button-save-summary"
+                              >
+                                <Check className="w-3 h-3" /> Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingSummary(false)}
+                                className="h-6 gap-1 text-[10px]"
+                              >
+                                <X className="w-3 h-3" /> Cancel
+                              </Button>
+                            </>
+                          ) : !isCommitted ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                contentDraftRef.current = currentChapter.summary || "";
+                                setEditingSummary(true);
+                              }}
+                              className="h-6 gap-1 text-[10px]"
+                              data-testid="button-edit-summary"
+                            >
+                              <Pencil className="w-3 h-3" /> Edit
+                            </Button>
+                          ) : null}
+                        </div>
+                        <RichTextEditor
+                          content={currentChapter.summary}
+                          readOnly={!editingSummary}
+                          onChange={(_html, plain) => {
+                            contentDraftRef.current = plain;
+                          }}
+                          maxHeight="500px"
+                          minHeight="100px"
+                          placeholder="Chapter summary..."
+                          className="text-xs"
+                          data-testid="editor-chapter-summary"
+                        />
+                        {currentChapter.status === "written" && currentChapter.summary && currentChapter.chapter_number === book.chapters.length && (
+                          <div className="p-2 bg-amber-500/5 border border-amber-500/20 rounded text-xs text-amber-700">
+                            Commit this chapter to unlock the next chapter outline.
+                          </div>
+                        )}
+                        {currentChapter.status === "committed" && currentChapter.chapter_number === book.chapters.length && (
+                          <Button
+                            onClick={handleGenerateOutline}
+                            disabled={generating !== null}
+                            size="sm"
+                            className="w-full gap-1"
+                            data-testid="button-next-chapter-from-committed"
+                          >
+                            {generating === "outline" ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" /> Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3 h-3" /> Generate Next Chapter Outline
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    ) : currentChapter.status === "outlined" ? (
+                      <div className="text-center py-8">
+                        <FileText className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">
+                          Summary will appear here after the chapter is written and summarized.
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {/* Previous Chapter Summaries */}
+                    {currentChapter.chapter_number > 1 && (
+                      <div className="mt-6 pt-4 border-t border-border/30">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                          Previous Chapters
+                        </h4>
+                        <div className="space-y-2">
+                          {book.chapters
+                            .filter(c => c.chapter_number < currentChapter.chapter_number && c.summary)
+                            .sort((a, b) => b.chapter_number - a.chapter_number)
+                            .map(c => (
+                              <details key={c.chapter_number} className="text-xs">
+                                <summary className="cursor-pointer text-foreground/60 hover:text-foreground transition-colors py-1">
+                                  Ch. {c.chapter_number}: {c.title}
+                                </summary>
+                                <div className="mt-1 pl-3 border-l-2 border-border/30 text-foreground/50 max-h-40 overflow-y-auto">
+                                  <ProseText text={c.summary} paragraphClassName="mb-1" />
+                                </div>
+                              </details>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {currentChapter.summary ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-1 mb-1">
-                      {editingSummary ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => {
-                              saveChapterUpdate(currentChapter.chapter_number, { summary: contentDraftRef.current });
-                              setEditingSummary(false);
-                            }}
-                            className="h-6 gap-1 text-[10px]"
-                            data-testid="button-save-summary"
-                          >
-                            <Check className="w-3 h-3" /> Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingSummary(false)}
-                            className="h-6 gap-1 text-[10px]"
-                          >
-                            <X className="w-3 h-3" /> Cancel
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            contentDraftRef.current = currentChapter.summary || "";
-                            setEditingSummary(true);
-                          }}
-                          className="h-6 gap-1 text-[10px]"
-                          data-testid="button-edit-summary"
-                        >
-                          <Pencil className="w-3 h-3" /> Edit
-                        </Button>
-                      )}
-                    </div>
-                    <RichTextEditor
-                      content={currentChapter.summary}
-                      readOnly={!editingSummary}
-                      onChange={(_html, plain) => {
-                        contentDraftRef.current = plain;
-                      }}
-                      maxHeight="500px"
-                      minHeight="100px"
-                      placeholder="Chapter summary..."
-                      className="text-xs"
-                      data-testid="editor-chapter-summary"
-                    />
-                    {currentChapter.status === "written" && currentChapter.summary && canGenerateNext && currentChapter.chapter_number === book.chapters.length && (
-                      <Button
-                        onClick={handleGenerateOutline}
-                        disabled={generating !== null}
-                        size="sm"
-                        className="w-full gap-1"
-                        data-testid="button-next-chapter-from-summary"
-                      >
-                        {generating === "outline" ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" /> Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3 h-3" /> Generate Next Chapter Outline
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                ) : currentChapter.status === "outlined" ? (
-                  <div className="text-center py-8">
-                    <FileText className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">
-                      Summary will appear here after the chapter is written and summarized.
-                    </p>
-                  </div>
-                ) : null}
+                {rightPanelTab === "analysis" && (
+                  <div>
+                    {!isCommitted ? (
+                      <div className="text-center py-12">
+                        <Lock className="w-8 h-8 text-muted-foreground/20 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-foreground mb-1">Chapter Not Yet Committed</p>
+                        <p className="text-xs text-muted-foreground">
+                          Commit the chapter to run FORGE analysis: beta readers, editorial assessment, and developmental assessment.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                          Chapter Analysis
+                        </h3>
 
-                {/* Previous Chapter Summaries */}
-                {currentChapter.chapter_number > 1 && (
-                  <div className="mt-6 pt-4 border-t border-border/30">
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                      Previous Chapters
-                    </h4>
-                    <div className="space-y-2">
-                      {book.chapters
-                        .filter(c => c.chapter_number < currentChapter.chapter_number && c.summary)
-                        .sort((a, b) => b.chapter_number - a.chapter_number)
-                        .map(c => (
-                          <details key={c.chapter_number} className="text-xs">
-                            <summary className="cursor-pointer text-foreground/60 hover:text-foreground transition-colors py-1">
-                              Ch. {c.chapter_number}: {c.title}
-                            </summary>
-                            <div className="mt-1 pl-3 border-l-2 border-border/30 text-foreground/50 max-h-40 overflow-y-auto">
-                              <ProseText text={c.summary} paragraphClassName="mb-1" />
+                        {/* Analysis Type Selector */}
+                        <div className="space-y-1 mb-3">
+                          <button
+                            onClick={() => setActiveAnalysisType("beta_reader")}
+                            className={cn(
+                              "w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2",
+                              activeAnalysisType === "beta_reader"
+                                ? "bg-primary/10 text-primary"
+                                : "text-foreground/70 hover:bg-muted hover:text-foreground"
+                            )}
+                            data-testid="button-analysis-type-beta"
+                          >
+                            <Users className="w-3.5 h-3.5" /> Beta Readers
+                            {currentChapter.analyses?.some(a => a.type === "beta_reader") && (
+                              <Check className="w-3 h-3 text-green-500 ml-auto" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setActiveAnalysisType("editorial_assessment")}
+                            className={cn(
+                              "w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2",
+                              activeAnalysisType === "editorial_assessment"
+                                ? "bg-primary/10 text-primary"
+                                : "text-foreground/70 hover:bg-muted hover:text-foreground"
+                            )}
+                            data-testid="button-analysis-type-editorial"
+                          >
+                            <ClipboardList className="w-3.5 h-3.5" /> Editorial Assessment
+                            {currentChapter.analyses?.some(a => a.type === "editorial_assessment") && (
+                              <Check className="w-3 h-3 text-green-500 ml-auto" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setActiveAnalysisType("developmental_assessment")}
+                            className={cn(
+                              "w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2",
+                              activeAnalysisType === "developmental_assessment"
+                                ? "bg-primary/10 text-primary"
+                                : "text-foreground/70 hover:bg-muted hover:text-foreground"
+                            )}
+                            data-testid="button-analysis-type-developmental"
+                          >
+                            <BarChart3 className="w-3.5 h-3.5" /> Developmental Assessment
+                            {currentChapter.analyses?.some(a => a.type === "developmental_assessment") && (
+                              <Check className="w-3 h-3 text-green-500 ml-auto" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Beta Profile Picker */}
+                        {activeAnalysisType === "beta_reader" && (
+                          <div className="mb-3">
+                            <label className="text-xs text-muted-foreground mb-1 block">Reader Persona</label>
+                            <select
+                              value={activeBetaProfile}
+                              onChange={(e) => setActiveBetaProfile(e.target.value)}
+                              className="w-full text-xs border border-border/50 rounded-md px-2 py-1.5 bg-background text-foreground"
+                              data-testid="select-beta-profile"
+                            >
+                              {BETA_PROFILES.map(p => (
+                                <option key={p.key} value={p.key}>{p.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* Run Analysis Button */}
+                        <Button
+                          onClick={handleRunAnalysis}
+                          disabled={generating !== null}
+                          size="sm"
+                          className="w-full gap-1 mb-4"
+                          data-testid="button-run-analysis"
+                        >
+                          {generating === "analyzing" ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" /> Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3" />
+                              {activeAnalysisType === "beta_reader"
+                                ? `Run ${BETA_PROFILES.find(p => p.key === activeBetaProfile)?.label || "Beta Reader"}`
+                                : activeAnalysisType === "editorial_assessment"
+                                  ? "Run Editorial Assessment"
+                                  : "Run Developmental Assessment"}
+                            </>
+                          )}
+                        </Button>
+
+                        {analyzeError && (
+                          <div className="mb-3 p-2 bg-destructive/10 border border-destructive/30 text-destructive text-xs rounded" data-testid="text-analyze-error">
+                            {analyzeError}
+                          </div>
+                        )}
+
+                        {/* Analysis Results */}
+                        {activeAnalysisType === "beta_reader" && (() => {
+                          const analysis = getChapterAnalysis(currentChapter, "beta_reader", activeBetaProfile);
+                          if (!analysis) return (
+                            <div className="text-center py-6 text-xs text-muted-foreground" data-testid="text-no-analysis">
+                              No beta reader results yet. Run the analysis above.
                             </div>
-                          </details>
-                        ))}
-                    </div>
+                          );
+                          const r = analysis.result;
+                          return (
+                            <div className="space-y-3 text-xs" data-testid="panel-beta-reader-results">
+                              <div className="text-[10px] text-muted-foreground">
+                                {r.profileName} · {new Date(analysis.ran_at).toLocaleDateString()}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-full font-medium text-[10px]",
+                                  r.wouldKeepReading
+                                    ? "bg-green-500/10 text-green-700"
+                                    : "bg-red-500/10 text-red-700"
+                                )} data-testid="text-beta-would-keep-reading">
+                                  {r.wouldKeepReading ? "Would Keep Reading" : "Might Not Continue"}
+                                </span>
+                              </div>
+                              {r.hookedAt && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Hooked At</p>
+                                  <p className="text-foreground/70" data-testid="text-beta-hooked-at">{r.hookedAt}</p>
+                                </div>
+                              )}
+                              {r.attentionSaggedAt && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Attention Sagged At</p>
+                                  <p className="text-foreground/70" data-testid="text-beta-sag">{r.attentionSaggedAt}</p>
+                                </div>
+                              )}
+                              {r.strongestMoments?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Strongest Moments</p>
+                                  <ul className="space-y-0.5" data-testid="list-beta-strongest">
+                                    {r.strongestMoments.map((m: string, i: number) => (
+                                      <li key={i} className="text-foreground/70 flex gap-1"><span className="text-green-500">•</span>{m}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {r.confusionPoints?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Confusion Points</p>
+                                  <ul className="space-y-0.5" data-testid="list-beta-confusion">
+                                    {r.confusionPoints.map((m: string, i: number) => (
+                                      <li key={i} className="text-foreground/70 flex gap-1"><span className="text-yellow-500">•</span>{m}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {r.finalEmotionalReaction && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Final Reaction</p>
+                                  <p className="text-foreground/70" data-testid="text-beta-final-reaction">{r.finalEmotionalReaction}</p>
+                                </div>
+                              )}
+                              {r.recommendation && (
+                                <div className="p-2 bg-muted/30 rounded text-foreground/80 italic" data-testid="text-beta-recommendation">
+                                  "{r.recommendation}"
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {activeAnalysisType === "editorial_assessment" && (() => {
+                          const analysis = getChapterAnalysis(currentChapter, "editorial_assessment");
+                          if (!analysis) return (
+                            <div className="text-center py-6 text-xs text-muted-foreground" data-testid="text-no-editorial-analysis">
+                              No editorial assessment yet. Run the analysis above.
+                            </div>
+                          );
+                          const r = analysis.result;
+                          return (
+                            <div className="space-y-3 text-xs" data-testid="panel-editorial-results">
+                              <div className="text-[10px] text-muted-foreground">
+                                Editorial Assessment · {new Date(analysis.ran_at).toLocaleDateString()}
+                              </div>
+                              {r.overallImpression && (
+                                <div className="p-2 bg-muted/30 rounded text-foreground/80" data-testid="text-editorial-impression">
+                                  {r.overallImpression}
+                                </div>
+                              )}
+                              {r.strengths?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Strengths</p>
+                                  <ul className="space-y-0.5" data-testid="list-editorial-strengths">
+                                    {r.strengths.map((s: string, i: number) => (
+                                      <li key={i} className="text-foreground/70 flex gap-1"><span className="text-green-500">+</span>{s}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {r.weaknesses?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Weaknesses</p>
+                                  <ul className="space-y-0.5" data-testid="list-editorial-weaknesses">
+                                    {r.weaknesses.map((s: string, i: number) => (
+                                      <li key={i} className="text-foreground/70 flex gap-1"><span className="text-red-400">−</span>{s}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {r.continuityNotes?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Continuity Notes</p>
+                                  <ul className="space-y-0.5" data-testid="list-editorial-continuity">
+                                    {r.continuityNotes.map((s: string, i: number) => (
+                                      <li key={i} className="text-foreground/70 flex gap-1"><span className="text-blue-400">·</span>{s}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {r.issues?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Issues</p>
+                                  <div className="space-y-1.5" data-testid="list-editorial-issues">
+                                    {r.issues.map((issue: any, i: number) => (
+                                      <div key={i} className={cn(
+                                        "p-2 rounded border text-[10px]",
+                                        issue.severity === "critical" && "border-red-400/40 bg-red-500/5",
+                                        issue.severity === "major" && "border-orange-400/40 bg-orange-500/5",
+                                        issue.severity === "moderate" && "border-yellow-400/40 bg-yellow-500/5",
+                                        issue.severity === "minor" && "border-border/40 bg-muted/20",
+                                      )}>
+                                        <div className="flex items-center gap-1 mb-0.5">
+                                          <span className="font-medium">{issue.title}</span>
+                                          <span className="text-muted-foreground">({issue.severity})</span>
+                                        </div>
+                                        <p className="text-foreground/70">{issue.description}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {activeAnalysisType === "developmental_assessment" && (() => {
+                          const analysis = getChapterAnalysis(currentChapter, "developmental_assessment");
+                          if (!analysis) return (
+                            <div className="text-center py-6 text-xs text-muted-foreground" data-testid="text-no-developmental-analysis">
+                              No developmental assessment yet. Run the analysis above.
+                            </div>
+                          );
+                          const r = analysis.result;
+                          const ratingColor = (rating: string) => {
+                            if (rating === "strong" || rating === "high") return "text-green-600";
+                            if (rating === "adequate" || rating === "medium") return "text-yellow-600";
+                            return "text-red-500";
+                          };
+                          return (
+                            <div className="space-y-3 text-xs" data-testid="panel-developmental-results">
+                              <div className="text-[10px] text-muted-foreground">
+                                Developmental Assessment · {new Date(analysis.ran_at).toLocaleDateString()}
+                              </div>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                {[
+                                  { label: "Pacing", value: r.pacing },
+                                  { label: "Stakes", value: r.stakes },
+                                  { label: "Causality", value: r.causality },
+                                ].map(({ label, value }) => (
+                                  value && (
+                                    <div key={label} className="p-2 bg-muted/30 rounded text-center" data-testid={`text-dev-${label.toLowerCase()}`}>
+                                      <p className="text-muted-foreground text-[10px] mb-0.5">{label}</p>
+                                      <p className={cn("font-semibold capitalize", ratingColor(value.rating))}>{value.rating}</p>
+                                    </div>
+                                  )
+                                ))}
+                              </div>
+                              {r.pacing?.notes && <p className="text-foreground/70" data-testid="text-dev-pacing-notes"><span className="font-medium text-foreground">Pacing: </span>{r.pacing.notes}</p>}
+                              {r.stakes?.notes && <p className="text-foreground/70" data-testid="text-dev-stakes-notes"><span className="font-medium text-foreground">Stakes: </span>{r.stakes.notes}</p>}
+                              {r.causality?.notes && <p className="text-foreground/70" data-testid="text-dev-causality-notes"><span className="font-medium text-foreground">Causality: </span>{r.causality.notes}</p>}
+                              {r.characterArcs?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Character Arcs</p>
+                                  <div className="space-y-1" data-testid="list-dev-character-arcs">
+                                    {r.characterArcs.map((arc: any, i: number) => (
+                                      <div key={i} className="flex gap-1">
+                                        <span className="font-medium text-foreground shrink-0">{arc.character}:</span>
+                                        <span className="text-foreground/70">{arc.arc}</span>
+                                        <span className={cn("ml-auto shrink-0 text-[10px]", ratingColor(arc.strength))}>{arc.strength}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {r.sceneByScene?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Scene Analysis</p>
+                                  <div className="space-y-1.5" data-testid="list-dev-scene-analysis">
+                                    {r.sceneByScene.map((scene: any, i: number) => (
+                                      <div key={i} className="p-2 bg-muted/20 rounded text-[10px]">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                          <span className="font-medium">Scene {scene.sceneIndex + 1}</span>
+                                          <span className={cn(
+                                            "px-1 py-0.5 rounded text-[9px] font-medium",
+                                            scene.rating === "essential" && "bg-green-500/10 text-green-700",
+                                            scene.rating === "strong" && "bg-blue-500/10 text-blue-700",
+                                            scene.rating === "useful_but_weak" && "bg-yellow-500/10 text-yellow-700",
+                                            scene.rating === "underperforming" && "bg-orange-500/10 text-orange-700",
+                                            scene.rating === "redundant" && "bg-red-500/10 text-red-700",
+                                          )}>{scene.rating?.replace(/_/g, " ")}</span>
+                                        </div>
+                                        <p className="text-foreground/70">{scene.purpose}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {r.thematicNotes?.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-foreground mb-0.5">Thematic Notes</p>
+                                  <ul className="space-y-0.5" data-testid="list-dev-thematic-notes">
+                                    {r.thematicNotes.map((n: string, i: number) => (
+                                      <li key={i} className="text-foreground/70 flex gap-1"><span className="text-purple-400">·</span>{n}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
