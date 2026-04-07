@@ -687,7 +687,7 @@ export default function BookStudio() {
                         ? "bg-primary/10 text-primary font-medium"
                         : "hover:bg-muted/50 text-muted-foreground"
                     )}
-                    onClick={() => { setActiveChapter(i); setEditMode(false); setRewriteMode(false); }}
+                    onClick={() => { setActiveChapter(i); setEditMode(false); setRewriteMode(false); setVariants(null); }}
                     data-testid={`button-chapter-${ch.chapter_number}`}
                   >
                     <div className="flex items-center justify-between">
