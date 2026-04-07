@@ -29,6 +29,10 @@ import ForgeFactCheck from "@/pages/forge/ForgeFactCheck";
 import ForgeBetaReaders from "@/pages/forge/ForgeBetaReaders";
 import ForgeQuickFeedback from "@/pages/forge/ForgeQuickFeedback";
 import ForgeChat from "@/pages/forge/ForgeChat";
+import PublishingHub from "@/pages/PublishingHub";
+import TropeResearch from "@/pages/TropeResearch";
+import BlurbGenerator from "@/pages/BlurbGenerator";
+import PublishingTools from "@/pages/PublishingTools";
 
 function Router() {
   return (
@@ -59,6 +63,12 @@ function Router() {
       <Route path="/forge/project/:id/beta-readers" component={ForgeBetaReaders} />
       <Route path="/forge/project/:id/chat" component={ForgeChat} />
       <Route path="/forge/quick-feedback" component={ForgeQuickFeedback} />
+      <Route path="/publishing" component={PublishingHub} />
+      <Route path="/publishing/trope-research" component={TropeResearch} />
+      <Route path="/publishing/blurbs" component={BlurbGenerator} />
+      <Route path="/publishing/blurbs/:id" component={BlurbGenerator} />
+      <Route path="/publishing/titles-keywords" component={PublishingTools} />
+      <Route path="/publishing/titles-keywords/:id" component={PublishingTools} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -13,7 +13,7 @@ Two parallel apps in one repo: **StoryDossier** (AI writing studio) and **STORY 
 
 ## StoryDossier Routes
 
-- `/` — Dashboard home with five module cards + recent activity feed
+- `/` — Dashboard home with seven module cards + recent activity feed
 - `/pipeline` — List of all pipeline projects with status
 - `/pipeline/new` — Brain dump form + genre selection to start new pipeline
 - `/pipeline/:id` — Pipeline execution view (11-step progress tracker)
@@ -23,6 +23,12 @@ Two parallel apps in one repo: **StoryDossier** (AI writing studio) and **STORY 
 - `/chapter-analyzer/:id` — Deep-link to specific analyzer session
 - `/books` — Book list with create/delete
 - `/book/:id` — Full-screen book writer with split-panel layout
+- `/publishing` — Publishing Tools hub (trope research, blurb generator, title & keywords)
+- `/publishing/trope-research` — AI-powered trope research for a niche/subgenre
+- `/publishing/blurbs` — Blurb generator (book picker if no book ID)
+- `/publishing/blurbs/:id` — Blurb generator for a specific book (3 variants)
+- `/publishing/titles-keywords` — Title & keyword generator (book picker if no book ID)
+- `/publishing/titles-keywords/:id` — Title & keyword generator for a specific book
 
 ## STORY FORGE Routes
 
@@ -55,7 +61,14 @@ Standalone chapter generation from creative prompts with narrative sliders.
 Paste a chapter → extract 18 structural elements → edit → rewrite. Cross-module integration with BookWriter.
 
 ### Book Writer
-Chapter-by-chapter book writing with autopilot mode (32-chapter loop), narrative sliders, running summaries.
+Chapter-by-chapter book writing with autopilot mode (32-chapter loop), narrative sliders, running summaries. Contextual Publishing Tools links in the header (Blurb, Title & Keywords) appear when the book has sufficient content.
+
+### Publishing Tools
+Four KDP publishing tools:
+- **Trope Research Tool** (`/publishing/trope-research`): Enter a niche/subgenre → get structured trope analysis: 4-6 recurring tropes, 2-4 unique tropes, 3-5 trending combinations, series branding strategy, KDP notes. Results downloadable as JSON.
+- **Blurb Generator** (`/publishing/blurbs/:id`): From a book's dossier + chapter summaries → generates 3 blurb variants (Hook-First, Character-Led, Tension-Forward) following KDP best practices. Pick/edit/copy variants.
+- **Title & Keyword Generator** (`/publishing/titles-keywords/:id`): Generates 7-10 trope-forward title+subtitle options with reasoning, plus exactly 7 Amazon-optimized keywords and 2 category recommendations.
+- All tools accessible from "Publish" nav item + contextual links from BookWriter/BookStudio headers when book has sufficient content.
 
 ## STORY FORGE Architecture
 
@@ -141,13 +154,23 @@ Accumulates across chunks: outline, character profiles, plot threads, world rule
 - `client/src/components/forge/ForgeLayout.tsx` — FORGE layout with dark theme + amber accents
 - `client/src/components/forge/NewProjectDialog.tsx` — New project creation dialog
 - `client/src/pages/forge/*.tsx` — 12 FORGE pages (Dashboard, Project, Upload, Analysis, Reports, ReportDetail, Issues, Characters, Structure, Scenes, FactCheck, BetaReaders)
-- `client/src/pages/Home.tsx` — Dashboard with five module cards
+- `client/src/pages/Home.tsx` — Dashboard with seven module cards
+- `client/src/pages/PublishingHub.tsx` — Publishing Tools hub landing page
+- `client/src/pages/TropeResearch.tsx` — Trope Research Tool
+- `client/src/pages/BlurbGenerator.tsx` — Blurb Generator (book-aware)
+- `client/src/pages/PublishingTools.tsx` — Title & Keyword Generator (book-aware)
 
 ### Data & Config
 - `config/prompts/*.ts` — 15 editorial prompt definitions
 - `config/schemas/*.ts` — 9 output schema TypeScript interfaces
 - `data/` — StoryDossier file storage
 - `prisma/forge.db` — STORY FORGE SQLite database
+
+## Publishing Tools API Endpoints
+
+- `POST /api/publishing/trope-research` — `{ niche }` → structured trope analysis (recurring, unique, trending combos, series branding, KDP notes)
+- `POST /api/publishing/blurb/:bookId` — Uses book dossier + chapter summaries → 3 blurb variants (Hook-First, Character-Led, Tension-Forward)
+- `POST /api/publishing/titles-keywords/:bookId` — Uses book dossier + chapters → 7-10 title/subtitle options + 7 keywords + 2 categories
 
 ## FORGE API Endpoints
 

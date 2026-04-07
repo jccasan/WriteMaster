@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   Loader2, ArrowLeft, Upload, FileText, Trash2, Send, BookOpen,
   ChevronDown, ChevronUp, Plus, Download, Copy, Check, Pencil, X,
-  RefreshCw, Link2, Unlink, RotateCcw, Save, Eye, Edit3
+  RefreshCw, Link2, Unlink, RotateCcw, Save, Eye, Edit3, BookMarked
 } from "lucide-react";
 
 interface BookDocument {
@@ -505,6 +505,28 @@ export default function BookStudio() {
           <span className="text-sm text-muted-foreground" data-testid="text-book-stats">
             {writtenCount} chapter{writtenCount !== 1 ? "s" : ""} · {totalWords.toLocaleString()} words
           </span>
+          {(book.dossier && book.chapters.some(c => c.status === "written")) && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/publishing/blurbs/${bookId}`)}
+                className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground"
+                data-testid="button-publishing-blurbs"
+              >
+                <BookMarked className="w-3.5 h-3.5" /> Blurb
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/publishing/titles-keywords/${bookId}`)}
+                className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground"
+                data-testid="button-publishing-titles"
+              >
+                <BookMarked className="w-3.5 h-3.5" /> Title & Keywords
+              </Button>
+            </>
+          )}
           {writtenCount > 0 && (
             <Button variant="outline" size="sm" onClick={downloadBook} data-testid="button-download-book">
               <Download className="w-3.5 h-3.5 mr-1" /> Export

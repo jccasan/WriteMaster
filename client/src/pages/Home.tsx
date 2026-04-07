@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Scissors, Library, Loader2, ChevronRight, Clock, BookOpen, PenTool, Anvil, FileText } from "lucide-react";
+import { Sparkles, Scissors, Library, Loader2, ChevronRight, Clock, BookOpen, PenTool, Anvil, FileText, BookMarked } from "lucide-react";
 import Layout from "@/components/Layout";
 
 interface RecentItem {
@@ -129,6 +129,16 @@ export default function Home() {
       route: "/editor",
       cta: "Open Editor",
       testId: "card-module-editor",
+    },
+    {
+      title: "Publishing Tools",
+      description: "Trope research, blurb generation, trope-forward titles, and Amazon keyword strategy — everything you need to list your book on KDP.",
+      icon: <BookMarked className="w-6 h-6" />,
+      count: 0,
+      countLabel: "",
+      route: "/publishing",
+      cta: "Publishing Tools",
+      testId: "card-module-publishing",
     },
     {
       title: "Story Forge",

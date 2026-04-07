@@ -31,6 +31,7 @@ import {
   Users,
   ClipboardList,
   BarChart3,
+  BookMarked,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
@@ -527,6 +528,28 @@ export default function BookWriter() {
               <> · {book.chapters.filter(c => c.status === "committed").length} committed</>
             )}
           </span>
+          {(book.dossier && book.chapters.some(c => c.status === "written")) && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/publishing/blurbs/${bookId}`)}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                data-testid="button-publishing-blurbs"
+              >
+                <BookMarked className="w-3.5 h-3.5" /> Blurb
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/publishing/titles-keywords/${bookId}`)}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                data-testid="button-publishing-titles"
+              >
+                <BookMarked className="w-3.5 h-3.5" /> Title & Keywords
+              </Button>
+            </>
+          )}
           <Button
             variant="outline"
             size="sm"

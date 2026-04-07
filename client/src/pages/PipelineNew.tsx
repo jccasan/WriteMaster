@@ -19,12 +19,25 @@ export default function PipelineNew() {
   const [genres, setGenres] = useState<Genre[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tropeContext, setTropeContext] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/genres")
       .then((r) => r.json())
       .then(setGenres)
       .catch(() => setError("Failed to load genres"));
+
+    const seeded = sessionStorage.getItem("pipeline_trope_seed");
+    if (seeded) {
+      sessionStorage.removeItem("pipeline_trope_seed");
+      try {
+        const parsed = JSON.parse(seeded);
+        setTropeContext(parsed.summary || null);
+        if (parsed.brainDumpPrefix) {
+          setBrainDump(parsed.brainDumpPrefix);
+        }
+      } catch {}
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,6 +76,13 @@ export default function PipelineNew() {
             Pour your raw ideas onto the page. The AI pipeline will structure, refine, and forge them into a compelling Story Dossier ready for drafting.
           </p>
         </div>
+
+        {tropeContext && (
+          <div className="mb-6 border border-primary/30 bg-primary/5 rounded-lg p-4 text-sm" data-testid="banner-trope-seed">
+            <div className="font-semibold text-foreground mb-1">Trope Research Loaded</div>
+            <div className="text-muted-foreground text-xs leading-relaxed whitespace-pre-line">{tropeContext}</div>
+          </div>
+        )}
 
         <Card className="border-border/60 shadow-lg shadow-primary/5">
           <CardHeader className="space-y-1">
