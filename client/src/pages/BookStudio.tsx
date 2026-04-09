@@ -433,31 +433,32 @@ export default function BookStudio() {
     if (unsummarized.length === 0) return;
     setSummarizingAll(true);
     setError(null);
+    const BATCH_SIZE = 5;
     let completed = 0;
-    let lastBook = book;
-    for (const chapter of unsummarized) {
-      completed++;
-      setSummarizeProgress(`${completed}/${unsummarized.length} — Ch. ${chapter.chapter_number}`);
-      try {
-        const res = await fetch(`/api/books/${bookId}/summarize-chapter/${chapter.chapter_number}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (!res.ok) {
-          const errMsg = await safeError(res);
-          console.error(`Summarize ch ${chapter.chapter_number} failed: ${errMsg}`);
-          continue;
-        }
-        const data = await res.json();
-        lastBook = data.book;
-        setBook(data.book);
-      } catch (err: any) {
-        console.error(`Summarize ch ${chapter.chapter_number} failed: ${err.message}`);
-        continue;
+    let latestBook = book;
+    for (let i = 0; i < unsummarized.length; i += BATCH_SIZE) {
+      const batch = unsummarized.slice(i, i + BATCH_SIZE);
+      setSummarizeProgress(`${completed}/${unsummarized.length}`);
+      const results = await Promise.allSettled(
+        batch.map(chapter =>
+          fetch(`/api/books/${bookId}/summarize-chapter/${chapter.chapter_number}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          }).then(async res => {
+            if (!res.ok) throw new Error(await safeError(res));
+            return res.json();
+          })
+        )
+      );
+      completed += batch.length;
+      const lastSuccess = results.filter(r => r.status === "fulfilled").pop();
+      if (lastSuccess && lastSuccess.status === "fulfilled") {
+        latestBook = lastSuccess.value.book;
+        setBook(lastSuccess.value.book);
       }
     }
-    setBook(lastBook);
     setSummarizeProgress("");
+    await fetchBook();
     setSummarizingAll(false);
   };
 

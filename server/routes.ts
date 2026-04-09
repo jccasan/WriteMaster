@@ -1478,7 +1478,7 @@ ${chapter.content}
 ${CHAPTER_SUMMARY_TEMPLATE}
 
 CRITICAL: Be specific and factual. Reference character names and concrete details. This snapshot will be the ONLY context the next chapter's AI has about this chapter. Track every detail that could create a continuity error if forgotten — who knows what, who is where, what is damaged/lost/gained, what promises were made, what threats are active. The Continuity Tracking section is especially important for preventing contradictions in later chapters.`,
-        "powerful"
+        "cheap"
       );
 
       chapter.summary = result;
