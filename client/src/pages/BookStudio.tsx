@@ -113,6 +113,7 @@ export default function BookStudio() {
   const [activeVariantTab, setActiveVariantTab] = useState(0);
 
   const [summarizingAll, setSummarizingAll] = useState(false);
+  const [summarizeProgress, setSummarizeProgress] = useState("");
 
   const initialLoadDone = useRef(false);
 
@@ -427,20 +428,36 @@ export default function BookStudio() {
   };
 
   const summarizeAll = async () => {
-    if (!bookId) return;
+    if (!bookId || !book) return;
+    const unsummarized = book.chapters.filter(c => c.content && !c.summary);
+    if (unsummarized.length === 0) return;
     setSummarizingAll(true);
     setError(null);
-    try {
-      const res = await fetch(`/api/books/${bookId}/summarize-all`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) throw new Error(await safeError(res));
-      const data = await res.json();
-      setBook(data.book);
-    } catch (err: any) {
-      setError(err.message);
+    let completed = 0;
+    let lastBook = book;
+    for (const chapter of unsummarized) {
+      completed++;
+      setSummarizeProgress(`${completed}/${unsummarized.length} — Ch. ${chapter.chapter_number}`);
+      try {
+        const res = await fetch(`/api/books/${bookId}/summarize-chapter/${chapter.chapter_number}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!res.ok) {
+          const errMsg = await safeError(res);
+          console.error(`Summarize ch ${chapter.chapter_number} failed: ${errMsg}`);
+          continue;
+        }
+        const data = await res.json();
+        lastBook = data.book;
+        setBook(data.book);
+      } catch (err: any) {
+        console.error(`Summarize ch ${chapter.chapter_number} failed: ${err.message}`);
+        continue;
+      }
     }
+    setBook(lastBook);
+    setSummarizeProgress("");
     setSummarizingAll(false);
   };
 
@@ -556,7 +573,7 @@ export default function BookStudio() {
               data-testid="button-summarize-all"
             >
               {summarizingAll ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <BookOpen className="w-3 h-3 mr-1" />}
-              Build Memory ({unsummarizedCount})
+              {summarizingAll && summarizeProgress ? `Building ${summarizeProgress}` : `Build Memory (${unsummarizedCount})`}
             </Button>
           )}
 
