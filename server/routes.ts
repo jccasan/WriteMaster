@@ -622,6 +622,74 @@ Output the rewritten chapter text only, no preamble or commentary.`,
     }
   });
 
+  app.post("/api/books/:id/refresh-from-google-doc", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const docId = book.google_doc_id;
+      if (!docId) return res.status(400).json({ error: "No Google Doc linked. Import a doc first." });
+
+      const { text, title } = await readGoogleDoc(docId);
+
+      const lines = text.split("\n");
+      const chapters: { title: string; content: string }[] = [];
+      let currentTitle = "";
+      let currentLines: string[] = [];
+
+      for (const line of lines) {
+        if (/^#\s+/.test(line)) {
+          if (currentLines.length > 0) {
+            const body = currentLines.join("\n").trim();
+            if (body) {
+              chapters.push({
+                title: currentTitle || `Chapter ${chapters.length + 1}`,
+                content: body,
+              });
+            }
+          }
+          currentTitle = line.replace(/^#\s+/, "").trim().substring(0, 100);
+          currentLines = [];
+        } else {
+          currentLines.push(line);
+        }
+      }
+
+      if (currentLines.length > 0) {
+        const body = currentLines.join("\n").trim();
+        if (body) {
+          chapters.push({
+            title: currentTitle || `Chapter ${chapters.length + 1}`,
+            content: body,
+          });
+        }
+      }
+
+      if (chapters.length === 0) {
+        chapters.push({ title: "Chapter 1", content: text });
+      }
+
+      book.chapters = chapters.map((ch, i) => {
+        const existing = book.chapters.find(c => c.chapter_number === i + 1);
+        return {
+          chapter_number: i + 1,
+          title: ch.title,
+          outline: existing?.outline || "",
+          content: ch.content,
+          summary: null,
+          status: "written" as const,
+        };
+      });
+      await storage.saveBook(book);
+
+      console.log(`[Google Docs] Refreshed "${title}" (${docId}) — ${chapters.length} chapters`);
+      res.json({ book, chaptersRefreshed: chapters.length });
+    } catch (err: any) {
+      console.error("[Google Docs Refresh Error]", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/books/:id/google-doc-status", async (req, res) => {
     try {
       const book = await storage.getBook(req.params.id);

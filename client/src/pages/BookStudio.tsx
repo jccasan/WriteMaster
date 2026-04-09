@@ -83,6 +83,7 @@ export default function BookStudio() {
   const [googleDocUrl, setGoogleDocUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [googleDocLinked, setGoogleDocLinked] = useState(false);
   const [googleDocId, setGoogleDocId] = useState<string | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -290,6 +291,30 @@ export default function BookStudio() {
     setSyncing(false);
   };
 
+  const refreshFromGoogleDoc = async () => {
+    if (!bookId) return;
+    if (!confirm("This will replace all chapter content with the latest version from Google Docs. Any unsaved local edits will be lost. Continue?")) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/books/${bookId}/refresh-from-google-doc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setBook(data.book);
+      setActiveChapter(0);
+      setEditMode(false);
+      setRewriteMode(false);
+      setVariants(null);
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setRefreshing(false);
+  };
+
   const saveChapterEdit = async () => {
     if (!book || !bookId || activeChapter === null) return;
     const chapter = book.chapters[activeChapter];
@@ -465,12 +490,23 @@ export default function BookStudio() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={refreshFromGoogleDoc}
+                disabled={refreshing || syncing}
+                className="h-8 text-xs"
+                data-testid="button-refresh-from-google-doc"
+              >
+                {refreshing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Download className="w-3 h-3 mr-1" />}
+                Refresh from Doc
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={syncToGoogleDoc}
-                disabled={syncing || writtenCount === 0}
+                disabled={syncing || refreshing || writtenCount === 0}
                 className="h-8 text-xs"
                 data-testid="button-sync-google-doc"
               >
-                {syncing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                {syncing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
                 Sync to Doc
               </Button>
             </div>
