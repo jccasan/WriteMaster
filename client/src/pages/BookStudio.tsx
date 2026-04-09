@@ -84,6 +84,7 @@ export default function BookStudio() {
   const [importing, setImporting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
   const [googleDocLinked, setGoogleDocLinked] = useState(false);
   const [googleDocId, setGoogleDocId] = useState<string | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -278,6 +279,7 @@ export default function BookStudio() {
     if (!bookId) return;
     setSyncing(true);
     setError(null);
+    setSyncSuccess(null);
     try {
       const res = await fetch(`/api/books/${bookId}/sync-to-google-doc`, {
         method: "POST",
@@ -285,6 +287,9 @@ export default function BookStudio() {
         body: JSON.stringify({}),
       });
       if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setSyncSuccess(`Synced ${data.chaptersWritten} chapters to Google Docs`);
+      setTimeout(() => setSyncSuccess(null), 4000);
     } catch (err: any) {
       setError(err.message);
     }
@@ -296,6 +301,7 @@ export default function BookStudio() {
     if (!confirm("This will replace all chapter content with the latest version from Google Docs. Any unsaved local edits will be lost. Continue?")) return;
     setRefreshing(true);
     setError(null);
+    setSyncSuccess(null);
     try {
       const res = await fetch(`/api/books/${bookId}/refresh-from-google-doc`, {
         method: "POST",
@@ -309,6 +315,8 @@ export default function BookStudio() {
       setEditMode(false);
       setRewriteMode(false);
       setVariants(null);
+      setSyncSuccess(`Refreshed ${data.chaptersRefreshed} chapters from Google Docs`);
+      setTimeout(() => setSyncSuccess(null), 4000);
     } catch (err: any) {
       setError(err.message);
     }
@@ -1048,6 +1056,12 @@ export default function BookStudio() {
                   <div className="flex items-center gap-2 mb-3 text-sm text-primary" data-testid="text-writing-status">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Writing chapter {book.chapters.length}... This may take a minute.
+                  </div>
+                )}
+                {syncSuccess && (
+                  <div className="mb-3 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md px-3 py-2 flex items-center gap-2" data-testid="text-sync-success">
+                    <Check className="w-4 h-4 shrink-0" />
+                    {syncSuccess}
                   </div>
                 )}
                 {error && (
