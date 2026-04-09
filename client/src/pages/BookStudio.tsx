@@ -53,6 +53,17 @@ const DOC_TYPES = [
   { value: "other", label: "Other" },
 ];
 
+async function safeError(res: Response): Promise<string> {
+  try {
+    const data = await res.json();
+    return data.error || `Request failed (${res.status})`;
+  } catch {
+    const text = await res.text().catch(() => "");
+    if (text.includes("upstream")) return "Request timed out — the server took too long. Try again.";
+    return text || `Request failed (${res.status})`;
+  }
+}
+
 export default function BookStudio() {
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
@@ -145,7 +156,7 @@ export default function BookStudio() {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       await fetchBook();
     } catch (err: any) {
       setError(err.message);
@@ -167,7 +178,7 @@ export default function BookStudio() {
           type: uploadType,
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       setPasteContent("");
       setPasteName("");
       setPasteMode(false);
@@ -198,7 +209,7 @@ export default function BookStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, sliders }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       const data = await res.json();
       setBook(data.book);
       setDocuments(documents);
@@ -257,7 +268,7 @@ export default function BookStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: googleDocUrl }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       const data = await res.json();
       setBook(data.book);
       setGoogleDocLinked(true);
@@ -287,7 +298,7 @@ export default function BookStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       const data = await res.json();
       setSyncSuccess(`Synced ${data.chaptersWritten} chapters to Google Docs`);
       setTimeout(() => setSyncSuccess(null), 4000);
@@ -309,7 +320,7 @@ export default function BookStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       const data = await res.json();
       setBook(data.book);
       setActiveChapter(0);
@@ -336,7 +347,7 @@ export default function BookStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: editContent }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       await fetchBook();
       setEditMode(false);
     } catch (err: any) {
@@ -357,7 +368,7 @@ export default function BookStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ instructions: rewriteInstructions, sliders }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       const data = await res.json();
       setBook(data.book);
       setRewriteMode(false);
@@ -381,7 +392,7 @@ export default function BookStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ instructions: rewriteInstructions, sliders }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       const data = await res.json();
       setVariants(data.variants);
       setActiveVariantTab(0);
@@ -403,7 +414,7 @@ export default function BookStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: variantContent }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       const data = await res.json();
       setBook(data.book);
       setVariants(null);
@@ -424,7 +435,7 @@ export default function BookStudio() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error(await safeError(res));
       const data = await res.json();
       setBook(data.book);
     } catch (err: any) {
