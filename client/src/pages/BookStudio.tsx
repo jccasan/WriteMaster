@@ -277,6 +277,7 @@ export default function BookStudio() {
 
   const syncToGoogleDoc = async () => {
     if (!bookId) return;
+    if (!confirm("This will overwrite the Google Doc with all chapters from the app. Any edits made directly in Google Docs will be replaced. Continue?")) return;
     setSyncing(true);
     setError(null);
     setSyncSuccess(null);
@@ -501,10 +502,11 @@ export default function BookStudio() {
                 onClick={refreshFromGoogleDoc}
                 disabled={refreshing || syncing}
                 className="h-8 text-xs"
+                title="Pull latest content from Google Docs into the app"
                 data-testid="button-refresh-from-google-doc"
               >
                 {refreshing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Download className="w-3 h-3 mr-1" />}
-                Refresh from Doc
+                Pull from Doc
               </Button>
               <Button
                 variant="outline"
@@ -512,10 +514,11 @@ export default function BookStudio() {
                 onClick={syncToGoogleDoc}
                 disabled={syncing || refreshing || writtenCount === 0}
                 className="h-8 text-xs"
+                title="Push app chapters to Google Docs (overwrites the doc)"
                 data-testid="button-sync-google-doc"
               >
                 {syncing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
-                Sync to Doc
+                Push to Doc
               </Button>
             </div>
           )}
