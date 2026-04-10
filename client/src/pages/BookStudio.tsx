@@ -289,7 +289,7 @@ export default function BookStudio() {
 
   const syncToGoogleDoc = async () => {
     if (!bookId) return;
-    if (!confirm("This will overwrite the Google Doc with all chapters from the app. Any edits made directly in Google Docs will be replaced. Continue?")) return;
+    if (!confirm("⚠️ WARNING: This will OVERWRITE your entire Google Doc with the app's chapters. Everything currently in the Google Doc will be replaced.\n\nDid you mean to go the other direction (Doc → App)?\n\nClick OK only if you want to push FROM the app TO Google Docs.")) return;
     setSyncing(true);
     setError(null);
     setSyncSuccess(null);
@@ -530,24 +530,24 @@ export default function BookStudio() {
                 size="sm"
                 onClick={refreshFromGoogleDoc}
                 disabled={refreshing || syncing}
-                className="h-8 text-xs"
+                className="h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/30"
                 title="Pull latest content from Google Docs into the app"
                 data-testid="button-refresh-from-google-doc"
               >
                 {refreshing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Download className="w-3 h-3 mr-1" />}
-                Pull from Doc
+                Doc → App
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={syncToGoogleDoc}
                 disabled={syncing || refreshing || writtenCount === 0}
-                className="h-8 text-xs"
-                title="Push app chapters to Google Docs (overwrites the doc)"
+                className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/30"
+                title="⚠️ Push app chapters to Google Docs (OVERWRITES the doc)"
                 data-testid="button-sync-google-doc"
               >
                 {syncing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
-                Push to Doc
+                App → Doc
               </Button>
             </div>
           )}
