@@ -607,10 +607,15 @@ Output the rewritten chapter text only, no preamble or commentary.`,
       const docId = book.google_doc_id;
       if (!docId) return res.status(400).json({ error: "No Google Doc linked. Import a doc first." });
 
-      const fullText = book.chapters
+      const rawText = book.chapters
         .filter(c => c.content)
         .map(c => `# ${c.title}\n\n${c.content}`)
         .join("\n\n---\n\n");
+
+      const fullText = rawText
+        .replace(/\n{3,}/g, "\n<<SCENE_BREAK>>\n")
+        .replace(/\n\n/g, "\n")
+        .replace(/<<SCENE_BREAK>>/g, "\n");
 
       await writeGoogleDoc(docId, fullText);
 
