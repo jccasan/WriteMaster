@@ -131,7 +131,10 @@ export async function writeGoogleDoc(docId: string, newText: string): Promise<vo
     return;
   }
 
-  const cleanText = newText.replace(/^# /gm, "").replace(/^## /gm, "").replace(/^### /gm, "");
+  const cleanText = newText
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{2,}/g, "\n")
+    .replace(/^# /gm, "").replace(/^## /gm, "").replace(/^### /gm, "");
   requests.push({
     insertText: {
       location: { index: 1 },
@@ -141,7 +144,10 @@ export async function writeGoogleDoc(docId: string, newText: string): Promise<vo
 
   await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests } });
 
-  const lines = newText.split("\n");
+  const cleanedForStyles = newText
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{2,}/g, "\n");
+  const lines = cleanedForStyles.split("\n");
   let charIndex = 1;
   const styleRequests: any[] = [];
 
