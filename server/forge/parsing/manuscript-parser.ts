@@ -1,5 +1,9 @@
 import * as fs from "fs/promises";
 import * as path from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
+
+const execFileAsync = promisify(execFile);
 
 function cleanMammothMarkdown(md: string): string {
   let text = md;
@@ -14,7 +18,7 @@ function cleanMammothMarkdown(md: string): string {
 }
 
 export async function extractText(filePath: string, mimeType: string): Promise<string> {
-  if (mimeType === "text/plain" || filePath.endsWith(".txt")) {
+  if (mimeType === "text/plain" || filePath.endsWith(".txt") || filePath.endsWith(".md")) {
     return fs.readFile(filePath, "utf-8");
   }
 
@@ -30,7 +34,14 @@ export async function extractText(filePath: string, mimeType: string): Promise<s
   }
 
   if (mimeType === "application/pdf" || filePath.endsWith(".pdf")) {
-    throw new Error("PDF parsing not yet supported. Please upload .txt or .docx files.");
+    try {
+      const { stdout } = await execFileAsync("pdftotext", ["-layout", filePath, "-"]);
+      const text = stdout.trim();
+      if (!text) throw new Error("pdftotext returned empty output — PDF may be scanned/image-only");
+      return text;
+    } catch (err: any) {
+      throw new Error(`Failed to extract PDF text: ${err.message}`);
+    }
   }
 
   return fs.readFile(filePath, "utf-8");

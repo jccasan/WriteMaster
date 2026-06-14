@@ -219,21 +219,93 @@ export default function UniverseView() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Story Bible</h2>
-              {!editingBible ? (
-                <Button variant="outline" size="sm" onClick={() => setEditingBible(true)} className="gap-2">
-                  <Edit2 className="w-3.5 h-3.5" /> Edit
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={saveBible} disabled={savingBible} className="gap-2">
-                    {savingBible ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save
+              <div className="flex items-center gap-2">
+                {/* File upload */}
+                <label className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border cursor-pointer transition-colors",
+                  "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+                )}>
+                  <Upload className="w-3.5 h-3.5" />
+                  Import File
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.md,.txt"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      formData.append("mode", universe.bible ? "append" : "replace");
+                      try {
+                        const r = await fetch(`/api/universe/${universeId}/bible/upload`, {
+                          method: "POST",
+                          body: formData,
+                        });
+                        const data = await r.json();
+                        if (!r.ok) throw new Error(data.error);
+                        await load();
+                        setBibleDraft((await (await fetch(`/api/universe/${universeId}`)).json()).bible ?? "");
+                      } catch (err: any) {
+                        setError(err.message);
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {universe.bible && (
+                  <label className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border cursor-pointer transition-colors",
+                    "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  )}>
+                    <Plus className="w-3.5 h-3.5" />
+                    Append File
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.md,.txt"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        formData.append("mode", "append");
+                        try {
+                          const r = await fetch(`/api/universe/${universeId}/bible/upload`, {
+                            method: "POST",
+                            body: formData,
+                          });
+                          const data = await r.json();
+                          if (!r.ok) throw new Error(data.error);
+                          await load();
+                          setBibleDraft((await (await fetch(`/api/universe/${universeId}`)).json()).bible ?? "");
+                        } catch (err: any) {
+                          setError(err.message);
+                        }
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                )}
+                {!editingBible ? (
+                  <Button variant="outline" size="sm" onClick={() => setEditingBible(true)} className="gap-2">
+                    <Edit2 className="w-3.5 h-3.5" /> Edit
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setEditingBible(false); setBibleDraft(universe.bible ?? ""); }}>
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              )}
+                ) : (
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={saveBible} disabled={savingBible} className="gap-2">
+                      {savingBible ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setEditingBible(false); setBibleDraft(universe.bible ?? ""); }}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Accepts .pdf, .docx, .md, .txt — Import replaces the bible; Append adds below existing content.
+            </p>
             {editingBible ? (
               <Textarea
                 value={bibleDraft}

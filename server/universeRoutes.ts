@@ -6,6 +6,9 @@
  */
 
 import { Router } from "express";
+import multer from "multer";
+import * as fs from "fs/promises";
+import * as path from "path";
 import {
   createUniverse, getUniverse, saveUniverse, listUniverses, deleteUniverse,
   createSeries, getSeries, saveSeries, getSeriesForUniverse, deleteSeries,
@@ -13,8 +16,50 @@ import {
   createPushSession, getPushSession, writePushSession, listPushSessionsForBook,
   assembleUniverseContext, getEffectiveBible,
 } from "./universeStorage";
-import { runPushGeneration, applyPushSession, checkSceneBriefAgainstBible } from "./universePipeline";
+import { runPushGeneration, applyPushSession, checkSceneBriefAgainstBible, buildReviewItemsExport } from "./universePipeline";
 import { storage } from "./storage";
+import { extractText } from "./forge/parsing/manuscript-parser";
+
+const router = Router();
+
+// ── Bible file upload ────────────────────────────────────────────────────────
+const bibleUploadDir = path.resolve("data/bible-uploads");
+fs.mkdir(bibleUploadDir, { recursive: true }).catch(() => {});
+
+const bibleUpload = multer({
+  dest: bibleUploadDir,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = [".pdf", ".docx", ".md", ".txt"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error("Only .pdf, .docx, .md, and .txt files are supported"));
+  },
+});
+
+router.post("/:id/bible/upload", bibleUpload.single("file"), async (req: any, res) => {
+  try {
+    const universe = await getUniverse(req.params.id);
+    if (!universe) return res.status(404).json({ error: "Universe not found" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const text = await extractText(req.file.path, req.file.mimetype);
+    await fs.unlink(req.file.path).catch(() => {}); // clean up temp file
+
+    const { mode = "replace" } = req.body; // "replace" | "append"
+    if (mode === "append" && universe.bible) {
+      universe.bible = universe.bible + "\n\n---\n\n" + text;
+    } else {
+      universe.bible = text;
+    }
+
+    await saveUniverse(universe);
+    res.json({ success: true, word_count: text.split(/\s+/).filter(Boolean).length, mode });
+  } catch (err: any) {
+    if (req.file) fs.unlink(req.file.path).catch(() => {});
+    res.status(500).json({ error: err.message });
+  }
+});
 
 const router = Router();
 
@@ -287,7 +332,7 @@ router.post("/:universeId/push/:bookId", async (req, res) => {
           if (existing) char.existing_id = existing.id;
         }
         // Rebuild review items with correct new/existing flags
-        updatedSession.review_items = (await import("./universePipeline")).buildReviewItemsExport(updatedSession);
+        updatedSession.review_items = buildReviewItemsExport(updatedSession);
         await writePushSession(updatedSession);
       })
       .catch(async (err) => {
