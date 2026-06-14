@@ -4,3 +4,29 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Runtime data — do not commit user content or pipeline sessions
+data/books/
+data/projects/
+data/chapters/
+data/chapter-drafts/
+data/forge-uploads/
+data/book-uploads/
+data/pipeline2/
+data/pipeline3/
+data/pipeline4/
+data/universes/
+data/series/
+data/menageries/
+data/push-sessions/
+
+# SQLite database (runtime)
+prisma/forge.db
+prisma/forge.db-journal
+prisma/forge.db-wal
+prisma/forge.db-shm
+
+# Replit-specific
+.replit
+replit.nix
+.config/

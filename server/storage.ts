@@ -4,11 +4,17 @@ import path from "path";
 import { randomUUID } from "crypto";
 import type { ProjectState, TropePack } from "./pipeline";
 import { createEmptyProject } from "./pipeline";
+import type { Pipeline2State } from "./pipeline2";
+import type { ChapterPipelineState } from "./pipeline3";
+import type { LineEditState } from "./pipeline4";
 
 const TEMPLATES_DIR = path.resolve("data/templates");
 const PROJECTS_DIR = path.resolve("data/projects");
 const CHAPTERS_DIR = path.resolve("data/chapters");
 const BOOKS_DIR = path.resolve("data/books");
+const PIPELINE2_DIR = path.resolve("data/pipeline2");
+const PIPELINE3_DIR = path.resolve("data/pipeline3");
+const PIPELINE4_DIR = path.resolve("data/pipeline4");
 
 const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 
@@ -24,6 +30,9 @@ async function ensureDirs() {
   if (!existsSync(PROJECTS_DIR)) await mkdir(PROJECTS_DIR, { recursive: true });
   if (!existsSync(CHAPTERS_DIR)) await mkdir(CHAPTERS_DIR, { recursive: true });
   if (!existsSync(BOOKS_DIR)) await mkdir(BOOKS_DIR, { recursive: true });
+  if (!existsSync(PIPELINE2_DIR)) await mkdir(PIPELINE2_DIR, { recursive: true });
+  if (!existsSync(PIPELINE3_DIR)) await mkdir(PIPELINE3_DIR, { recursive: true });
+  if (!existsSync(PIPELINE4_DIR)) await mkdir(PIPELINE4_DIR, { recursive: true });
 }
 
 export interface ChapterElement {
@@ -110,6 +119,18 @@ export interface IStorage {
   saveBook(book: BookProject): Promise<void>;
   listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number }>>;
   deleteBook(id: string): Promise<boolean>;
+  // Pipeline 2
+  getP2State(id: string): Promise<Pipeline2State | null>;
+  saveP2State(state: Pipeline2State): Promise<void>;
+  listP2States(bookId: string): Promise<Array<{ id: string; book_id: string; created_at: string; current_step: number }>>;
+  // Pipeline 3
+  getP3State(id: string): Promise<ChapterPipelineState | null>;
+  saveP3State(state: ChapterPipelineState): Promise<void>;
+  listP3States(bookId: string): Promise<Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }>>;
+  // Pipeline 4
+  getP4State(id: string): Promise<LineEditState | null>;
+  saveP4State(state: LineEditState): Promise<void>;
+  listP4States(bookId: string): Promise<Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }>>;
 }
 
 export class FileStorage implements IStorage {
@@ -290,6 +311,105 @@ export class FileStorage implements IStorage {
     if (!existsSync(filePath)) return false;
     await unlink(filePath);
     return true;
+  }
+
+  // ── Pipeline 2 ────────────────────────────────────────────────────────────
+
+  async getP2State(id: string): Promise<Pipeline2State | null> {
+    validateId(id);
+    const filePath = path.join(PIPELINE2_DIR, `${id}.json`);
+    if (!existsSync(filePath)) return null;
+    const content = await readFile(filePath, "utf-8");
+    return JSON.parse(content) as Pipeline2State;
+  }
+
+  async saveP2State(state: Pipeline2State): Promise<void> {
+    validateId(state.pipeline2_id);
+    const filePath = path.join(PIPELINE2_DIR, `${state.pipeline2_id}.json`);
+    await writeFile(filePath, JSON.stringify(state, null, 2), "utf-8");
+  }
+
+  async listP2States(bookId: string): Promise<Array<{ id: string; book_id: string; created_at: string; current_step: number }>> {
+    if (!existsSync(PIPELINE2_DIR)) return [];
+    const files = await readdir(PIPELINE2_DIR);
+    const results: Array<{ id: string; book_id: string; created_at: string; current_step: number }> = [];
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        const content = await readFile(path.join(PIPELINE2_DIR, file), "utf-8");
+        const data = JSON.parse(content) as Pipeline2State;
+        if (data.book_id === bookId) {
+          results.push({ id: data.pipeline2_id, book_id: data.book_id, created_at: data.created_at, current_step: data.current_step });
+        }
+      } catch { continue; }
+    }
+    return results;
+  }
+
+  // ── Pipeline 3 ────────────────────────────────────────────────────────────
+
+  async getP3State(id: string): Promise<ChapterPipelineState | null> {
+    validateId(id);
+    const filePath = path.join(PIPELINE3_DIR, `${id}.json`);
+    if (!existsSync(filePath)) return null;
+    const content = await readFile(filePath, "utf-8");
+    return JSON.parse(content) as ChapterPipelineState;
+  }
+
+  async saveP3State(state: ChapterPipelineState): Promise<void> {
+    validateId(state.pipeline3_id);
+    const filePath = path.join(PIPELINE3_DIR, `${state.pipeline3_id}.json`);
+    await writeFile(filePath, JSON.stringify(state, null, 2), "utf-8");
+  }
+
+  async listP3States(bookId: string): Promise<Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }>> {
+    if (!existsSync(PIPELINE3_DIR)) return [];
+    const files = await readdir(PIPELINE3_DIR);
+    const results: Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }> = [];
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        const content = await readFile(path.join(PIPELINE3_DIR, file), "utf-8");
+        const data = JSON.parse(content) as ChapterPipelineState;
+        if (data.book_id === bookId) {
+          results.push({ id: data.pipeline3_id, book_id: data.book_id, chapter_number: data.chapter_number, created_at: data.created_at, current_step: data.current_step });
+        }
+      } catch { continue; }
+    }
+    return results;
+  }
+
+  // ── Pipeline 4 ────────────────────────────────────────────────────────────
+
+  async getP4State(id: string): Promise<LineEditState | null> {
+    validateId(id);
+    const filePath = path.join(PIPELINE4_DIR, `${id}.json`);
+    if (!existsSync(filePath)) return null;
+    const content = await readFile(filePath, "utf-8");
+    return JSON.parse(content) as LineEditState;
+  }
+
+  async saveP4State(state: LineEditState): Promise<void> {
+    validateId(state.pipeline4_id);
+    const filePath = path.join(PIPELINE4_DIR, `${state.pipeline4_id}.json`);
+    await writeFile(filePath, JSON.stringify(state, null, 2), "utf-8");
+  }
+
+  async listP4States(bookId: string): Promise<Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }>> {
+    if (!existsSync(PIPELINE4_DIR)) return [];
+    const files = await readdir(PIPELINE4_DIR);
+    const results: Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }> = [];
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        const content = await readFile(path.join(PIPELINE4_DIR, file), "utf-8");
+        const data = JSON.parse(content) as LineEditState;
+        if (data.book_id === bookId) {
+          results.push({ id: data.pipeline4_id, book_id: data.book_id, chapter_number: data.chapter_number, created_at: data.created_at, current_step: data.current_step });
+        }
+      } catch { continue; }
+    }
+    return results;
   }
 }
 

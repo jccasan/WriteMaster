@@ -1,0 +1,15 @@
+{
+  "genre": "sci_fi_thriller",
+  "display_name": "Sci-Fi Thriller",
+  "major_tropes": [
+    "The Technology That Should Not Exist",
+    "The Conspiracy That Goes All the Way Up",
+    "The Whistleblower Who Knows Too Much",
+    "The Race to Expose Before Being Silenced",
+    "The Institution That Is the Threat"
+  ],
+  "plot_template": "A technologist, scientist, or operator discovers that a powerful emerging technology (AI, biotech, surveillance, weapons) is being deployed against the people it was supposed to protect. They must expose the truth while being hunted by actors with vast resources and no accountability.",
+  "character_archetypes": ["The Insider Who Knows Too Much", "The Corrupt Executive or Government Actor", "The Burned Expert Who Saw It Coming", "The Ally Who Might Be Compromised"],
+  "world_building_notes": "Technology is specific and plausible — name the real systems, real companies, real regulatory gaps. Institutions are bureaucratically realistic, not cartoonishly evil. Their cruelty is procedural. The threat is systemic before it becomes personal.",
+  "emotional_core": "Fear of unchecked power, the cost of knowing, the individual against the machine, technology as weapon"
+}

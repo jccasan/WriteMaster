@@ -1,0 +1,15 @@
+{
+  "genre": "romantic_suspense",
+  "display_name": "Romantic Suspense",
+  "major_tropes": [
+    "Forced Proximity Under Threat",
+    "Protector/Protected Dynamic That Inverts",
+    "Secrets That Endanger the Relationship",
+    "The Past That Won't Stay Buried",
+    "Racing the Clock to Survive and Save the Romance"
+  ],
+  "plot_template": "Two people who are wrong for each other (or who have history) are thrown together by external danger. As they fight to survive, their relationship deepens — but secrets, distrust, or past wounds keep creating new crises. Defeating the external threat requires them to also defeat their internal resistance to each other.",
+  "character_archetypes": ["The Competent Protector with a Hidden Wound", "The Independent Protagonist Who Refuses to Be Protected", "The Villain Who Has Personal Stakes Against One of the Leads", "The Ally Who Is Not What They Seem"],
+  "world_building_notes": "The suspense plot must be fully realized — not a backdrop. The stakes must be lethal. The romance must be a genuine arc, not just attraction that resolves at the end. Both protagonist and love interest must have internal wounds that the relationship uniquely heals. The black moment should threaten both the survival plot and the romance simultaneously.",
+  "emotional_core": "Vulnerability, trust earned under fire, love that costs something, protection that doesn't diminish"
+}

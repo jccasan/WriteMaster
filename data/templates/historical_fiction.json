@@ -1,0 +1,15 @@
+{
+  "genre": "historical_fiction",
+  "display_name": "Historical Fiction",
+  "major_tropes": [
+    "The Outsider in a Rigidly Stratified Society",
+    "The Historical Event Witnessed From Below",
+    "Secrets That Could Destroy Reputations or Lives",
+    "The Impossible Choice Between Safety and Conscience",
+    "The Past Informing (or Haunting) the Present"
+  ],
+  "plot_template": "A person of limited power navigates a historical period at a moment of maximum tension — social upheaval, war, political transformation — and is forced by circumstance into events larger than their station. Their survival requires both adaptation and integrity, often at cost to one or the other.",
+  "character_archetypes": ["The Lower-Status Protagonist With Agency", "The Powerful Figure Whose Private Face Contradicts Their Public One", "The Mentor Trapped by the Same System", "The Antagonist Who Is the System Itself, Embodied in One Person"],
+  "world_building_notes": "Period accuracy matters but must serve character and story, not overwhelm them. Show the period through sensory texture, social rules, and specific material objects — not info-dump. Characters should think in the assumptions of their time, including the ones we now find repugnant. Do not modernize consciousness for comfort.",
+  "emotional_core": "Constraint and freedom, conscience under pressure, the particular cruelty of the era, survival with dignity"
+}

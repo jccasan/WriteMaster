@@ -1,0 +1,15 @@
+{
+  "genre": "heist_thriller",
+  "display_name": "Heist / Caper Thriller",
+  "major_tropes": [
+    "The Crew That Should Not Trust Each Other But Must",
+    "The Plan That Goes Wrong in Exactly the Right Ways",
+    "The Inside Man / Double Cross",
+    "The Mark Who Is More Dangerous Than Expected",
+    "One Last Job"
+  ],
+  "plot_template": "A crew of specialists is assembled for an audacious theft or con that requires every member to perform perfectly. The plan begins to fall apart at the exact wrong moments — not through incompetence, but through human variables no plan can account for. Survival requires improvisation, and improvisation reveals who everyone really is.",
+  "character_archetypes": ["The Mastermind Who Has More at Stake Than They've Said", "The Specialist Whose Skill Hides a Liability", "The Wild Card Who Is Unpredictable For a Reason", "The Target Who Is Running Their Own Game"],
+  "world_building_notes": "The plan must be shown in enough detail that the audience understands what should happen — so they can feel the divergence when it doesn't. The setting (vault, casino, museum, ship) must be specific enough to be a puzzle. Twist reveals must be set up fairly in advance. Every crew member must want something beyond the money.",
+  "emotional_core": "Trust and betrayal, competence under pressure, the one variable no plan accounts for, the thrill of the impossible"
+}

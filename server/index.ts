@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import forgeRouter from "./forge/routes";
+import universeRouter from "./universeRoutes";
 import { seedDemoProject } from "./forge/seed/seed-demo";
 
 const app = express();
@@ -63,6 +64,7 @@ app.use((req, res, next) => {
 
 (async () => {
   app.use("/api/forge", forgeRouter);
+  app.use("/api/universe", universeRouter);
   await registerRoutes(httpServer, app);
   
   seedDemoProject().catch(err => console.log("[FORGE] Seed skipped or failed:", err.message));

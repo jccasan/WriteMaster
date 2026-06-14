@@ -1,0 +1,15 @@
+{
+  "genre": "dystopian_ya",
+  "display_name": "Dystopian YA",
+  "major_tropes": [
+    "The Society With One Rule That Breaks People",
+    "The Teen Who Sees Through the System",
+    "The Love Triangle That Maps Onto a Political Choice",
+    "The Rebellion That Costs Everything",
+    "The Revelation That the Resistance Is Also Corrupt"
+  ],
+  "plot_template": "A teenager in a rigidly controlled society becomes the symbol or the catalyst of resistance — not by choice, but by an act or circumstance that reveals the truth of the system. As the rebellion grows, the protagonist must question whether their cause justifies the cost being paid by others in their name, and whether they're replacing one oppressive system with another.",
+  "character_archetypes": ["The Protagonist Who Is Extraordinary But Doesn't Want to Be", "The Love Interest From the Other Side of the System", "The Mentor Who Has Their Own Agenda for the Revolution", "The True Believer Whose Faith Breaks Your Heart"],
+  "world_building_notes": "The society's central mechanism of control must be specific, memorable, and logically derived from a real human fear (scarcity, difference, merit, memory). The protagonist's special quality must be more than physical competence — they must see something others don't. The love triangle, if present, must represent a genuine values conflict, not just two attractive people.",
+  "emotional_core": "Identity under pressure, the cost of conscience, sacrifice, the corruption of power even in good hands, love that must survive a war"
+}

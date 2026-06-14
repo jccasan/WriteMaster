@@ -1,0 +1,15 @@
+{
+  "genre": "urban_fantasy",
+  "display_name": "Urban Fantasy",
+  "major_tropes": [
+    "The Hidden World Beneath the Mundane",
+    "The Protagonist Who Straddles Both Worlds",
+    "Ancient Powers in Modern Settings",
+    "The Masquerade (Keeping Magic Secret)",
+    "The Half-Breed or Outsider Who Belongs Nowhere"
+  ],
+  "plot_template": "A person with one foot in the mundane world and one in the magical discovers that a threat originating in the supernatural world is about to spill into — or destroy — the human one. They must navigate conflicting loyalties, a fractured magical society, and their own uncertain identity to prevent catastrophe.",
+  "character_archetypes": ["The Half-Aware Protagonist With Hidden Power", "The Cynical Experienced Guide Who Has Stopped Caring", "The Faction Leader Whose Goals Overlap With the Protagonist's For Now", "The Monster Who Is Not Monstrous"],
+  "world_building_notes": "The magic system must be integrated into the modern city, not just layered on top. Factions (vampires, fae, witches, etc.) have politics, economies, and grudges. The masquerade creates constant tension — how do magical events get explained? Who does the covering up and why? The city itself should feel different at night.",
+  "emotional_core": "Identity, belonging in two worlds, the weight of hidden knowledge, power and its price"
+}

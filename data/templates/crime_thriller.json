@@ -1,0 +1,15 @@
+{
+  "genre": "crime_thriller",
+  "display_name": "Crime Thriller",
+  "major_tropes": [
+    "The Detective/Investigator Who Goes Too Far",
+    "The Crime That Is Bigger Than It Appears",
+    "The Witness Who Cannot Be Protected",
+    "The Clock Ticking Toward Another Victim",
+    "The System That Is Part of the Problem"
+  ],
+  "plot_template": "A detective or investigator takes on a case that seems containable and discovers it threads through institutions, powerful people, or a serial threat that requires breaking every rule they have. The investigation costs them personally — relationships, reputation, safety — and the resolution forces a choice about what justice actually means.",
+  "character_archetypes": ["The Obsessive Detective With a Personal Connection to the Case", "The Victim Who Is More Than a Victim", "The Colleague Whose Loyalty Is Being Tested", "The Criminal Who Has a Coherent (If Monstrous) Logic"],
+  "world_building_notes": "Police procedure must be accurate enough to feel real but subordinated to character. The institutional setting (police department, DA office, newsroom) has its own politics and compromises. Crime scenes, forensics, and investigation specifics should be precise. The city or town is a character — its geography, demographics, and power structures shape who gets justice and who doesn't.",
+  "emotional_core": "Justice vs. law, the personal cost of obsession, moral compromise in service of the right outcome, what we owe the dead"
+}

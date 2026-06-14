@@ -1,0 +1,15 @@
+{
+  "genre": "cozy_mystery",
+  "display_name": "Cozy Mystery",
+  "major_tropes": [
+    "Amateur Sleuth with a Day Job",
+    "Small Town / Tight Community",
+    "The Closed Circle of Suspects",
+    "The Bumbling or Obstructive Official",
+    "Dead Body in an Unexpected Place"
+  ],
+  "plot_template": "An ordinary person embedded in a close-knit community stumbles onto a murder, gets personally entangled in the investigation (often because they're suspected or someone they love is), and uses their specific expertise or social access to uncover the killer before the detective does — or before the killer notices them.",
+  "character_archetypes": ["The Reluctant Amateur Detective", "The Charming Love Interest (often law enforcement)", "The Gossipy Community Informant", "The Red Herring Suspect", "The Surprising Killer"],
+  "world_building_notes": "The setting is nearly a character: a bakery, a bookshop, a small coastal town, a cozy inn. The community is tight enough that everyone knows everyone. Violence is present but off-page; the threat is social, reputational, and emotional rather than physical. The amateur sleuth's profession gives them access other characters don't have.",
+  "emotional_core": "Belonging, community, justice, the comfort of order restored after disruption"
+}

@@ -1,0 +1,15 @@
+{
+  "genre": "paranormal_romance",
+  "display_name": "Paranormal Romance",
+  "major_tropes": [
+    "The Fated Mate / Bond That Cannot Be Denied",
+    "The Supernatural World Hidden in Plain Sight",
+    "The Forbidden Love Across Species or Factions",
+    "The Heroine Who Does Not Know What She Is",
+    "The Alpha Who Must Yield"
+  ],
+  "plot_template": "A human (or half-aware supernatural) is pulled into a hidden world by an encounter with a powerful supernatural being. A bond or prophecy connects them despite faction rules, past trauma, and power imbalances. They must choose between the world they knew and the world they belong to — and between the love that costs everything and the safety that requires nothing.",
+  "character_archetypes": ["The Powerful Supernatural Who Is Undone By This One Person", "The Heroine Who Is Stronger Than She Knows", "The Rival Who Has a Legitimate Claim", "The Elder/Council Who Enforces The Rules They Break"],
+  "world_building_notes": "The supernatural world must have internal rules, politics, and factions that create real obstacles. The bond or fated mate trope must be complicated by genuine character agency — neither party can simply accept it without internal conflict. Power imbalance must be addressed, not ignored.",
+  "emotional_core": "Belonging, transformation, the terror of being truly known, love that defies the natural order"
+}

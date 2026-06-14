@@ -1,0 +1,408 @@
+/**
+ * universeRoutes.ts
+ *
+ * All API routes for the Universe layer.
+ * Registered in server/index.ts under /api/universe prefix.
+ */
+
+import { Router } from "express";
+import {
+  createUniverse, getUniverse, saveUniverse, listUniverses, deleteUniverse,
+  createSeries, getSeries, saveSeries, getSeriesForUniverse, deleteSeries,
+  getMenagerie, saveMenagerie, findCharacterInMenagerie,
+  createPushSession, getPushSession, writePushSession, listPushSessionsForBook,
+  assembleUniverseContext, getEffectiveBible,
+} from "./universeStorage";
+import { runPushGeneration, applyPushSession, checkSceneBriefAgainstBible } from "./universePipeline";
+import { storage } from "./storage";
+
+const router = Router();
+
+// ─── UNIVERSES ────────────────────────────────────────────────────────────────
+
+router.get("/", async (_req, res) => {
+  try {
+    res.json(await listUniverses());
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post("/", async (req, res) => {
+  try {
+    const { name, description = "", bible = "" } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+    res.json(await createUniverse(name.trim(), description, bible));
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.get("/:id", async (req, res) => {
+  try {
+    const u = await getUniverse(req.params.id);
+    if (!u) return res.status(404).json({ error: "Universe not found" });
+    res.json(u);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.put("/:id", async (req, res) => {
+  try {
+    const u = await getUniverse(req.params.id);
+    if (!u) return res.status(404).json({ error: "Universe not found" });
+    if (req.body.name !== undefined) u.name = req.body.name;
+    if (req.body.description !== undefined) u.description = req.body.description;
+    if (req.body.bible !== undefined) u.bible = req.body.bible;
+    await saveUniverse(u);
+    res.json(u);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    await deleteUniverse(req.params.id);
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── SERIES ──────────────────────────────────────────────────────────────────
+
+router.get("/:universeId/series", async (req, res) => {
+  try {
+    res.json(await getSeriesForUniverse(req.params.universeId));
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post("/:universeId/series", async (req, res) => {
+  try {
+    const { name, description = "" } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+    res.json(await createSeries(req.params.universeId, name.trim(), description));
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.get("/series/:id", async (req, res) => {
+  try {
+    const s = await getSeries(req.params.id);
+    if (!s) return res.status(404).json({ error: "Series not found" });
+    res.json(s);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.put("/series/:id", async (req, res) => {
+  try {
+    const s = await getSeries(req.params.id);
+    if (!s) return res.status(404).json({ error: "Series not found" });
+    if (req.body.name !== undefined) s.name = req.body.name;
+    if (req.body.description !== undefined) s.description = req.body.description;
+    if (req.body.series_notes !== undefined) s.series_notes = req.body.series_notes;
+    if (req.body.book_ids !== undefined) s.book_ids = req.body.book_ids; // reorder
+    await saveSeries(s);
+    res.json(s);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete("/series/:id", async (req, res) => {
+  try {
+    await deleteSeries(req.params.id);
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Promote a series note to the universe bible
+router.post("/series/:id/promote-note", async (req, res) => {
+  try {
+    const { note_text, note_label = "Promoted from series notes" } = req.body;
+    if (!note_text) return res.status(400).json({ error: "note_text is required" });
+    const series = await getSeries(req.params.id);
+    if (!series) return res.status(404).json({ error: "Series not found" });
+    const universe = await getUniverse(series.universe_id);
+    if (!universe) return res.status(404).json({ error: "Universe not found" });
+    universe.bible += `\n\n### ${note_label} (from series: ${series.name})\n${note_text}`;
+    await saveUniverse(universe);
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── BOOK ASSIGNMENT ─────────────────────────────────────────────────────────
+
+// Assign a book to a universe (and optionally a series)
+router.post("/:universeId/assign-book", async (req, res) => {
+  try {
+    const { book_id, series_id = null, series_order = null } = req.body;
+    if (!book_id) return res.status(400).json({ error: "book_id is required" });
+
+    const [book, universe] = await Promise.all([
+      storage.getBook(book_id),
+      getUniverse(req.params.universeId),
+    ]);
+    if (!book) return res.status(404).json({ error: "Book not found" });
+    if (!universe) return res.status(404).json({ error: "Universe not found" });
+
+    // Remove from any previous universe
+    if ((book as any).universe_id && (book as any).universe_id !== req.params.universeId) {
+      const oldUniverse = await getUniverse((book as any).universe_id);
+      if (oldUniverse) {
+        oldUniverse.standalone_book_ids = oldUniverse.standalone_book_ids.filter(id => id !== book_id);
+        await saveUniverse(oldUniverse);
+      }
+    }
+    // Remove from any previous series
+    if ((book as any).series_id) {
+      const oldSeries = await getSeries((book as any).series_id);
+      if (oldSeries) {
+        oldSeries.book_ids = oldSeries.book_ids.filter(id => id !== book_id);
+        await saveSeries(oldSeries);
+      }
+    }
+
+    // Set universe/series on book
+    (book as any).universe_id = req.params.universeId;
+    (book as any).series_id = series_id;
+    (book as any).series_order = series_order;
+    await storage.saveBook(book);
+
+    // Add to series or standalone
+    if (series_id) {
+      const series = await getSeries(series_id);
+      if (series && series.universe_id === req.params.universeId) {
+        if (!series.book_ids.includes(book_id)) {
+          if (series_order !== null) {
+            series.book_ids.splice(series_order, 0, book_id);
+          } else {
+            series.book_ids.push(book_id);
+          }
+          await saveSeries(series);
+        }
+      }
+    } else {
+      if (!universe.standalone_book_ids.includes(book_id)) {
+        universe.standalone_book_ids.push(book_id);
+        await saveUniverse(universe);
+      }
+    }
+
+    res.json({ success: true, book_id, universe_id: req.params.universeId, series_id });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Unassign a book from its universe
+router.post("/unassign-book/:bookId", async (req, res) => {
+  try {
+    const book = await storage.getBook(req.params.bookId);
+    if (!book) return res.status(404).json({ error: "Book not found" });
+    const universeId = (book as any).universe_id;
+    const seriesId = (book as any).series_id;
+    if (universeId) {
+      const universe = await getUniverse(universeId);
+      if (universe) {
+        universe.standalone_book_ids = universe.standalone_book_ids.filter(id => id !== book.id);
+        await saveUniverse(universe);
+      }
+    }
+    if (seriesId) {
+      const series = await getSeries(seriesId);
+      if (series) { series.book_ids = series.book_ids.filter(id => id !== book.id); await saveSeries(series); }
+    }
+    (book as any).universe_id = null;
+    (book as any).series_id = null;
+    (book as any).series_order = null;
+    await storage.saveBook(book);
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── MENAGERIE ────────────────────────────────────────────────────────────────
+
+router.get("/:id/menagerie", async (req, res) => {
+  try {
+    res.json(await getMenagerie(req.params.id));
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Manual character edit (for fixing AI extraction errors)
+router.put("/:universeId/menagerie/character/:characterId", async (req, res) => {
+  try {
+    const menagerie = await getMenagerie(req.params.universeId);
+    const char = menagerie.characters.find(c => c.id === req.params.characterId);
+    if (!char) return res.status(404).json({ error: "Character not found" });
+    if (req.body.name !== undefined) char.name = req.body.name;
+    if (req.body.aliases !== undefined) char.aliases = req.body.aliases;
+    if (req.body.current_status !== undefined) char.current_status = req.body.current_status;
+    if (req.body.accumulated_notes !== undefined) char.accumulated_notes = req.body.accumulated_notes;
+    await saveMenagerie(menagerie);
+    res.json(char);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── PUSH FLOW ────────────────────────────────────────────────────────────────
+
+// Start a push session for a book
+router.post("/:universeId/push/:bookId", async (req, res) => {
+  try {
+    const [book, universe] = await Promise.all([
+      storage.getBook(req.params.bookId),
+      getUniverse(req.params.universeId),
+    ]);
+    if (!book) return res.status(404).json({ error: "Book not found" });
+    if (!universe) return res.status(404).json({ error: "Universe not found" });
+
+    const seriesId = (book as any).series_id ?? null;
+
+    // Assemble chapter summaries
+    const summaryChapters = book.chapters
+      .filter(c => c.summary)
+      .sort((a, b) => a.chapter_number - b.chapter_number);
+    if (summaryChapters.length === 0) {
+      return res.status(400).json({ error: "No chapter summaries found. Summarize chapters first (use 'Summarize All' in the Book Writer)." });
+    }
+    const chapterSummaries = summaryChapters
+      .map(c => `## Chapter ${c.chapter_number}: ${c.title}\n${c.summary}`)
+      .join("\n\n");
+
+    // Get effective bible
+    const effectiveBible = await getEffectiveBible(req.params.universeId, seriesId);
+
+    // Get previous book summaries from series
+    let previousBookSummaries = "";
+    if (seriesId) {
+      const series = await getSeries(seriesId);
+      if (series) {
+        const prevIds = series.book_ids.filter(id => id !== book.id);
+        const prevBooks = await Promise.all(prevIds.map(id => storage.getBook(id)));
+        previousBookSummaries = prevBooks
+          .filter(b => b && (b as any).book_summary)
+          .map(b => `## ${b!.title}\n${(b as any).book_summary}`)
+          .join("\n\n");
+      }
+    }
+
+    const session = await createPushSession(req.params.universeId, seriesId, book.id, book.title);
+    res.json({ push_session_id: session.push_session_id });
+
+    // Run generation async (don't await — client polls)
+    runPushGeneration(session, chapterSummaries, effectiveBible, previousBookSummaries)
+      .then(async (updatedSession) => {
+        // Mark which characters are new vs existing
+        const menagerie = await getMenagerie(req.params.universeId);
+        for (const char of updatedSession.extracted_characters) {
+          const existing = findCharacterInMenagerie(menagerie, char.name);
+          char.is_new = !existing;
+          if (existing) char.existing_id = existing.id;
+        }
+        // Rebuild review items with correct new/existing flags
+        updatedSession.review_items = (await import("./universePipeline")).buildReviewItemsExport(updatedSession);
+        await writePushSession(updatedSession);
+      })
+      .catch(async (err) => {
+        const s = await getPushSession(session.push_session_id);
+        if (s) { s.phase = "error"; s.error = err.message; await writePushSession(s); }
+      });
+
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Poll push session status
+router.get("/push-session/:sessionId", async (req, res) => {
+  try {
+    const session = await getPushSession(req.params.sessionId);
+    if (!session) return res.status(404).json({ error: "Push session not found" });
+    res.json(session);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Update a review item resolution
+router.put("/push-session/:sessionId/resolve/:itemId", async (req, res) => {
+  try {
+    const { resolution, resolution_note = "" } = req.body;
+    const session = await getPushSession(req.params.sessionId);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+    const item = session.review_items.find(i => i.id === req.params.itemId);
+    if (!item) return res.status(404).json({ error: "Review item not found" });
+    item.resolution = resolution;
+    item.resolution_note = resolution_note;
+    await writePushSession(session);
+    res.json({ success: true, item });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Bulk resolve all pending items (accept all or reject all)
+router.post("/push-session/:sessionId/bulk-resolve", async (req, res) => {
+  try {
+    const { resolution, types } = req.body; // types: optional filter by PushItemType[]
+    const session = await getPushSession(req.params.sessionId);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+    for (const item of session.review_items) {
+      if (item.resolution) continue; // don't override already-resolved
+      if (types && !types.includes(item.type)) continue;
+      item.resolution = resolution;
+    }
+    await writePushSession(session);
+    res.json({ success: true, resolved: session.review_items.filter(i => i.resolution).length });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Apply all resolved items
+router.post("/push-session/:sessionId/apply", async (req, res) => {
+  try {
+    const session = await getPushSession(req.params.sessionId);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+    if (session.phase !== "review") return res.status(400).json({ error: "Session is not in review phase" });
+    const pending = session.review_items.filter(i => !i.resolution).length;
+    if (pending > 0) return res.status(400).json({ error: `${pending} items still pending resolution. Resolve all items before applying.` });
+
+    const record = await applyPushSession(session);
+
+    // Save book_summary to the book
+    const summaryItem = session.review_items.find(i => i.type === "book_summary" && i.resolution === "accepted");
+    if (summaryItem) {
+      const book = await storage.getBook(session.book_id);
+      if (book) { (book as any).book_summary = session.book_summary; await storage.saveBook(book); }
+    }
+
+    res.json({ success: true, record });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// List push sessions for a book
+router.get("/book/:bookId/push-sessions", async (req, res) => {
+  try {
+    res.json(await listPushSessionsForBook(req.params.bookId));
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── UNIVERSE CONTEXT FOR PIPELINE 1 ─────────────────────────────────────────
+
+router.get("/:universeId/writing-context", async (req, res) => {
+  try {
+    const { series_id, exclude_book_id } = req.query as Record<string, string>;
+    const ctx = await assembleUniverseContext(req.params.universeId, series_id ?? null, exclude_book_id);
+
+    // Inject actual previous book summaries (assembleUniverseContext has a placeholder)
+    if (series_id) {
+      const series = await getSeries(series_id);
+      if (series) {
+        const prevIds = exclude_book_id
+          ? series.book_ids.filter(id => id !== exclude_book_id)
+          : series.book_ids;
+        const prevBooks = await Promise.all(prevIds.map(id => storage.getBook(id)));
+        ctx.previousSummaries = prevBooks
+          .filter(b => b && (b as any).book_summary)
+          .map(b => `## ${b!.title}\n${(b as any).book_summary}`)
+          .join("\n\n") || "(No previous book summaries yet)";
+      }
+    }
+
+    res.json(ctx);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── BIBLE COMPLIANCE CHECK ───────────────────────────────────────────────────
+
+router.post("/:universeId/bible-check", async (req, res) => {
+  try {
+    const { scene_brief, series_id, chapter_num = 0 } = req.body;
+    if (!scene_brief) return res.status(400).json({ error: "scene_brief is required" });
+    const bible = await getEffectiveBible(req.params.universeId, series_id ?? null);
+    const result = await checkSceneBriefAgainstBible(scene_brief, bible, chapter_num);
+    res.json({ result });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+export default router;

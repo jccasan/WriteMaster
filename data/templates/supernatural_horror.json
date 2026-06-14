@@ -1,0 +1,15 @@
+{
+  "genre": "supernatural_horror",
+  "display_name": "Supernatural Horror",
+  "major_tropes": [
+    "The Haunted Place That Reflects the Characters' Damage",
+    "The Entity That Feeds on Something Specific",
+    "The Ritual That Should Not Have Been Performed",
+    "The Skeptic Who Enables the Horror",
+    "The Knowledge That Makes Things Worse"
+  ],
+  "plot_template": "Characters encounter a supernatural entity or force that is connected to a specific trauma, sin, or act from the past. The supernatural threat cannot be defeated through conventional means — understanding it requires confronting the human failure that created or enabled it. The resolution requires sacrifice.",
+  "character_archetypes": ["The Character Whose Past Created the Threat", "The Believer Who Is Right But Cannot Convince Anyone", "The Entity That Mirrors the Protagonist's Wound", "The Innocent Whose Endangerment Forces Action"],
+  "world_building_notes": "The supernatural rules must be consistent and specific. Vague evil is less frightening than evil with precise mechanics. The haunted location should reflect the thematic content of the horror. Research scenes are legitimately scary when they reveal the rules of something that cannot be stopped easily. The horror should have a history that makes its targeting of these characters feel inevitable.",
+  "emotional_core": "Guilt, the persistence of the past, the inadequacy of rationalism, sacrifice as the only answer"
+}

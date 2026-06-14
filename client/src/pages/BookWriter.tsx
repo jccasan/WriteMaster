@@ -550,6 +550,28 @@ export default function BookWriter() {
               </Button>
             </>
           )}
+          {book.dossier && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/book/${bookId}/build`)}
+              className="gap-1 text-xs text-muted-foreground hover:text-primary"
+              data-testid="button-pipeline2"
+              title="Pipeline 2 — Expand dossier into Character Sheet, World-Building, and Chapter Outline"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Expand
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/book/${bookId}/write-advanced`)}
+            className="gap-1 text-xs text-muted-foreground hover:text-primary"
+            data-testid="button-advanced-write-header"
+            title="Advanced Writer — 14-step chapter pipeline"
+          >
+            <BarChart3 className="w-3.5 h-3.5" /> Advanced
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -925,6 +947,30 @@ export default function BookWriter() {
                                     data-testid="button-analyze-chapter"
                                   >
                                     <Scissors className="w-3 h-3" /> Analyze
+                                  </Button>
+                                )}
+                                {currentChapter.outline && currentChapter.status !== "committed" && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => navigate(`/book/${bookId}/write-advanced`)}
+                                    className="h-7 gap-1 text-xs text-primary hover:text-primary"
+                                    data-testid="button-advanced-write"
+                                    title="Write this chapter using the 14-step advanced pipeline"
+                                  >
+                                    <Sparkles className="w-3 h-3" /> Advanced Write
+                                  </Button>
+                                )}
+                                {currentChapter.content && currentChapter.status !== "committed" && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => navigate(`/book/${bookId}/line-edit/${currentChapter.chapter_number}`)}
+                                    className="h-7 gap-1 text-xs"
+                                    data-testid="button-line-edit"
+                                    title="Run the 7-step line editing pipeline to remove AI-isms"
+                                  >
+                                    <GitCommit className="w-3 h-3" /> Line Edit
                                   </Button>
                                 )}
                               </>

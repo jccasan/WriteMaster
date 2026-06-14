@@ -1,0 +1,15 @@
+{
+  "genre": "military_thriller",
+  "display_name": "Military Thriller",
+  "major_tropes": [
+    "The Mission Nobody Can Know About",
+    "The Chain of Command Is Compromised",
+    "The Asset Who Is Not What They Seem",
+    "Rules of Engagement That Break Down",
+    "Collateral Damage and Its Weight"
+  ],
+  "plot_template": "Elite soldiers or intelligence operators execute a mission that turns out to be morally and politically larger than briefed. Loyalties fracture, the enemy blurs, and the protagonist must decide whether to complete the mission, abort, or expose the people who sent them.",
+  "character_archetypes": ["The Elite Operator With a Conscience", "The Intelligence Handler With an Agenda", "The Enemy Combatant With a Human Face", "The Civilian Whose Life Is Collateral"],
+  "world_building_notes": "Operational detail matters: weapons, tactics, geography, communication protocols, rank structures. The chain of command is political. Moral weight of collateral damage is real and not resolved easily. Action sequences are choreographed and specific — vague action is invisible action.",
+  "emotional_core": "Duty vs. conscience, the fog of war, the cost of loyalty, the gap between orders and ethics"
+}

@@ -1,0 +1,15 @@
+{
+  "genre": "spy_thriller",
+  "display_name": "Spy Thriller",
+  "major_tropes": [
+    "The Cover That Is Becoming Real",
+    "The Handler Whose Loyalty Is Unknown",
+    "The Double Agent",
+    "The Asset Who Will Die If the Mission Fails",
+    "Tradecraft as Character Voice"
+  ],
+  "plot_template": "An intelligence operative is given a mission that requires getting close enough to a target that the boundaries blur — between cover and self, between asset and enemy, between the mission and the person. The mission succeeds, or fails, in ways that require choosing who the operative really is.",
+  "character_archetypes": ["The Operative Who Has Been Under So Long They've Forgotten Themselves", "The Target Who Is More Human Than Expected", "The Agency That Sees the Operative as Expendable", "The Former Partner Whose Allegiance Is Genuinely Unclear"],
+  "world_building_notes": "Tradecraft must be specific: dead drops, cover legends, surveillance detection routes, exfil procedures. The intelligence bureaucracy is political and self-protective. Operations have legal constraints that get quietly bent. Locations must be researched enough to feel lived-in. The enemy intelligence service is competent, not cartoonish.",
+  "emotional_core": "Identity erosion, trust as a weapon and a vulnerability, the loneliness of the profession, moral compromise in service of the national interest"
+}

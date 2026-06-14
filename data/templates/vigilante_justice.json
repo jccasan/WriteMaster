@@ -1,0 +1,15 @@
+{
+  "genre": "vigilante_justice",
+  "display_name": "Vigilante Justice",
+  "major_tropes": [
+    "The System That Failed and Left a Wound",
+    "Justice Outside the Law",
+    "The Vigilante Who Becomes What They Fight",
+    "The Detective or Cop Who Needs the Vigilante But Can't Admit It",
+    "The Line That Cannot Be Uncrossed"
+  ],
+  "plot_template": "A person destroyed by a failure of the legal system takes justice into their own hands. Their methods work — and cost them. Each act of vigilantism requires drawing a new line about how far is too far, and each line gets easier to cross. The climax forces a choice between the monster they've become and the person they started as.",
+  "character_archetypes": ["The Vigilante Whose Grief Has Become a Mission", "The Law Enforcement Officer Who Has to Stop Them (And Secretly Doesn't Want To)", "The Villain Who Mirrors the Vigilante's Justifications", "The Innocent Who Gets Caught in the Wake"],
+  "world_building_notes": "The legal system's failure must be specific and real — not generic corruption, but a particular crack that a specific victim fell through. The vigilante's methods must escalate logically. The moral argument between legal and extralegal justice must be genuinely two-sided — the law enforcer opposing the vigilante has a legitimate point, not just institutional obstruction.",
+  "emotional_core": "Grief transformed to purpose, the seduction of justice without limits, the cost of becoming a weapon, whether vengeance heals anything"
+}

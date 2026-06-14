@@ -1,0 +1,15 @@
+{
+  "genre": "epic_fantasy",
+  "display_name": "Epic Fantasy",
+  "major_tropes": [
+    "The Chosen One (Subverted)",
+    "Ancient Evil Returns",
+    "The Fellowship Assembles",
+    "The Corrupted Mentor",
+    "The Prophecy That Lies"
+  ],
+  "plot_template": "A person of unexpected origin discovers a role in a world-defining conflict. They assemble unlikely companions, confront corruption within their own side, and must make a sacrifice the prophecy never mentioned. The real enemy was the system that created the conflict, not just the force wielding it.",
+  "character_archetypes": ["The Reluctant Chosen With the Wrong Qualifications", "The Morally Compromised Ally", "The Wise Mentor With Devastating Secrets", "The Villain Who Was Once Like the Hero"],
+  "world_building_notes": "Build at scale: geography, factions, magic systems with rules and costs, history that created the present conflict. No faction is purely good. The chosen one must question the prophecy and the institutions endorsing it. Political complexity must be real — alliances shift based on interest, not alignment.",
+  "emotional_core": "Sacrifice, the burden of destiny, the corruption of power, found family, the cost of heroism"
+}

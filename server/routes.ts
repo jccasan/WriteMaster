@@ -7,6 +7,9 @@ import multer from "multer";
 import { storage } from "./storage";
 import type { BookChapter, BookDocument, NarrativeSliders } from "./storage";
 import { runStep, getStepName } from "./pipeline";
+import { runP2Step, getP2StepName, createEmptyP2State } from "./pipeline2";
+import { runP3Step, getP3StepName, createEmptyP3State } from "./pipeline3";
+import { runP4Step, getP4StepName, createEmptyLineEditState } from "./pipeline4";
 import { callLLM } from "./llm";
 import { prisma } from "./forge/db";
 import { readGoogleDoc, writeGoogleDoc, extractDocId } from "./google-docs";
@@ -2141,6 +2144,455 @@ Respond with ONLY the JSON, no preamble.`;
       res.json(parsed);
     } catch (err: any) {
       console.error("[Titles & Keywords Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── PIPELINE 2: Dossier → Character Sheet + World-Building + Outline ────────
+
+  app.post("/api/books/:id/pipeline2/start", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+      if (!book.dossier) return res.status(400).json({ error: "Book has no dossier. Complete Pipeline 1 first." });
+
+      const { target_chapters = 30, genre = "" } = req.body;
+
+      // Resolve genre: use provided value, fall back to source project genre, then "fiction"
+      let resolvedGenre = genre;
+      if (!resolvedGenre && book.source_project_id) {
+        const sourceProject = await storage.getProject(book.source_project_id);
+        if (sourceProject) resolvedGenre = sourceProject.genre;
+      }
+      if (!resolvedGenre) resolvedGenre = "fiction";
+
+      const { randomUUID } = await import("crypto");
+      const p2Id = randomUUID();
+      const state = createEmptyP2State(
+        p2Id,
+        book.id,
+        book.dossier,
+        book.brain_dump,
+        resolvedGenre,
+        target_chapters
+      );
+      await storage.saveP2State(state);
+      res.json({ pipeline2_id: p2Id });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/pipeline2/:p2Id/run-step", async (req, res) => {
+    try {
+      const state = await storage.getP2State(req.params.p2Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 2 session not found" });
+      if (state.current_step >= 10) {
+        return res.json({ step_completed: state.current_step, step_name: "Complete", is_complete: true });
+      }
+
+      const stepName = getP2StepName(state.current_step);
+      const { updatedState, outputPreview } = await runP2Step(state);
+      await storage.saveP2State(updatedState);
+
+      res.json({
+        step_completed: state.current_step,
+        step_name: stepName,
+        output_preview: outputPreview,
+        current_step: updatedState.current_step,
+        is_complete: updatedState.current_step >= 10,
+      });
+    } catch (err: any) {
+      console.error("[Pipeline2 Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/pipeline2/:p2Id/state", async (req, res) => {
+    try {
+      const state = await storage.getP2State(req.params.p2Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 2 session not found" });
+      res.json(state);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Apply completed P2 documents back to the book as BookDocuments
+  app.post("/api/pipeline2/:p2Id/apply-to-book", async (req, res) => {
+    try {
+      const state = await storage.getP2State(req.params.p2Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 2 session not found" });
+      if (state.current_step < 10) return res.status(400).json({ error: "Pipeline 2 not yet complete" });
+
+      const book = await storage.getBook(state.book_id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const { randomUUID } = await import("crypto");
+      const now = new Date().toISOString();
+      if (!book.documents) book.documents = [];
+
+      // Remove any existing P2 docs so re-running replaces cleanly
+      book.documents = book.documents.filter(
+        (d) => !["character_sheet", "world_doc", "outline"].includes(d.type)
+      );
+
+      book.documents.push(
+        { id: randomUUID(), name: "Character Sheet", content: state.character_sheet_final, type: "character_sheet", added_at: now },
+        { id: randomUUID(), name: "World-Building", content: state.world_building_final, type: "world_doc", added_at: now },
+        { id: randomUUID(), name: "Chapter Outline", content: state.outline_final, type: "outline", added_at: now }
+      );
+
+      await storage.saveBook(book);
+      res.json({ success: true, book_id: book.id, documents_applied: 3 });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/books/:id/pipeline2", async (req, res) => {
+    try {
+      const sessions = await storage.listP2States(req.params.id);
+      res.json(sessions);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── STYLE GUIDE EXTRACTOR ────────────────────────────────────────────────────
+
+  app.post("/api/tools/extract-style-guide", async (req, res) => {
+    try {
+      const { sample_text, author_name } = req.body;
+      if (!sample_text || sample_text.trim().length < 200) {
+        return res.status(400).json({ error: "Sample text must be at least 200 characters." });
+      }
+
+      const { getSkill } = await import("./skillLoader");
+      const styleExtractor = getSkill("STYLE_EXTRACTOR");
+
+      const result = await callLLM(
+        `You are an expert literary analyst. Analyze the prose sample below and produce a comprehensive Style Guide following the framework provided.
+
+AUTHOR: ${author_name || "Unknown"}
+
+PROSE SAMPLE:
+${sample_text}
+
+${styleExtractor}
+
+Important: Base every finding strictly on patterns present in the sample. Do not assume or invent characteristics. If the sample is too short to determine a pattern definitively, say so.`,
+        "powerful",
+        undefined,
+        8192
+      );
+
+      res.json({ style_guide: result });
+    } catch (err: any) {
+      console.error("[Style Extractor Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Save extracted style guide as a book document
+  app.post("/api/books/:id/style-guide", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const { style_guide, name = "Prose Style Guide" } = req.body;
+      if (!style_guide) return res.status(400).json({ error: "style_guide content is required" });
+
+      const { randomUUID } = await import("crypto");
+      if (!book.documents) book.documents = [];
+      // Replace existing style guide if present
+      book.documents = book.documents.filter((d) => d.name !== "Prose Style Guide" && d.name !== name);
+      book.documents.push({
+        id: randomUUID(),
+        name,
+        content: style_guide,
+        type: "other",
+        added_at: new Date().toISOString(),
+      });
+
+      await storage.saveBook(book);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── SKILLS ADMIN ─────────────────────────────────────────────────────────────
+
+  app.get("/api/skills", async (_req, res) => {
+    try {
+      const { listSkills } = await import("./skillLoader");
+      res.json({ skills: listSkills() });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/skills/:token", async (req, res) => {
+    try {
+      const { getSkill } = await import("./skillLoader");
+      const content = getSkill(req.params.token.toUpperCase());
+      if (!content) return res.status(404).json({ error: "Skill not found" });
+      res.json({ token: req.params.token.toUpperCase(), content });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/skills/reload", async (_req, res) => {
+    try {
+      const { reloadSkills } = await import("./skillLoader");
+      reloadSkills();
+      const { listSkills } = await import("./skillLoader");
+      res.json({ reloaded: true, skills: listSkills() });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── PIPELINE 3 v2: Advanced Chapter Writing ──────────────────────────────────
+
+  app.post("/api/books/:id/write-chapter-v2/:chapterNum/start", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+
+      const { tense = "past", author_notes = "" } = req.body;
+
+      // ── Resolve source documents ──
+      // Use P2 documents when available, fall back to book.dossier
+      const docs = book.documents ?? [];
+      const charDoc = docs.find(d => d.type === "character_sheet");
+      const worldDoc = docs.find(d => d.type === "world_doc");
+      const outlineDoc = docs.find(d => d.type === "outline");
+      const styleDoc = docs.find(d => d.name === "Prose Style Guide" || d.name === "Style Guide");
+
+      const characterSheet = charDoc?.content ?? book.dossier;
+      const worldBuilding = worldDoc?.content ?? book.dossier;
+      const fullOutline = outlineDoc?.content ?? buildPreviousSummariesContext(book.chapters, 9999);
+      const styleGuide = styleDoc?.content ?? "";
+
+      // ── Build context windows ──
+      const writtenChapters = book.chapters
+        .filter(c => c.chapter_number < chapterNum && c.content)
+        .sort((a, b) => a.chapter_number - b.chapter_number);
+
+      // Last 2,000 words from previous chapters
+      const allPriorText = writtenChapters.map(c => c.content ?? "").join("\n\n");
+      const words = allPriorText.split(/\s+/);
+      const previousContext = words.slice(-2000).join(" ");
+
+      // Last 20,000 words for chrono check B
+      const longContext = words.slice(-20000).join(" ");
+
+      const { randomUUID } = await import("crypto");
+      const p3Id = randomUUID();
+      const state = createEmptyP3State(
+        p3Id,
+        book.id,
+        chapterNum,
+        chapter.title,
+        chapter.outline ?? "",
+        fullOutline,
+        characterSheet,
+        worldBuilding,
+        styleGuide,
+        previousContext,
+        longContext,
+        tense,
+        author_notes,
+        chapter.sliders ?? null,
+        (book as any).universe_id ?? null,
+        (book as any).series_id ?? null
+      );
+      await storage.saveP3State(state);
+      res.json({ pipeline3_id: p3Id, chapter_number: chapterNum });
+    } catch (err: any) {
+      console.error("[Pipeline3 Start Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/pipeline3/:p3Id/run-step", async (req, res) => {
+    try {
+      const state = await storage.getP3State(req.params.p3Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 3 session not found" });
+      if (state.current_step >= 14) {
+        return res.json({ step_completed: state.current_step, step_name: "Complete", is_complete: true });
+      }
+
+      const stepName = getP3StepName(state.current_step);
+      const { updatedState, outputPreview } = await runP3Step(state);
+      await storage.saveP3State(updatedState);
+
+      res.json({
+        step_completed: state.current_step,
+        step_name: stepName,
+        output_preview: outputPreview,
+        current_step: updatedState.current_step,
+        is_complete: updatedState.current_step >= 14,
+      });
+    } catch (err: any) {
+      console.error("[Pipeline3 Step Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/pipeline3/:p3Id/state", async (req, res) => {
+    try {
+      const state = await storage.getP3State(req.params.p3Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 3 session not found" });
+      res.json(state);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Apply the completed Pipeline 3 final draft back to the book chapter
+  app.post("/api/pipeline3/:p3Id/apply-to-book", async (req, res) => {
+    try {
+      const state = await storage.getP3State(req.params.p3Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 3 session not found" });
+      if (state.current_step < 14) return res.status(400).json({ error: "Pipeline 3 not yet complete" });
+      if (!state.final_draft) return res.status(400).json({ error: "Pipeline 3 has no final draft" });
+
+      const book = await storage.getBook(state.book_id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapter = book.chapters.find(c => c.chapter_number === state.chapter_number);
+      if (!chapter) return res.status(404).json({ error: `Chapter ${state.chapter_number} not found in book` });
+
+      chapter.content = state.final_draft;
+      chapter.status = "written";
+      await storage.saveBook(book);
+
+      res.json({ success: true, book_id: book.id, chapter_number: state.chapter_number });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/books/:id/pipeline3", async (req, res) => {
+    try {
+      const sessions = await storage.listP3States(req.params.id);
+      res.json(sessions);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── PIPELINE 4: Line Editing ─────────────────────────────────────────────────
+
+  app.post("/api/books/:id/line-edit/:chapterNum/start", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+      if (!chapter.content) return res.status(400).json({ error: "Chapter has no written content to edit" });
+
+      const docs = book.documents ?? [];
+      const styleDoc = docs.find(d => d.name === "Prose Style Guide" || d.name === "Style Guide");
+      const styleGuide = styleDoc?.content ?? "";
+
+      const { randomUUID } = await import("crypto");
+      const p4Id = randomUUID();
+      const state = createEmptyLineEditState(
+        p4Id,
+        book.id,
+        chapterNum,
+        chapter.title,
+        chapter.content,
+        styleGuide
+      );
+      await storage.saveP4State(state);
+      res.json({ pipeline4_id: p4Id, chapter_number: chapterNum });
+    } catch (err: any) {
+      console.error("[LineEdit Start Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/pipeline4/:p4Id/run-step", async (req, res) => {
+    try {
+      const state = await storage.getP4State(req.params.p4Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 4 session not found" });
+      if (state.current_step >= 7) {
+        return res.json({ step_completed: state.current_step, step_name: "Complete", is_complete: true });
+      }
+
+      const stepName = getP4StepName(state.current_step);
+      const { updatedState, outputPreview } = await runP4Step(state);
+      await storage.saveP4State(updatedState);
+
+      res.json({
+        step_completed: state.current_step,
+        step_name: stepName,
+        output_preview: outputPreview,
+        current_step: updatedState.current_step,
+        is_complete: updatedState.current_step >= 7,
+      });
+    } catch (err: any) {
+      console.error("[Pipeline4 Step Error]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/pipeline4/:p4Id/state", async (req, res) => {
+    try {
+      const state = await storage.getP4State(req.params.p4Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 4 session not found" });
+      res.json(state);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Apply the line-edited draft back to the book chapter
+  app.post("/api/pipeline4/:p4Id/apply-to-book", async (req, res) => {
+    try {
+      const state = await storage.getP4State(req.params.p4Id);
+      if (!state) return res.status(404).json({ error: "Pipeline 4 session not found" });
+      if (state.current_step < 7) return res.status(400).json({ error: "Pipeline 4 not yet complete" });
+      if (!state.edited_draft) return res.status(400).json({ error: "Pipeline 4 has no edited draft" });
+
+      const book = await storage.getBook(state.book_id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const chapter = book.chapters.find(c => c.chapter_number === state.chapter_number);
+      if (!chapter) return res.status(404).json({ error: `Chapter ${state.chapter_number} not found` });
+
+      chapter.content = state.edited_draft;
+      await storage.saveBook(book);
+
+      res.json({
+        success: true,
+        book_id: book.id,
+        chapter_number: state.chapter_number,
+        verification_passed: state.verification.includes("PASSED"),
+        verification_summary: state.verification.substring(0, 300),
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/books/:id/pipeline4", async (req, res) => {
+    try {
+      const sessions = await storage.listP4States(req.params.id);
+      res.json(sessions);
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });

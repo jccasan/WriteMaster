@@ -1,5 +1,6 @@
 import { callLLM } from "./llm";
 import { AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, STORY_ARCHITECTURE_RULES, ANTI_SLOP_FILTER, DEFAULT_DECISION_RULE, CONTEXT_ENGINEERING_RULES } from "./writing-rules";
+import { getSkill } from "./skillLoader";
 
 export interface TropePack {
   genre: string;
@@ -115,16 +116,11 @@ export async function runStep(state: ProjectState): Promise<{
     }
 
     case 2: {
+      const hookRubric = getSkill("HOOK_RUBRIC");
       const result = await callLLM(
         `You are a bestselling author's creative collaborator. Your task is to brainstorm 5 compelling story pitches for a new ${state.subgenre_label} book.
 
-HOOK RUBRIC (every pitch must satisfy all of these):
-- Has a protagonist with a clear, visceral want AND a hidden need
-- Has a ticking clock or escalating pressure
-- Has a unique world or setting detail that makes it feel fresh
-- Has a central moral dilemma or impossible choice
-- Emotionally hooks the reader in the first two sentences
-- Uses no clichés or AI-obvious phrases
+${hookRubric}
 
 ${AUTHOR_VOICE_CONTRACT}
 
@@ -260,22 +256,15 @@ ${DEFAULT_DECISION_RULE}`,
     }
 
     case 6: {
+      const emotionalCheck = getSkill("CHECKS_EMOTIONAL_CHECK");
       const result = await callLLM(
         `You are a developmental editor specializing in emotional resonance and theme.
-Analyze the Story Dossier below.
+Analyze the Story Dossier below using the emotional check framework provided.
 
 STORY DOSSIER:
 ${state.dossier_v1}
 
-Perform these checks:
-1. THEME COHESION: Theme is a moral argument tested through the plot, not a label. For each theme, list every major story moment where it should land but currently feels absent or weak. Does the protagonist face forced choices that test the theme?
-2. EMOTIONAL PAYOFF: Does the protagonist's arc deliver a genuine gut punch? Check the Lie→Truth arc: is the Ghost concrete enough? Is the Midpoint a true shift from reaction to action? Does the climax force a conscious choice between Lie and Truth? Where does the arc fall flat?
-3. CHARACTER MOTIVATION: Is every character's Want vs. Need tension specific and believable? Does the antagonist mirror or invert the protagonist's Lie? Are supporting characters full people with their own agendas?
-4. SUSPENSE ENGINE: Is there a ticking clock or escalating deadline? Does every major scene end with an open circuit? Would the Zeigarnik effect keep a reader turning pages?
-5. CONVENIENCE AUDIT: Are there coincidences, convenient discoveries, or external rescues where character action should drive the plot?
-
-For each issue found, write a specific, actionable improvement instruction.
-Format as a numbered list titled: EMOTIONAL IMPROVEMENT PLAN`,
+${emotionalCheck}`,
         "powerful"
       );
       state.emotional_check = result;
@@ -285,13 +274,12 @@ Format as a numbered list titled: EMOTIONAL IMPROVEMENT PLAN`,
     }
 
     case 7: {
+      const nameBlacklist = getSkill("CHARACTER_NAME_BLACKLIST");
+      const nameCheck = getSkill("CHECKS_CHARACTER_NAME_CHECK");
       const result = await callLLM(
-        `You are a fiction editor. Review the character names in the Story Dossier below and flag any that sound like AI-generated filler names.
+        `You are a fiction editor. Review the character names in the Story Dossier below and flag any that read as AI-generated.
 
-NAMES TO AVOID (flag if any character uses these):
-Marcus, Nora, Lyra, Lara, Thorn, Kale, Kalen, Kayla, Silas, Vayne, Vesper, Chen, Aria, Zara, Mira, Zephyr, Caden, Aiden, Ethan, Lucas, Elara, Seraphina, Theron, Aldric, Malachar, Cassius, Rylan, Talon, Orion, Drake, Kane, Raven
-
-EXCEPTION: If a name was specifically mentioned in the Author Brain Dump, do not flag it.
+${nameBlacklist}
 
 STORY DOSSIER:
 ${state.dossier_v1}
@@ -299,13 +287,7 @@ ${state.dossier_v1}
 AUTHOR BRAIN DUMP:
 ${state.brain_dump}
 
-For each flagged name:
-- State the character's role
-- Explain in 1 sentence why this name feels AI-generic
-- Propose 3 alternative names that fit the character's culture and role
-- Justify each alternative in 1 sentence
-
-Format as: CHARACTER NAME IMPROVEMENT PLAN`,
+${nameCheck}`,
         "cheap"
       );
       state.name_check = result;
@@ -350,66 +332,15 @@ ${DEFAULT_DECISION_RULE}`,
     }
 
     case 9: {
+      const logicCheck = getSkill("CHECKS_LOGIC_CHECK");
       const result = await callLLM(
         `You are auditing an early-stage story dossier for logical consistency and plausibility.
-The dossier contains a premise, pitch, character list, and world-building elements for a story concept.
-Your task is to identify logical inconsistencies, implausible plot elements, character-world mismatches, and world-building issues that undermine internal coherence.
 
 <dossier>
 ${state.dossier_v2}
 </dossier>
 
-Before producing your final audit, reason through these steps internally (do not include this reasoning in your output):
-- Identify the core premise and pitch.
-- List all characters and their roles, goals, and abilities.
-- Record all stated world-building rules and key details.
-- Check each of the six audit categories below systematically.
-- Note any contradictions, implausibilities, or logic gaps.
-- For each issue, think through what specifically breaks and how it could be resolved.
-
-Perform the six audit checks below. Structure your response as a six-section audit report.
-
-1. PREMISE LOGIC CHECK
-- Does the core premise hold together internally?
-- Are the central conflict and stakes consistent with the stated world rules?
-- Does the "what if" setup make logical sense?
-
-2. CHARACTER-WORLD FIT
-- Do character roles, goals, and capabilities make sense within the world?
-- Are any characters' abilities or positions inconsistent with the world's rules?
-- Do relationships and motivations align with the premise and tone?
-
-3. WORLD-BUILDING COHERENCE
-- Do the world's elements support the premise?
-- Are there contradictions between different sections or rules?
-- Do geography, tech/magic level, and social structures operate logically together?
-
-4. PLOT SETUP PLAUSIBILITY
-- Are there logistical impossibilities in the setup?
-- Are there motivation gaps that would stop the story from starting?
-- Does the antagonist's power make sense relative to the protagonist?
-- Is the inciting incident plausible?
-
-5. EARLY-STAGE CONVENIENCE FLAGS
-- Does the premise rely on unlikely coincidences or contrived events?
-- Do any characters exist only to solve story problems?
-- Are there perfect allies or resources that feel forced?
-- Are there "because the plot needs it" moments with no in-world logic?
-
-6. SPECIFIC FIXES
-For every major issue identified in sections 1-5, provide a fix block. Each fix should follow this structure:
-
-Issue: [Brief description of the logical flaw]
-Why it breaks: [Explanation of inconsistency or implausibility]
-Suggested fix: [Specific, actionable recommendation that preserves the core appeal]
-
-If no significant issues were identified in sections 1-5, write:
-"No significant issues identified. The dossier is internally consistent."
-
-For sections 1-5, if no issues exist for a particular category, write:
-"No significant issues identified in this category."
-
-Your response should include only the six-section audit report.`,
+${logicCheck}`,
         "powerful"
       );
       state.logic_check = result;

@@ -33,6 +33,12 @@ import PublishingHub from "@/pages/PublishingHub";
 import TropeResearch from "@/pages/TropeResearch";
 import BlurbGenerator from "@/pages/BlurbGenerator";
 import PublishingTools from "@/pages/PublishingTools";
+import BookBuild from "@/pages/BookBuild";
+import BookWriteAdvanced from "@/pages/BookWriteAdvanced";
+import LineEditPage from "@/pages/LineEditPage";
+import UniverseDashboard from "@/pages/UniverseDashboard";
+import UniverseView from "@/pages/UniverseView";
+import PushToUniverse from "@/pages/PushToUniverse";
 
 function Router() {
   return (
@@ -47,7 +53,13 @@ function Router() {
       <Route path="/chapter-analyzer/:id" component={ChapterAnalyzer} />
       <Route path="/books" component={Books} />
       <Route path="/book/:id/studio" component={BookStudio} />
+      <Route path="/book/:id/build" component={BookBuild} />
+      <Route path="/book/:id/write-advanced" component={BookWriteAdvanced} />
+      <Route path="/book/:id/line-edit/:chapterNum" component={LineEditPage} />
       <Route path="/book/:id" component={BookWriter} />
+      <Route path="/universe" component={UniverseDashboard} />
+      <Route path="/universe/:id" component={UniverseView} />
+      <Route path="/universe/:universeId/push/:bookId" component={PushToUniverse} />
       <Route path="/editor" component={Editor} />
       <Route path="/forge" component={ForgeDashboard} />
       <Route path="/forge/project/:id" component={ForgeProject} />

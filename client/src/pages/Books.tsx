@@ -158,6 +158,24 @@ export default function Books() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-8 px-2 text-xs text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity gap-1"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/book/${book.id}/build`); }}
+                      title="Expand dossier into Character Sheet, World-Building, and Chapter Outline"
+                    >
+                      <Sparkles className="w-3 h-3" /> P2
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 text-xs text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity gap-1"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/book/${book.id}/write-advanced`); }}
+                      title="Advanced chapter writer (14-step pipeline)"
+                    >
+                      <PenTool className="w-3 h-3" /> Write
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => deleteBook(book.id, e)}
                       data-testid={`button-delete-book-${book.id}`}

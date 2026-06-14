@@ -1,0 +1,15 @@
+{
+  "genre": "space_opera",
+  "display_name": "Space Opera",
+  "major_tropes": [
+    "The Ragtag Crew of Misfits",
+    "The Empire vs. the Rebellion",
+    "The Ancient Alien Artifact or Threat",
+    "The Smuggler / Outlaw With a Heart",
+    "The Planet That Is a Character"
+  ],
+  "plot_template": "A crew of outsiders — criminals, rebels, mercenaries — stumbles into a conflict larger than their original job. A threat to one planet becomes a threat to the galaxy. Personal survival requires joining a larger cause, and the chosen family that forms becomes worth more than the mission they were hired for.",
+  "character_archetypes": ["The Reluctant Leader Who Doesn't Want to Be the Hero", "The Tech Expert Whose Loyalty Is the Ship", "The Soldier From the Wrong Side Who Switched", "The Enemy Whose Ideology Is Internally Coherent"],
+  "world_building_notes": "Multiple planets with distinct cultures, economies, and aesthetics — not just different biomes. FTL or travel technology must have costs (time, money, fuel, risk). The political landscape has competing factions with real interests. Ships should feel like characters with personalities, histories, and quirks. Alien species must be genuinely alien in their cognition, not just humans with different faces.",
+  "emotional_core": "Found family, freedom vs. security, the personal cost of war, belonging in a universe that doesn't care"
+}

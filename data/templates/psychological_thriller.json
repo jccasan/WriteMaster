@@ -1,0 +1,15 @@
+{
+  "genre": "psychological_thriller",
+  "display_name": "Psychological Thriller",
+  "major_tropes": [
+    "The Unreliable Narrator",
+    "The Perfect Life With Rot Beneath",
+    "The Gaslighting Relationship",
+    "Nothing Is What It Seems",
+    "The Reveal That Recontextualizes Everything"
+  ],
+  "plot_template": "A character in an apparently stable situation begins to notice cracks — small inconsistencies, manipulations, or memories that don't align. As they investigate, reality itself becomes uncertain. The true threat is inside the relationship, the home, or the narrator's own mind. The revelation forces the protagonist (and reader) to reassemble everything they thought they knew.",
+  "character_archetypes": ["The Unreliable Narrator Who Is More Victim Than Villain", "The Charming Manipulator", "The One Person Who Sees Clearly But Can't Be Heard", "The Seemingly Safe Confidant Who Isn't"],
+  "world_building_notes": "The domestic or social setting is the trap — the suburb, the marriage, the workplace, the institution. Every detail of the protagonist's normal life must carry possible double meaning. Reader perspective must be tightly controlled — withhold information the narrator doesn't have, or reveal it in ways that create dread rather than clarity.",
+  "emotional_core": "Paranoia, the terror of not trusting your own mind, the slow unraveling of safety, survival through clarity"
+}

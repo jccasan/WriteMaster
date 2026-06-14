@@ -1,0 +1,15 @@
+{
+  "genre": "horror",
+  "display_name": "Horror",
+  "major_tropes": [
+    "The Isolated Location With No Escape",
+    "The Threat That Cannot Be Reasoned With",
+    "The Unreliable Senses",
+    "The Rot Beneath the Surface of Something Normal",
+    "Survival Requires Abandoning Who You Were"
+  ],
+  "plot_template": "Characters in an isolated or trapped situation encounter a threat that defies their rational frameworks. As they attempt to survive, the threat forces them to confront something internal — a trauma, a relationship, a belief — that the horror is externalizing. Survival is never guaranteed and always costs something permanent.",
+  "character_archetypes": ["The Protagonist Whose Flaw the Horror Exploits", "The Skeptic Who Dies Because They Wouldn't Believe", "The Child or Innocent Who Sees Clearly", "The Monster That Is Also a Mirror"],
+  "world_building_notes": "The setting should feel claustrophobic and specific. The rules of the threat must be internally consistent, even if they defy physics — inconsistent monsters are not scary, they're just confusing. Horror is built through dread (anticipation) not shock alone. Every scene should feel slightly wrong before anything visibly is.",
+  "emotional_core": "Dread, the fragility of safety, the horror of helplessness, survival that leaves you changed"
+}
