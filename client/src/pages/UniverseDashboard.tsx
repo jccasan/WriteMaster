@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Globe, ChevronRight, Clock, Trash2 } from "lucide-react";
+import { Loader2, Plus, Globe, ChevronRight, Clock, Trash2, Upload } from "lucide-react";
 
 interface UniverseSummary {
   id: string;
@@ -30,6 +30,7 @@ export default function UniverseDashboard() {
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newBible, setNewBible] = useState("");
+  const [uploadingBible, setUploadingBible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
@@ -42,6 +43,26 @@ export default function UniverseDashboard() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleBibleUpload = async (file: File) => {
+    setUploadingBible(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const r = await fetch("/api/universe/extract-bible-text", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error);
+      setNewBible(data.text);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUploadingBible(false);
+    }
+  };
 
   const create = async () => {
     if (!newName.trim()) return;
@@ -98,14 +119,36 @@ export default function UniverseDashboard() {
                 <Input id="udesc" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Brief description of this universe" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ubible">Story Bible (optional — you can write it in the Universe view)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="ubible">Story Bible</Label>
+                  <label className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 cursor-pointer transition-colors">
+                    {uploadingBible
+                      ? <><Loader2 className="w-3 h-3 animate-spin" /> Extracting...</>
+                      : <><Upload className="w-3 h-3" /> Import from file</>
+                    }
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.md,.txt"
+                      className="hidden"
+                      disabled={uploadingBible}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleBibleUpload(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
                 <Textarea
                   id="ubible"
                   value={newBible}
                   onChange={e => setNewBible(e.target.value)}
-                  placeholder="World-building notes, magic system rules, geography, factions... Start here or leave blank and add later."
-                  className="resize-none h-32 text-sm"
+                  placeholder="World-building notes, magic system rules, geography, factions...&#10;&#10;Or upload a .pdf, .docx, .md, or .txt file using Import from file above."
+                  className="resize-none h-40 text-sm"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Upload will populate this field — you can edit before creating.
+                </p>
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <div className="flex gap-3">

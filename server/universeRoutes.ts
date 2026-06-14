@@ -22,7 +22,7 @@ import { extractText } from "./forge/parsing/manuscript-parser";
 
 const router = Router();
 
-// ── Bible file upload ────────────────────────────────────────────────────────
+// ── Bible file upload ─────────────────────────────────────────────────────────
 const bibleUploadDir = path.resolve("data/bible-uploads");
 fs.mkdir(bibleUploadDir, { recursive: true }).catch(() => {});
 
@@ -37,6 +37,20 @@ const bibleUpload = multer({
   },
 });
 
+// Extract text from a file without saving (used pre-creation on dashboard)
+router.post("/extract-bible-text", bibleUpload.single("file"), async (req: any, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const text = await extractText(req.file.path, req.file.mimetype);
+    await fs.unlink(req.file.path).catch(() => {});
+    res.json({ text, word_count: text.split(/\s+/).filter(Boolean).length });
+  } catch (err: any) {
+    if (req.file) fs.unlink(req.file.path).catch(() => {});
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Upload and save bible to an existing universe
 router.post("/:id/bible/upload", bibleUpload.single("file"), async (req: any, res) => {
   try {
     const universe = await getUniverse(req.params.id);
@@ -44,7 +58,7 @@ router.post("/:id/bible/upload", bibleUpload.single("file"), async (req: any, re
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const text = await extractText(req.file.path, req.file.mimetype);
-    await fs.unlink(req.file.path).catch(() => {}); // clean up temp file
+    await fs.unlink(req.file.path).catch(() => {});
 
     const { mode = "replace" } = req.body; // "replace" | "append"
     if (mode === "append" && universe.bible) {
@@ -60,8 +74,6 @@ router.post("/:id/bible/upload", bibleUpload.single("file"), async (req: any, re
     res.status(500).json({ error: err.message });
   }
 });
-
-const router = Router();
 
 // ─── UNIVERSES ────────────────────────────────────────────────────────────────
 
