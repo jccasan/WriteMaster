@@ -9,6 +9,7 @@ import { Router } from "express";
 import multer from "multer";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { randomUUID } from "crypto";
 import {
   createUniverse, getUniverse, saveUniverse, listUniverses, deleteUniverse,
   createSeries, getSeries, saveSeries, getSeriesForUniverse, deleteSeries,
@@ -16,7 +17,7 @@ import {
   createPushSession, getPushSession, writePushSession, listPushSessionsForBook,
   assembleUniverseContext, getEffectiveBible,
 } from "./universeStorage";
-import { runPushGeneration, applyPushSession, checkSceneBriefAgainstBible, buildReviewItemsExport } from "./universePipeline";
+import { runPushGeneration, applyPushSession, checkSceneBriefAgainstBible, buildReviewItemsExport, extractCharactersFromText } from "./universePipeline";
 import { storage } from "./storage";
 import { extractText } from "./forge/parsing/manuscript-parser";
 
@@ -270,6 +271,122 @@ router.post("/unassign-book/:bookId", async (req, res) => {
 router.get("/:id/menagerie", async (req, res) => {
   try {
     res.json(await getMenagerie(req.params.id));
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Step 1: Upload a story file and extract characters (returns preview for review)
+router.post("/:id/menagerie/extract", bibleUpload.single("file"), async (req: any, res) => {
+  try {
+    const universe = await getUniverse(req.params.id);
+    if (!universe) return res.status(404).json({ error: "Universe not found" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const { source_label = req.file.originalname } = req.body;
+    const text = await extractText(req.file.path, req.file.mimetype);
+    await fs.unlink(req.file.path).catch(() => {});
+
+    if (!text.trim()) return res.status(400).json({ error: "File appears to be empty or unreadable" });
+
+    // Extract characters (async — may take 30-60s for a full manuscript)
+    const extracted = await extractCharactersFromText(text, source_label);
+
+    // Mark which are new vs already in menagerie
+    const menagerie = await getMenagerie(req.params.id);
+    for (const char of extracted) {
+      const existing = findCharacterInMenagerie(menagerie, char.name);
+      char.is_new = !existing;
+      if (existing) char.existing_id = existing.id;
+    }
+
+    res.json({
+      source_label,
+      word_count: text.split(/\s+/).filter(Boolean).length,
+      characters: extracted,
+      new_count: extracted.filter(c => c.is_new).length,
+      update_count: extracted.filter(c => !c.is_new).length,
+    });
+  } catch (err: any) {
+    if (req.file) fs.unlink(req.file.path).catch(() => {});
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Step 2: Apply selected extracted characters to the menagerie
+router.post("/:id/menagerie/apply-extracted", async (req, res) => {
+  try {
+    const universe = await getUniverse(req.params.id);
+    if (!universe) return res.status(404).json({ error: "Universe not found" });
+
+    const { characters, source_label = "uploaded file", series_id = null, book_id = null, book_title = null } = req.body;
+    if (!Array.isArray(characters) || characters.length === 0) {
+      return res.status(400).json({ error: "No characters provided" });
+    }
+
+    const menagerie = await getMenagerie(req.params.id);
+    const now = new Date().toISOString();
+    let added = 0, updated = 0;
+
+    for (const char of characters) {
+      if (!char.accepted) continue; // user deselected this character
+
+      const existing = findCharacterInMenagerie(menagerie, char.name);
+
+      if (!existing) {
+        // New character
+        menagerie.characters.push({
+          id: randomUUID(),
+          name: char.name,
+          aliases: char.aliases ?? [],
+          current_status: char.status ?? "unknown",
+          status_history: [{
+            book_id: book_id ?? "manual-upload",
+            book_title: book_title ?? source_label,
+            status: char.status ?? "unknown",
+            note: `Added via file upload from: ${source_label}`,
+          }],
+          appearances: book_id ? [{
+            book_id,
+            book_title: book_title ?? source_label,
+            series_id,
+            chapter_numbers: char.chapter_numbers ?? [],
+            role_in_book: char.role ?? "unknown",
+          }] : [],
+          first_appeared_book_id: book_id ?? "manual-upload",
+          first_appeared_book_title: book_title ?? source_label,
+          accumulated_notes: char.notes ?? "",
+          last_updated_by_book_id: book_id ?? "manual-upload",
+          last_updated_at: now,
+        });
+        added++;
+      } else {
+        // Update existing
+        existing.accumulated_notes += `\n\n[${source_label}]\n${char.notes}`;
+        if (book_id && !existing.appearances.find(a => a.book_id === book_id)) {
+          existing.appearances.push({
+            book_id,
+            book_title: book_title ?? source_label,
+            series_id,
+            chapter_numbers: char.chapter_numbers ?? [],
+            role_in_book: char.role ?? "unknown",
+          });
+        }
+        if (char.status && char.status !== "unknown" && char.status !== existing.current_status) {
+          existing.current_status = char.status;
+          existing.status_history.push({
+            book_id: book_id ?? "manual-upload",
+            book_title: book_title ?? source_label,
+            status: char.status,
+            note: `Updated via file upload from: ${source_label}`,
+          });
+        }
+        existing.last_updated_by_book_id = book_id ?? "manual-upload";
+        existing.last_updated_at = now;
+        updated++;
+      }
+    }
+
+    await saveMenagerie(menagerie);
+    res.json({ success: true, added, updated, total: menagerie.characters.length });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 

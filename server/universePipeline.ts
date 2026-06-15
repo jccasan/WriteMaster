@@ -142,9 +142,9 @@ async function extractCharacters(
   bookTitle: string
 ): Promise<ExtractedCharacter[]> {
   const raw = await callLLM(
-    `You are a character database editor. Extract every named character from the chapter summaries of "${bookTitle}".
+    `You are a character database editor. Extract every named character from the text of "${bookTitle}".
 
-CHAPTER SUMMARIES:
+SOURCE TEXT:
 ${chapterSummaries}
 
 For every named character (major, supporting, and minor), output a JSON array with this exact structure.
@@ -157,17 +157,16 @@ Respond with ONLY the JSON array — no preamble, no explanation, no markdown fe
     "role": "protagonist | antagonist | supporting | minor",
     "status": "alive | dead | missing | retired | unknown",
     "notes": "2-4 sentences: who this person is, their key traits, their role in the story, their fate by book end. Be specific.",
-    "chapter_numbers": [list of chapter numbers they appear in]
+    "chapter_numbers": []
   }
 ]
 
 Rules:
 - Include EVERY named character, even if they appear only once
-- status should reflect their state at the END of this book
+- status should reflect their state at the END of this text
 - If a character dies, status = "dead"
-- Do not invent characters not present in the summaries
-- aliases should include any titles, epithets, or pseudonyms used
-- chapter_numbers should be as complete as possible from the summaries`,
+- Do not invent characters not present in the text
+- aliases should include any titles, epithets, or pseudonyms used`,
     "powerful"
   );
 
@@ -181,12 +180,20 @@ Rules:
       status: (c.status ?? "unknown") as CharacterStatus,
       notes: c.notes ?? "",
       chapter_numbers: Array.isArray(c.chapter_numbers) ? c.chapter_numbers : [],
-      is_new: true, // will be resolved against menagerie later
+      is_new: true,
     }));
   } catch {
     console.error("[UniversePipeline] Failed to parse character extraction JSON");
     return [];
   }
+}
+
+// Public wrapper — used by the menagerie upload route
+export async function extractCharactersFromText(
+  text: string,
+  sourceLabel: string
+): Promise<ExtractedCharacter[]> {
+  return extractCharacters(text, sourceLabel);
 }
 
 // ─── 1c: WORLD-BUILDING EXTRACTION ───────────────────────────────────────────

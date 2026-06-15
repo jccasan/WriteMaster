@@ -57,6 +57,10 @@ export default function UniverseView() {
   const [charFilter, setCharFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedChar, setExpandedChar] = useState<string | null>(null);
+  const [menagerieUploading, setMenagerieUploading] = useState(false);
+  const [menagerieApplying, setMenagerieApplying] = useState(false);
+  const [menagerieExtracted, setMenagerieExtracted] = useState<any[]>([]);
+  const [menagerieSourceLabel, setMenagerieSourceLabel] = useState("");
 
   // World state
   const [editingWorldState, setEditingWorldState] = useState(false);
@@ -360,7 +364,138 @@ export default function UniverseView() {
                 </button>
               ))}
               <span className="text-xs text-muted-foreground ml-auto">{filteredChars.length} character{filteredChars.length !== 1 ? "s" : ""}</span>
+
+              {/* Upload button */}
+              <label className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border cursor-pointer transition-colors",
+                menagerieUploading
+                  ? "border-primary/50 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+              )}>
+                {menagerieUploading
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Extracting...</>
+                  : <><Upload className="w-3.5 h-3.5" /> Import from story</>
+                }
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.md,.txt"
+                  className="hidden"
+                  disabled={menagerieUploading}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setMenagerieUploading(true);
+                    setError(null);
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    formData.append("source_label", file.name.replace(/\.[^.]+$/, ""));
+                    try {
+                      const r = await fetch(`/api/universe/${universeId}/menagerie/extract`, {
+                        method: "POST",
+                        body: formData,
+                      });
+                      const data = await r.json();
+                      if (!r.ok) throw new Error(data.error);
+                      setMenagerieExtracted(data.characters.map((c: any) => ({ ...c, accepted: true })));
+                      setMenagerieSourceLabel(data.source_label);
+                    } catch (err: any) {
+                      setError(err.message);
+                    } finally {
+                      setMenagerieUploading(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+              </label>
             </div>
+
+            {/* Extraction review panel */}
+            {menagerieExtracted.length > 0 && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Review Extracted Characters</CardTitle>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        From: {menagerieSourceLabel} · {menagerieExtracted.filter(c => c.accepted).length} selected
+                        · {menagerieExtracted.filter(c => c.is_new && c.accepted).length} new
+                        · {menagerieExtracted.filter(c => !c.is_new && c.accepted).length} updates
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        onClick={() => setMenagerieExtracted(prev => prev.map(c => ({ ...c, accepted: true })))}>
+                        Select All
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        onClick={() => setMenagerieExtracted(prev => prev.map(c => ({ ...c, accepted: false })))}>
+                        Deselect All
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {menagerieExtracted.map((char, i) => (
+                    <div key={i} className={cn(
+                      "flex items-start gap-3 p-3 rounded-md border transition-colors cursor-pointer",
+                      char.accepted ? "border-primary/30 bg-background" : "border-border/40 bg-muted/30 opacity-50"
+                    )} onClick={() => setMenagerieExtracted(prev => prev.map((c, j) => j === i ? { ...c, accepted: !c.accepted } : c))}>
+                      <div className={cn(
+                        "mt-0.5 w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors",
+                        char.accepted ? "border-primary bg-primary" : "border-muted-foreground/40"
+                      )}>
+                        {char.accepted && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{char.name}</span>
+                          <Badge variant="outline" className="text-xs h-4 px-1.5">{char.role}</Badge>
+                          <Badge variant="outline" className={cn("text-xs h-4 px-1.5", {
+                            "border-green-600 text-green-600": char.current_status === "alive",
+                            "border-red-600 text-red-600": char.current_status === "dead",
+                          })}>{char.status}</Badge>
+                          {!char.is_new && <Badge variant="outline" className="text-xs h-4 px-1.5 border-amber-500 text-amber-600">update</Badge>}
+                          {char.is_new && <Badge variant="outline" className="text-xs h-4 px-1.5 border-green-600 text-green-600">new</Badge>}
+                        </div>
+                        {char.notes && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{char.notes}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+                <div className="p-4 border-t border-border/40 flex gap-3">
+                  <Button
+                    className="flex-1"
+                    disabled={menagerieApplying || menagerieExtracted.filter(c => c.accepted).length === 0}
+                    onClick={async () => {
+                      setMenagerieApplying(true);
+                      setError(null);
+                      try {
+                        const r = await fetch(`/api/universe/${universeId}/menagerie/apply-extracted`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            characters: menagerieExtracted,
+                            source_label: menagerieSourceLabel,
+                          }),
+                        });
+                        const data = await r.json();
+                        if (!r.ok) throw new Error(data.error);
+                        setMenagerieExtracted([]);
+                        await load();
+                      } catch (err: any) {
+                        setError(err.message);
+                      } finally {
+                        setMenagerieApplying(false);
+                      }
+                    }}
+                  >
+                    {menagerieApplying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Add {menagerieExtracted.filter(c => c.accepted).length} Characters to Menagerie
+                  </Button>
+                  <Button variant="outline" onClick={() => setMenagerieExtracted([])}>Cancel</Button>
+                </div>
+              </Card>
+            )}
 
             {filteredChars.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
