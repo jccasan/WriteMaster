@@ -373,7 +373,7 @@ export default function UniverseView() {
                   : "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
               )}>
                 {menagerieUploading
-                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Extracting...</>
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Extracting characters...</>
                   : <><Upload className="w-3.5 h-3.5" /> Import from story</>
                 }
                 <input
@@ -390,14 +390,28 @@ export default function UniverseView() {
                     formData.append("file", file);
                     formData.append("source_label", file.name.replace(/\.[^.]+$/, ""));
                     try {
+                      // Start the job
                       const r = await fetch(`/api/universe/${universeId}/menagerie/extract`, {
                         method: "POST",
                         body: formData,
                       });
                       const data = await r.json();
                       if (!r.ok) throw new Error(data.error);
-                      setMenagerieExtracted(data.characters.map((c: any) => ({ ...c, accepted: true })));
-                      setMenagerieSourceLabel(data.source_label);
+
+                      const jobId = data.job_id;
+
+                      // Poll until done
+                      const poll = async (): Promise<void> => {
+                        const pr = await fetch(`/api/universe/${universeId}/menagerie/extract/${jobId}`);
+                        const result = await pr.json();
+                        if (result.status === "running") {
+                          return new Promise(resolve => setTimeout(() => resolve(poll()), 3000));
+                        }
+                        if (result.status === "error") throw new Error(result.error);
+                        setMenagerieExtracted(result.characters.map((c: any) => ({ ...c, accepted: true })));
+                        setMenagerieSourceLabel(result.source_label);
+                      };
+                      await poll();
                     } catch (err: any) {
                       setError(err.message);
                     } finally {

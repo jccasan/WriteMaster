@@ -274,40 +274,77 @@ router.get("/:id/menagerie", async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-// Step 1: Upload a story file and extract characters (returns preview for review)
+// In-memory job store for extraction results (simple, no persistence needed)
+const extractionJobs = new Map<string, {
+  status: "running" | "done" | "error";
+  error?: string;
+  source_label?: string;
+  word_count?: number;
+  characters?: any[];
+  new_count?: number;
+  update_count?: number;
+}>();
+
+// Step 1: Upload a story file — responds immediately with job_id, runs extraction in background
 router.post("/:id/menagerie/extract", bibleUpload.single("file"), async (req: any, res) => {
   try {
     const universe = await getUniverse(req.params.id);
     if (!universe) return res.status(404).json({ error: "Universe not found" });
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const { source_label = req.file.originalname } = req.body;
-    const text = await extractText(req.file.path, req.file.mimetype);
-    await fs.unlink(req.file.path).catch(() => {});
+    const { source_label = req.file.originalname.replace(/\.[^.]+$/, "") } = req.body;
+    const universeId = req.params.id;
+    const job_id = randomUUID();
 
-    if (!text.trim()) return res.status(400).json({ error: "File appears to be empty or unreadable" });
+    // Respond immediately
+    extractionJobs.set(job_id, { status: "running" });
+    res.json({ job_id, status: "running" });
 
-    // Extract characters (async — may take 30-60s for a full manuscript)
-    const extracted = await extractCharactersFromText(text, source_label);
+    // Run in background
+    (async () => {
+      try {
+        const text = await extractText(req.file.path, req.file.mimetype);
+        await fs.unlink(req.file.path).catch(() => {});
 
-    // Mark which are new vs already in menagerie
-    const menagerie = await getMenagerie(req.params.id);
-    for (const char of extracted) {
-      const existing = findCharacterInMenagerie(menagerie, char.name);
-      char.is_new = !existing;
-      if (existing) char.existing_id = existing.id;
-    }
+        if (!text.trim()) throw new Error("File appears to be empty or unreadable");
 
-    res.json({
-      source_label,
-      word_count: text.split(/\s+/).filter(Boolean).length,
-      characters: extracted,
-      new_count: extracted.filter(c => c.is_new).length,
-      update_count: extracted.filter(c => !c.is_new).length,
-    });
+        const extracted = await extractCharactersFromText(text, source_label);
+
+        // Mark new vs existing
+        const menagerie = await getMenagerie(universeId);
+        for (const char of extracted) {
+          const existing = findCharacterInMenagerie(menagerie, char.name);
+          char.is_new = !existing;
+          if (existing) char.existing_id = existing.id;
+        }
+
+        extractionJobs.set(job_id, {
+          status: "done",
+          source_label,
+          word_count: text.split(/\s+/).filter(Boolean).length,
+          characters: extracted,
+          new_count: extracted.filter(c => c.is_new).length,
+          update_count: extracted.filter(c => !c.is_new).length,
+        });
+      } catch (err: any) {
+        fs.unlink(req.file?.path ?? "").catch(() => {});
+        extractionJobs.set(job_id, { status: "error", error: err.message });
+      }
+    })();
   } catch (err: any) {
     if (req.file) fs.unlink(req.file.path).catch(() => {});
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Poll extraction job status
+router.get("/:id/menagerie/extract/:jobId", async (req, res) => {
+  const job = extractionJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: "Job not found" });
+  res.json(job);
+  // Clean up completed jobs after they're fetched
+  if (job.status === "done" || job.status === "error") {
+    setTimeout(() => extractionJobs.delete(req.params.jobId), 60000);
   }
 });
 
