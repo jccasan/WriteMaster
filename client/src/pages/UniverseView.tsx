@@ -53,7 +53,7 @@ export default function UniverseView() {
   const [editingSeriesNotes, setEditingSeriesNotes] = useState<string | null>(null);
   const [seriesNotesDraft, setSeriesNotesDraft] = useState("");
 
-  // Menagerie
+  // Menagerie state
   const [charFilter, setCharFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedChar, setExpandedChar] = useState<string | null>(null);
@@ -61,6 +61,14 @@ export default function UniverseView() {
   const [menagerieApplying, setMenagerieApplying] = useState(false);
   const [menagerieExtracted, setMenagerieExtracted] = useState<any[]>([]);
   const [menagerieSourceLabel, setMenagerieSourceLabel] = useState("");
+  const [menagerieElapsed, setMenagerieElapsed] = useState(0);
+
+  // Elapsed timer for extraction
+  useEffect(() => {
+    if (!menagerieUploading) { setMenagerieElapsed(0); return; }
+    const interval = setInterval(() => setMenagerieElapsed(s => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [menagerieUploading]);
 
   // World state
   const [editingWorldState, setEditingWorldState] = useState(false);
@@ -373,7 +381,7 @@ export default function UniverseView() {
                   : "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
               )}>
                 {menagerieUploading
-                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Extracting characters...</>
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Extracting... {menagerieElapsed > 5 ? `(${menagerieElapsed}s)` : ""}</>
                   : <><Upload className="w-3.5 h-3.5" /> Import from story</>
                 }
                 <input
@@ -396,24 +404,34 @@ export default function UniverseView() {
                         body: formData,
                       });
                       const data = await r.json();
-                      if (!r.ok) throw new Error(data.error);
+                      if (!r.ok) throw new Error(data.error ?? "Upload failed");
 
                       const jobId = data.job_id;
+                      const startTime = Date.now();
+                      const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
                       // Poll until done
                       const poll = async (): Promise<void> => {
+                        if (Date.now() - startTime > TIMEOUT_MS) {
+                          throw new Error("Extraction timed out after 3 minutes. Try a smaller file.");
+                        }
                         const pr = await fetch(`/api/universe/${universeId}/menagerie/extract/${jobId}`);
+                        if (!pr.ok) throw new Error("Lost connection to extraction job");
                         const result = await pr.json();
+                        if (result.status === "error") throw new Error(result.error ?? "Extraction failed");
                         if (result.status === "running") {
                           return new Promise(resolve => setTimeout(() => resolve(poll()), 3000));
                         }
-                        if (result.status === "error") throw new Error(result.error);
+                        // done
+                        if (!result.characters || result.characters.length === 0) {
+                          throw new Error("No characters found in this file. Make sure it contains prose with named characters.");
+                        }
                         setMenagerieExtracted(result.characters.map((c: any) => ({ ...c, accepted: true })));
-                        setMenagerieSourceLabel(result.source_label);
+                        setMenagerieSourceLabel(result.source_label ?? file.name);
                       };
                       await poll();
                     } catch (err: any) {
-                      setError(err.message);
+                      setError(err.message ?? "Something went wrong");
                     } finally {
                       setMenagerieUploading(false);
                       e.target.value = "";

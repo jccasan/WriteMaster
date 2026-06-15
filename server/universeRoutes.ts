@@ -303,12 +303,15 @@ router.post("/:id/menagerie/extract", bibleUpload.single("file"), async (req: an
     // Run in background
     (async () => {
       try {
+        console.log(`[MenagerieExtract] Starting extraction for job ${job_id}, file: ${req.file.originalname}`);
         const text = await extractText(req.file.path, req.file.mimetype);
         await fs.unlink(req.file.path).catch(() => {});
 
         if (!text.trim()) throw new Error("File appears to be empty or unreadable");
+        console.log(`[MenagerieExtract] Extracted ${text.split(/\s+/).length} words, starting character extraction`);
 
         const extracted = await extractCharactersFromText(text, source_label);
+        console.log(`[MenagerieExtract] Found ${extracted.length} characters`);
 
         // Mark new vs existing
         const menagerie = await getMenagerie(universeId);
@@ -326,7 +329,9 @@ router.post("/:id/menagerie/extract", bibleUpload.single("file"), async (req: an
           new_count: extracted.filter(c => c.is_new).length,
           update_count: extracted.filter(c => !c.is_new).length,
         });
+        console.log(`[MenagerieExtract] Job ${job_id} complete`);
       } catch (err: any) {
+        console.error(`[MenagerieExtract] Job ${job_id} failed:`, err.message);
         fs.unlink(req.file?.path ?? "").catch(() => {});
         extractionJobs.set(job_id, { status: "error", error: err.message });
       }
