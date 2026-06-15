@@ -2597,5 +2597,53 @@ Important: Base every finding strictly on patterns present in the sample. Do not
     }
   });
 
+  // ── PROSE AI ACTIONS (inline editor: continue, rewrite, shorter, longer) ────
+
+  app.post("/api/ai/prose-action", async (req, res) => {
+    try {
+      const { action, selected_text, context, chapter_title = "" } = req.body;
+      if (!action) return res.status(400).json({ error: "action is required" });
+
+      const prompts: Record<string, string> = {
+        continue: `You are a fiction author. Continue the following passage naturally, matching the voice and tone exactly. Write 100-200 words. Output only the continuation, no preamble.
+
+CHAPTER: ${chapter_title}
+CONTEXT (recent text):
+${context}
+
+Continue from exactly where this ends:`,
+
+        rewrite: `You are a fiction editor. Rewrite the selected passage to improve clarity, flow, and prose quality while preserving the meaning and voice exactly. Output only the rewritten passage, no preamble.
+
+SELECTED TEXT TO REWRITE:
+${selected_text}
+
+SURROUNDING CONTEXT:
+${context}`,
+
+        shorter: `You are a fiction editor. Make the selected passage shorter — cut unnecessary words, tighten sentences, remove anything that doesn't earn its place. Preserve all essential meaning. Output only the shortened version, no preamble.
+
+SELECTED TEXT:
+${selected_text}`,
+
+        longer: `You are a fiction author. Expand the selected passage with more detail, sensory texture, or emotional depth. Match the voice and style of the surrounding text. Output only the expanded version, no preamble.
+
+SELECTED TEXT TO EXPAND:
+${selected_text}
+
+SURROUNDING CONTEXT:
+${context}`,
+      };
+
+      const prompt = prompts[action];
+      if (!prompt) return res.status(400).json({ error: `Unknown action: ${action}` });
+
+      const result = await callLLM(prompt, "powerful", undefined, 1024);
+      res.json({ result });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return httpServer;
 }

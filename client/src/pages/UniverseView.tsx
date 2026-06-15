@@ -26,6 +26,7 @@ interface Series {
 interface Character {
   id: string; name: string; aliases: string[]; current_status: string;
   accumulated_notes: string; appearances: any[]; first_appeared_book_title: string;
+  image_base64?: string;
 }
 interface Book { id: string; title: string; }
 

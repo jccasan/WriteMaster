@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import RichTextEditor from "@/components/RichTextEditor";
 import ProseText from "@/components/ProseText";
+import ProseEditor from "@/components/ProseEditor";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import {
   Loader2,
@@ -888,92 +889,53 @@ export default function BookWriter() {
                           </Button>
                         ) : (
                           <>
-                            {editingContent ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => {
-                                    saveChapterUpdate(currentChapter.chapter_number, { content: contentDraftRef.current });
-                                    setEditingContent(false);
-                                  }}
-                                  className="h-7 gap-1 text-xs"
-                                  data-testid="button-save-content"
-                                >
-                                  <Check className="w-3 h-3" /> Save
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingContent(false)}
-                                  className="h-7 gap-1 text-xs"
-                                >
-                                  <X className="w-3 h-3" /> Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    contentDraftRef.current = currentChapter.content || "";
-                                    setEditingContent(true);
-                                  }}
-                                  className="h-7 gap-1 text-xs"
-                                  data-testid="button-edit-content"
-                                >
-                                  <Pencil className="w-3 h-3" /> Edit
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={handleCopyChapter}
-                                  className="h-7 gap-1 text-xs"
-                                  data-testid="button-copy-chapter"
-                                >
-                                  {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
-                                  {copied ? "Copied" : "Copy"}
-                                </Button>
-                                {currentChapter.content && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      sessionStorage.setItem("analyzer_import_text", currentChapter.content || "");
-                                      navigate("/chapter-analyzer");
-                                    }}
-                                    className="h-7 gap-1 text-xs"
-                                    data-testid="button-analyze-chapter"
-                                  >
-                                    <Scissors className="w-3 h-3" /> Analyze
-                                  </Button>
-                                )}
-                                {currentChapter.outline && currentChapter.status !== "committed" && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => navigate(`/book/${bookId}/write-advanced`)}
-                                    className="h-7 gap-1 text-xs text-primary hover:text-primary"
-                                    data-testid="button-advanced-write"
-                                    title="Write this chapter using the 14-step advanced pipeline"
-                                  >
-                                    <Sparkles className="w-3 h-3" /> Advanced Write
-                                  </Button>
-                                )}
-                                {currentChapter.content && currentChapter.status !== "committed" && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => navigate(`/book/${bookId}/line-edit/${currentChapter.chapter_number}`)}
-                                    className="h-7 gap-1 text-xs"
-                                    data-testid="button-line-edit"
-                                    title="Run the 7-step line editing pipeline to remove AI-isms"
-                                  >
-                                    <GitCommit className="w-3 h-3" /> Line Edit
-                                  </Button>
-                                )}
-                              </>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCopyChapter}
+                              className="h-7 gap-1 text-xs"
+                              data-testid="button-copy-chapter"
+                            >
+                              {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                              {copied ? "Copied" : "Copy"}
+                            </Button>
+                            {currentChapter.content && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  sessionStorage.setItem("analyzer_import_text", currentChapter.content || "");
+                                  navigate("/chapter-analyzer");
+                                }}
+                                className="h-7 gap-1 text-xs"
+                                data-testid="button-analyze-chapter"
+                              >
+                                <Scissors className="w-3 h-3" /> Analyze
+                              </Button>
+                            )}
+                            {currentChapter.outline && currentChapter.status !== "committed" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => navigate(`/book/${bookId}/write-advanced`)}
+                                className="h-7 gap-1 text-xs text-primary hover:text-primary"
+                                data-testid="button-advanced-write"
+                                title="Write this chapter using the 14-step advanced pipeline"
+                              >
+                                <Sparkles className="w-3 h-3" /> Advanced Write
+                              </Button>
+                            )}
+                            {currentChapter.content && currentChapter.status !== "committed" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => navigate(`/book/${bookId}/line-edit/${currentChapter.chapter_number}`)}
+                                className="h-7 gap-1 text-xs"
+                                data-testid="button-line-edit"
+                                title="Run the 7-step line editing pipeline to remove AI-isms"
+                              >
+                                <GitCommit className="w-3 h-3" /> Line Edit
+                              </Button>
                             )}
                           </>
                         )}
@@ -987,16 +949,25 @@ export default function BookWriter() {
                       </div>
                     )}
 
-                    <RichTextEditor
-                      content={currentChapter.content}
-                      readOnly={!editingContent || isCommitted}
-                      onChange={(_html, plain) => {
+                    <ProseEditor
+                      content={currentChapter.content || ""}
+                      readOnly={isCommitted}
+                      placeholder="Start writing this chapter..."
+                      onSave={async (plain) => {
                         contentDraftRef.current = plain;
+                        await saveChapterUpdate(currentChapter.chapter_number, { content: plain });
                       }}
-                      maxHeight="600px"
-                      minHeight="300px"
-                      placeholder="Chapter content..."
-                      data-testid="editor-chapter-content"
+                      onAiAction={async (action, selectedText, context) => {
+                        const r = await fetch("/api/ai/prose-action", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action, selected_text: selectedText, context, chapter_title: currentChapter.title }),
+                        });
+                        const d = await r.json();
+                        if (!r.ok) throw new Error(d.error ?? "AI action failed");
+                        return d.result;
+                      }}
+                      className="border border-border/60 rounded-lg overflow-hidden min-h-[500px]"
                     />
                   </div>
                 )}
@@ -1229,7 +1200,7 @@ export default function BookWriter() {
                                   Ch. {c.chapter_number}: {c.title}
                                 </summary>
                                 <div className="mt-1 pl-3 border-l-2 border-border/30 text-foreground/50 max-h-40 overflow-y-auto">
-                                  <ProseText text={c.summary} paragraphClassName="mb-1" />
+                                  <ProseText text={c.summary ?? ""} paragraphClassName="mb-1" />
                                 </div>
                               </details>
                             ))}
