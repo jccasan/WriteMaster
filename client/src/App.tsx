@@ -39,11 +39,13 @@ import LineEditPage from "@/pages/LineEditPage";
 import UniverseDashboard from "@/pages/UniverseDashboard";
 import UniverseView from "@/pages/UniverseView";
 import PushToUniverse from "@/pages/PushToUniverse";
+import MyWork from "@/pages/MyWork";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/my-work" component={MyWork} />
       <Route path="/pipeline" component={PipelineList} />
       <Route path="/pipeline/new" component={PipelineNew} />
       <Route path="/pipeline/:id/result" component={PipelineResult} />
