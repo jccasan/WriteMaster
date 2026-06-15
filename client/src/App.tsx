@@ -40,6 +40,7 @@ import UniverseDashboard from "@/pages/UniverseDashboard";
 import UniverseView from "@/pages/UniverseView";
 import PushToUniverse from "@/pages/PushToUniverse";
 import MyWork from "@/pages/MyWork";
+import WriteChapter from "@/pages/WriteChapter";
 
 function Router() {
   return (
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/chapter-analyzer/:id" component={ChapterAnalyzer} />
       <Route path="/books" component={Books} />
       <Route path="/book/:id/studio" component={BookStudio} />
+      <Route path="/book/:id/write/:chapterNum" component={WriteChapter} />
       <Route path="/book/:id/build" component={BookBuild} />
       <Route path="/book/:id/write-advanced" component={BookWriteAdvanced} />
       <Route path="/book/:id/line-edit/:chapterNum" component={LineEditPage} />

@@ -616,7 +616,7 @@ export default function BookWriter() {
                   key={ch.chapter_number}
                   onClick={() => setActiveChapter(ch.chapter_number)}
                   className={cn(
-                    "w-full text-left px-2 py-1.5 rounded text-sm transition-colors",
+                    "w-full text-left px-2 py-1.5 rounded text-sm transition-colors group",
                     activeChapter === ch.chapter_number
                       ? "bg-primary/10 text-primary font-medium"
                       : "text-foreground/70 hover:bg-muted hover:text-foreground"
@@ -638,6 +638,13 @@ export default function BookWriter() {
                     {ch.status === "outlined" && (
                       <div className="w-2 h-2 rounded-full bg-muted-foreground/30 shrink-0" />
                     )}
+                    <span
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-primary shrink-0 px-1 rounded hover:bg-primary/10"
+                      onClick={e => { e.stopPropagation(); navigate(`/book/${bookId}/write/${ch.chapter_number}`); }}
+                      title="Open writing view"
+                    >
+                      Write
+                    </span>
                   </div>
                 </button>
               ))}
@@ -889,6 +896,15 @@ export default function BookWriter() {
                           </Button>
                         ) : (
                           <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => navigate(`/book/${bookId}/write/${currentChapter.chapter_number}`)}
+                              className="h-7 gap-1 text-xs"
+                              title="Open dedicated writing view"
+                            >
+                              <Sparkles className="w-3 h-3" /> Write
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
