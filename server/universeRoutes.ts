@@ -432,7 +432,50 @@ router.post("/:id/menagerie/apply-extracted", async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-// Manual character edit (for fixing AI extraction errors)
+// Character image upload — uses memory storage (no temp file)
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only image files are supported"));
+  },
+});
+
+router.post("/:universeId/menagerie/character/:characterId/image", imageUpload.single("image"), async (req: any, res) => {
+  try {
+    const menagerie = await getMenagerie(req.params.universeId);
+    const char = menagerie.characters.find(c => c.id === req.params.characterId);
+    if (!char) return res.status(404).json({ error: "Character not found" });
+    if (!req.file) return res.status(400).json({ error: "No image uploaded" });
+
+    // Convert to base64 data URL
+    const base64 = req.file.buffer.toString("base64");
+    char.image_base64 = `data:${req.file.mimetype};base64,${base64}`;
+    char.last_updated_at = new Date().toISOString();
+
+    await saveMenagerie(menagerie);
+    res.json({ success: true, image_base64: char.image_base64 });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete character image
+router.delete("/:universeId/menagerie/character/:characterId/image", async (req, res) => {
+  try {
+    const menagerie = await getMenagerie(req.params.universeId);
+    const char = menagerie.characters.find(c => c.id === req.params.characterId);
+    if (!char) return res.status(404).json({ error: "Character not found" });
+    delete char.image_base64;
+    await saveMenagerie(menagerie);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Manual character edit
 router.put("/:universeId/menagerie/character/:characterId", async (req, res) => {
   try {
     const menagerie = await getMenagerie(req.params.universeId);

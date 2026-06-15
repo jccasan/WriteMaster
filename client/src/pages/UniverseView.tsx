@@ -543,6 +543,16 @@ export default function UniverseView() {
                         onClick={() => setExpandedChar(expandedChar === char.id ? null : char.id)}
                         className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/20 transition-colors"
                       >
+                        {/* Avatar thumbnail */}
+                        <div className="shrink-0 w-10 h-10 rounded-full overflow-hidden border border-border/60 bg-muted flex items-center justify-center">
+                          {char.image_base64 ? (
+                            <img src={char.image_base64} alt={char.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {char.name.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-sm">{char.name}</span>
@@ -563,10 +573,63 @@ export default function UniverseView() {
                         {expandedChar === char.id ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
                       </button>
                       {expandedChar === char.id && (
-                        <div className="px-4 pb-4 border-t border-border/40 pt-3">
-                          <p className="text-sm text-foreground whitespace-pre-wrap">{char.accumulated_notes}</p>
+                        <div className="px-4 pb-4 border-t border-border/40 pt-3 space-y-4">
+                          {/* Portrait + upload */}
+                          <div className="flex gap-4 items-start">
+                            <div className="shrink-0">
+                              <div className="w-24 h-32 rounded-lg overflow-hidden border border-border/60 bg-muted flex items-center justify-center">
+                                {char.image_base64 ? (
+                                  <img src={char.image_base64} alt={char.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-3xl font-medium text-muted-foreground">
+                                    {char.name.charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-1 mt-2">
+                                <label className="flex items-center justify-center gap-1 px-2 py-1 rounded text-xs border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 cursor-pointer transition-colors">
+                                  <Upload className="w-3 h-3" />
+                                  {char.image_base64 ? "Change" : "Add photo"}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const formData = new FormData();
+                                      formData.append("image", file);
+                                      try {
+                                        const r = await fetch(`/api/universe/${universeId}/menagerie/character/${char.id}/image`, {
+                                          method: "POST",
+                                          body: formData,
+                                        });
+                                        if (r.ok) await load();
+                                        else { const d = await r.json(); setError(d.error); }
+                                      } catch (err: any) { setError(err.message); }
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
+                                {char.image_base64 && (
+                                  <button
+                                    onClick={async () => {
+                                      await fetch(`/api/universe/${universeId}/menagerie/character/${char.id}/image`, { method: "DELETE" });
+                                      await load();
+                                    }}
+                                    className="flex items-center justify-center gap-1 px-2 py-1 rounded text-xs border border-border text-destructive/70 hover:text-destructive hover:border-destructive/50 transition-colors"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground whitespace-pre-wrap">{char.accumulated_notes}</p>
+                            </div>
+                          </div>
                           {char.appearances.length > 0 && (
-                            <div className="mt-3">
+                            <div>
                               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Appearances</p>
                               <div className="space-y-1">
                                 {char.appearances.map((a: any, i: number) => (

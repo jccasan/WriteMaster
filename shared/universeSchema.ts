@@ -33,7 +33,8 @@ export interface MenagerieCharacter {
   appearances: CharacterAppearance[];
   first_appeared_book_id: string;
   first_appeared_book_title: string;
-  accumulated_notes: string;    // updated on each push — description, traits, relationships
+  accumulated_notes: string;
+  image_base64?: string;        // optional character portrait, stored as base64 data URL
   last_updated_by_book_id: string;
   last_updated_at: string;
 }
