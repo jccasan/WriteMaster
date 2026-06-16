@@ -694,18 +694,29 @@ export default function UniverseView() {
         {/* ── SERIES ──────────────────────────────────────────────────────── */}
         {activeTab === "series" && (
           <div className="space-y-6">
-            {/* Create series */}
-            <div className="flex gap-2">
-              <Input
-                placeholder="New series name..."
-                value={newSeriesName}
-                onChange={e => setNewSeriesName(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && createSeries()}
-                className="max-w-[300px]"
-              />
-              <Button onClick={createSeries} disabled={creatingSeries || !newSeriesName.trim()} className="gap-2">
-                {creatingSeries ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create
+            {/* Top actions */}
+            <div className="flex gap-3 flex-wrap">
+              <Button
+                onClick={() => {
+                  // Navigate to new book flow with universe pre-selected
+                  navigate(`/universe/${universeId}/new-book`);
+                }}
+                className="gap-2"
+              >
+                <BookOpen className="w-4 h-4" /> New Book in this Universe
               </Button>
+              <div className="flex gap-2 flex-1">
+                <Input
+                  placeholder="New series name..."
+                  value={newSeriesName}
+                  onChange={e => setNewSeriesName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && createSeries()}
+                  className="max-w-[240px]"
+                />
+                <Button onClick={createSeries} disabled={creatingSeries || !newSeriesName.trim()} variant="outline" className="gap-2">
+                  {creatingSeries ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} New Series
+                </Button>
+              </div>
             </div>
 
             {/* Assign book to universe/series */}

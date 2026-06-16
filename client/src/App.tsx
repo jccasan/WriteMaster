@@ -41,6 +41,7 @@ import UniverseView from "@/pages/UniverseView";
 import PushToUniverse from "@/pages/PushToUniverse";
 import MyWork from "@/pages/MyWork";
 import WriteChapter from "@/pages/WriteChapter";
+import NewBookInUniverse from "@/pages/NewBookInUniverse";
 
 function Router() {
   return (
@@ -64,6 +65,7 @@ function Router() {
       <Route path="/universe" component={UniverseDashboard} />
       <Route path="/universe/:id" component={UniverseView} />
       <Route path="/universe/:universeId/push/:bookId" component={PushToUniverse} />
+      <Route path="/universe/:id/new-book" component={NewBookInUniverse} />
       <Route path="/editor" component={Editor} />
       <Route path="/forge" component={ForgeDashboard} />
       <Route path="/forge/project/:id" component={ForgeProject} />

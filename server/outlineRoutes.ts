@@ -55,6 +55,9 @@ interface GuidedSession {
   max_questions: number;
   synthesized_brain_dump: string;
   project_id: string | null;
+  universe_id: string | null;
+  series_id: string | null;
+  bible_context: string; // pre-seeded world context from universe bible
 }
 
 async function saveSession(session: GuidedSession) {
@@ -76,18 +79,47 @@ const FIRST_QUESTION = "Let's build your story together. I'll ask you up to 50 q
 
 router.post("/guided/start", async (req, res) => {
   try {
-    const { genre = "fiction" } = req.body;
+    const { genre = "fiction", universe_id = null, series_id = null } = req.body;
+
+    // Load bible if universe provided
+    let bibleContext = "";
+    if (universe_id) {
+      const { getEffectiveBible } = await import("./universeStorage");
+      bibleContext = await getEffectiveBible(universe_id, series_id);
+    }
+
+    // Generate an appropriate first question
+    let firstQuestion = FIRST_QUESTION;
+    if (bibleContext) {
+      firstQuestion = await callLLM(
+        `You are a story development interviewer helping an author create a new book in an established universe.
+
+UNIVERSE BIBLE (already known — do NOT ask about this):
+${bibleContext.substring(0, 3000)}
+
+Your job: Ask the author about the SPECIFIC STORY for this book, not the world (that's already established).
+Focus on: the protagonist of THIS book, the central conflict, the stakes, the plot.
+
+Write a warm opening message (2-3 sentences) acknowledging the established world, then ask the first specific story question.
+Keep it conversational. Output only the message text.`,
+        "cheap"
+      );
+    }
+
     const session: GuidedSession = {
       session_id: randomUUID(),
       created_at: new Date().toISOString(),
       genre,
       phase: "questioning",
-      messages: [{ role: "ai", content: FIRST_QUESTION, question_number: 1 }],
+      messages: [{ role: "ai", content: firstQuestion, question_number: 1 }],
       contradictions: [],
       question_count: 1,
       max_questions: 50,
       synthesized_brain_dump: "",
       project_id: null,
+      universe_id,
+      series_id,
+      bible_context: bibleContext,
     };
     await saveSession(session);
     res.json(session);
@@ -134,7 +166,11 @@ Your job is to ask adaptive questions that draw out the story's potential.
 
 GENRE: ${session.genre}
 QUESTIONS ASKED SO FAR: ${session.question_count} of ${session.max_questions}
-
+${session.bible_context ? `
+UNIVERSE BIBLE (world already established — skip world-building questions entirely):
+${session.bible_context.substring(0, 2000)}
+Focus only on: protagonist, plot, character arcs, conflict, stakes specific to THIS book.
+` : ""}
 CONVERSATION SO FAR:
 ${history}
 
@@ -143,7 +179,7 @@ Ask the single most valuable next question based on what the author has shared.
 Rules:
 - Ask ONE question only
 - Make it specific to what they've said — don't ask generic questions
-- Prioritize filling the most important gaps: protagonist's want/need, central conflict, stakes, world rules, ending
+- ${session.bible_context ? "Do NOT ask about world-building, magic systems, geography, or lore — that's already established in the bible above" : "Prioritize filling the most important gaps: protagonist's want/need, central conflict, stakes, world rules, ending"}
 - If they've given rich answers, go deeper. If sparse, broaden to find what excites them.
 - Keep it conversational — you're a curious collaborator, not a form
 - Do NOT repeat questions already asked
@@ -265,11 +301,15 @@ router.post("/guided/:id/synthesize", async (req, res) => {
 Synthesize their answers into a rich, detailed brain dump for a story pipeline.
 
 GENRE: ${session.genre}
-
+${session.bible_context ? `
+UNIVERSE CONTEXT (established world — include relevant details in the brain dump):
+${session.bible_context.substring(0, 2000)}
+` : ""}
 AUTHOR'S ANSWERS (in order):
 ${history}
 
 Write a comprehensive brain dump that captures everything the author shared.
+${session.bible_context ? "Weave in relevant universe context where it applies to this specific story." : ""}
 Write it as if the author wrote it themselves — first person or third, whatever fits.
 Include: characters, central conflict, world, themes, stakes, plot fragments, tone, ending hints.
 Do NOT invent anything not mentioned. Do NOT fill in gaps with generic content.
@@ -286,7 +326,12 @@ Aim for 400-800 words.`,
     session.phase = "complete";
     await saveSession(session);
 
-    res.json({ project_id: project.project_id, brain_dump: brainDump });
+    res.json({
+      project_id: project.project_id,
+      brain_dump: brainDump,
+      universe_id: session.universe_id,
+      series_id: session.series_id,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
