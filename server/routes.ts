@@ -2912,5 +2912,29 @@ If a category has nothing, return an empty array.`,
     }
   });
 
+  // Reorder chapters
+  app.put("/api/books/:id/chapters/reorder", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const { order } = req.body; // array of chapter_numbers in new order
+      if (!Array.isArray(order)) return res.status(400).json({ error: "order must be an array" });
+
+      // Rebuild chapters in new order, renumbering sequentially
+      const reordered = order.map((num: number, idx: number) => {
+        const chapter = book.chapters.find(c => c.chapter_number === num);
+        if (!chapter) throw new Error(`Chapter ${num} not found`);
+        return { ...chapter, chapter_number: idx + 1 };
+      });
+
+      book.chapters = reordered;
+      await storage.saveBook(book);
+      res.json(book);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return httpServer;
 }

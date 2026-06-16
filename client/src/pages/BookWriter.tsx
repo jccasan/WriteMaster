@@ -13,7 +13,7 @@ import {
   Loader2, ArrowLeft, BookOpen, Pencil, Check, X,
   ChevronLeft, ChevronRight, Download, Copy, FileText,
   Sparkles, RefreshCw, Lock, Unlock, GitCommit, Scissors,
-  BarChart3, Plus,
+  BarChart3, Plus, GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
@@ -427,6 +427,64 @@ export default function BookWriter() {
     }
   };
 
+  const [draggedChapter, setDraggedChapter] = useState<number | null>(null);
+  const [dragOverChapter, setDragOverChapter] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, chapterNum: number) => {
+    setDraggedChapter(chapterNum);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, chapterNum: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (chapterNum !== draggedChapter) setDragOverChapter(chapterNum);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetChapterNum: number) => {
+    e.preventDefault();
+    if (!book || draggedChapter === null || draggedChapter === targetChapterNum) {
+      setDraggedChapter(null);
+      setDragOverChapter(null);
+      return;
+    }
+
+    // Build new order
+    const currentOrder = book.chapters.map(c => c.chapter_number);
+    const fromIdx = currentOrder.indexOf(draggedChapter);
+    const toIdx = currentOrder.indexOf(targetChapterNum);
+    const newOrder = [...currentOrder];
+    newOrder.splice(fromIdx, 1);
+    newOrder.splice(toIdx, 0, draggedChapter);
+
+    // Optimistic update
+    const reordered = newOrder.map((num, idx) => {
+      const ch = book.chapters.find(c => c.chapter_number === num)!;
+      return { ...ch, chapter_number: idx + 1 };
+    });
+    setBook({ ...book, chapters: reordered });
+    if (activeChapter === draggedChapter) setActiveChapter(toIdx + 1);
+
+    setDraggedChapter(null);
+    setDragOverChapter(null);
+
+    try {
+      const r = await fetch(`/api/books/${bookId}/chapters/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: newOrder }),
+      });
+      if (r.ok) setBook(await r.json());
+    } catch {
+      fetchBook(); // revert on error
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedChapter(null);
+    setDragOverChapter(null);
+  };
+
   const canGenerateNext = book && (
     book.chapters.length === 0 ||
     book.chapters[book.chapters.length - 1].status === "committed"
@@ -540,14 +598,23 @@ export default function BookWriter() {
               {book.chapters.map(ch => (
                 <button
                   key={ch.chapter_number}
+                  draggable
+                  onDragStart={e => handleDragStart(e, ch.chapter_number)}
+                  onDragOver={e => handleDragOver(e, ch.chapter_number)}
+                  onDrop={e => handleDrop(e, ch.chapter_number)}
+                  onDragEnd={handleDragEnd}
                   onClick={() => setActiveChapter(ch.chapter_number)}
                   className={cn(
-                    "w-full text-left px-2 py-2 rounded text-xs transition-colors group flex items-center gap-1.5",
+                    "w-full text-left px-2 py-2 rounded text-xs transition-colors group flex items-center gap-1.5 cursor-grab active:cursor-grabbing",
                     activeChapter === ch.chapter_number
                       ? "bg-primary/10 text-primary font-medium"
-                      : "text-foreground/70 hover:bg-muted hover:text-foreground"
+                      : "text-foreground/70 hover:bg-muted hover:text-foreground",
+                    draggedChapter === ch.chapter_number && "opacity-40",
+                    dragOverChapter === ch.chapter_number && draggedChapter !== ch.chapter_number
+                      && "border-t-2 border-primary"
                   )}
                 >
+                  <GripVertical className="w-3 h-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 shrink-0" />
                   <span className="font-mono text-muted-foreground/60 w-5 text-right shrink-0">{ch.chapter_number}</span>
                   <span className="truncate flex-1">{ch.title}</span>
                   <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", {
