@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import ProseEditor from "@/components/ProseEditor";
+import PantserSidebar from "@/components/PantserSidebar";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, List, Sparkles,
-  Scissors, BookOpen, Loader2, X, GitCommit
+  Scissors, BookOpen, Loader2, X, GitCommit, Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +34,9 @@ export default function WriteChapter() {
   const [book, setBook] = useState<BookProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"outline" | "chapters">("outline");
+  const [sidebarTab, setSidebarTab] = useState<"outline" | "chapters" | "ai">("outline");
   const [wordCountGoal, setWordCountGoal] = useState<number | undefined>(undefined);
+  const [worldDiscovery, setWorldDiscovery] = useState<{ characters: number; facts: number } | null>(null);
 
   const load = useCallback(async () => {
     if (!bookId) return;
@@ -43,7 +45,16 @@ export default function WriteChapter() {
     setLoading(false);
   }, [bookId]);
 
-  useEffect(() => { load(); }, [load]);
+  const loadWorldDiscovery = useCallback(async () => {
+    if (!bookId) return;
+    const r = await fetch(`/api/books/${bookId}/discovered-world`);
+    if (r.ok) {
+      const d = await r.json();
+      setWorldDiscovery({ characters: d.characters?.length ?? 0, facts: d.world_facts?.length ?? 0 });
+    }
+  }, [bookId]);
+
+  useEffect(() => { load(); loadWorldDiscovery(); }, [load, loadWorldDiscovery]);
 
   const chapter = book?.chapters.find(c => c.chapter_number === chapterNum);
   const prevChapter = book?.chapters.find(c => c.chapter_number === chapterNum - 1);
@@ -159,16 +170,28 @@ export default function WriteChapter() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-1">
-          {chapter.outline && !isCommitted && (
+          <Button
+            size="sm"
+            variant={sidebarOpen && sidebarTab === "ai" ? "secondary" : "ghost"}
+            onClick={() => { setSidebarTab("ai"); setSidebarOpen(true); }}
+            className="h-7 gap-1 text-xs text-primary hover:text-primary"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">AI Write</span>
+          </Button>
+          {worldDiscovery && (worldDiscovery.characters + worldDiscovery.facts) > 0 && (
             <Button
               size="sm"
-              variant="ghost"
-              onClick={() => navigate(`/book/${bookId}/write-advanced`)}
-              className="h-7 gap-1 text-xs text-primary hover:text-primary"
-              title="Advanced AI pipeline write"
+              variant={sidebarOpen && sidebarTab === "ai" ? "secondary" : "ghost"}
+              onClick={() => { setSidebarTab("ai"); setSidebarOpen(true); }}
+              className="h-7 gap-1 text-xs relative"
+              title={`${worldDiscovery.characters} characters · ${worldDiscovery.facts} world facts discovered`}
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">AI Write</span>
+              <Globe className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-muted-foreground">
+                {worldDiscovery.characters > 0 && `${worldDiscovery.characters} chars`}
+              </span>
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
             </Button>
           )}
           {chapter.content && !isCommitted && (
@@ -248,6 +271,15 @@ export default function WriteChapter() {
                 >
                   <List className="w-3 h-3 inline mr-1" />Chapters
                 </button>
+                <button
+                  onClick={() => setSidebarTab("ai")}
+                  className={cn("px-2.5 py-1 rounded text-xs font-medium transition-colors relative", sidebarTab === "ai" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
+                >
+                  <Sparkles className="w-3 h-3 inline mr-1" />AI
+                  {worldDiscovery && (worldDiscovery.characters + worldDiscovery.facts) > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full" />
+                  )}
+                </button>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="w-3.5 h-3.5" />
@@ -255,58 +287,86 @@ export default function WriteChapter() {
             </div>
 
             {/* Sidebar content */}
-            <div className="flex-1 overflow-y-auto p-4 text-sm">
-              {sidebarTab === "outline" && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                    Chapter {chapter.chapter_number} Outline
-                  </p>
-                  {chapter.outline ? (
-                    <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap text-xs">
-                      {chapter.outline}
-                    </p>
-                  ) : (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <p className="text-xs">No outline yet.</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 text-xs h-7"
-                        onClick={() => navigate(`/book/${bookId}`)}
-                      >
-                        Add outline in Book Writer
-                      </Button>
-                    </div>
-                  )}
-                </div>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {sidebarTab === "ai" && (
+                <PantserSidebar
+                  bookId={bookId!}
+                  chapterNum={chapterNum}
+                  chapterTitle={chapter.title}
+                  totalChapters={book.chapters.length}
+                  onChapterWritten={(content) => {
+                    setBook(prev => {
+                      if (!prev) return prev;
+                      return {
+                        ...prev,
+                        chapters: prev.chapters.map(c =>
+                          c.chapter_number === chapterNum
+                            ? { ...c, content, status: "written" as const }
+                            : c
+                        ),
+                      };
+                    });
+                    loadWorldDiscovery();
+                  }}
+                  onNavigateToChapter={(num) => navigate(`/book/${bookId}/write/${num}`)}
+                />
               )}
 
-              {sidebarTab === "chapters" && (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                    All Chapters
-                  </p>
-                  {book.chapters.map(c => (
-                    <button
-                      key={c.chapter_number}
-                      onClick={() => navigate(`/book/${bookId}/write/${c.chapter_number}`)}
-                      className={cn(
-                        "w-full text-left px-2 py-1.5 rounded text-xs transition-colors flex items-center gap-2",
-                        c.chapter_number === chapterNum
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              {sidebarTab !== "ai" && (
+                <div className="flex-1 overflow-y-auto p-4 text-sm">
+                  {sidebarTab === "outline" && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                        Chapter {chapter.chapter_number} Outline
+                      </p>
+                      {chapter.outline ? (
+                        <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap text-xs">
+                          {chapter.outline}
+                        </p>
+                      ) : (
+                        <div className="text-center py-6 text-muted-foreground">
+                          <p className="text-xs">No outline yet.</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 text-xs h-7"
+                            onClick={() => navigate(`/book/${bookId}`)}
+                          >
+                            Add outline in Book Writer
+                          </Button>
+                        </div>
                       )}
-                    >
-                      <span className="shrink-0 w-6 text-right opacity-50">{c.chapter_number}.</span>
-                      <span className="truncate flex-1">{c.title}</span>
-                      <span className={cn("shrink-0 w-1.5 h-1.5 rounded-full", {
-                        "bg-green-500": c.status === "committed",
-                        "bg-blue-500": c.status === "written",
-                        "bg-amber-400": c.status === "writing",
-                        "bg-muted-foreground/30": c.status === "outlined",
-                      })} />
-                    </button>
-                  ))}
+                    </div>
+                  )}
+
+                  {sidebarTab === "chapters" && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                        All Chapters
+                      </p>
+                      {book.chapters.map(c => (
+                        <button
+                          key={c.chapter_number}
+                          onClick={() => navigate(`/book/${bookId}/write/${c.chapter_number}`)}
+                          className={cn(
+                            "w-full text-left px-2 py-1.5 rounded text-xs transition-colors flex items-center gap-2",
+                            c.chapter_number === chapterNum
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                          )}
+                        >
+                          <span className="shrink-0 w-6 text-right opacity-50">{c.chapter_number}.</span>
+                          <span className="truncate flex-1">{c.title}</span>
+                          <span className={cn("shrink-0 w-1.5 h-1.5 rounded-full", {
+                            "bg-green-500": c.status === "committed",
+                            "bg-blue-500": c.status === "written",
+                            "bg-amber-400": c.status === "writing",
+                            "bg-muted-foreground/30": c.status === "outlined",
+                          })} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -101,6 +101,21 @@ export interface BookProject {
   chapters: BookChapter[];
   documents?: BookDocument[];
   google_doc_id?: string | null;
+  mode?: "pantser" | "planner";          // writing mode — pantser or planner
+  discovered_world?: DiscoveredWorld;    // auto-extracted world from pantser writing
+}
+
+export interface DiscoveredWorld {
+  characters: Array<{
+    name: string;
+    notes: string;
+    first_chapter: number;
+    last_seen_chapter: number;
+  }>;
+  world_facts: string[];
+  open_threads: string[];
+  last_extracted_chapter: number;
+  updated_at: string;
 }
 
 export interface IStorage {

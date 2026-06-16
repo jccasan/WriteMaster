@@ -56,14 +56,14 @@ export default function Home() {
     setCreating(true);
     setError(null);
     try {
-      const r = await fetch("/api/books", {
+      const r = await fetch("/api/books/pantser", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newBookTitle.trim() }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Failed to create book");
-      navigate(`/book/${data.id}`);
+      navigate(`/book/${data.id}/write/1`);
     } catch (err: any) {
       setError(err.message);
       setCreating(false);

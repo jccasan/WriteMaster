@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { readFile, writeFile, readdir, mkdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import { randomUUID } from "crypto";
 import multer from "multer";
 import { storage } from "./storage";
 import type { BookChapter, BookDocument, NarrativeSliders } from "./storage";
@@ -2640,6 +2641,272 @@ ${context}`,
 
       const result = await callLLM(prompt, "powerful", undefined, 1024);
       res.json({ result });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── PANTSER: Fast chapter write ──────────────────────────────────────────────
+
+  app.post("/api/books/:id/chapters/:chapterNum/write-fast", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+      const chapterNum = parseInt(req.params.chapterNum);
+      const chapter = book.chapters.find(c => c.chapter_number === chapterNum);
+      if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+
+      const { premise = "", tense = "past" } = req.body;
+
+      // Build context from previous written chapters (last 3000 words)
+      const prevChapters = book.chapters
+        .filter(c => c.chapter_number < chapterNum && c.content)
+        .sort((a, b) => a.chapter_number - b.chapter_number);
+      const prevText = prevChapters.map(c => c.content ?? "").join("\n\n");
+      const words = prevText.split(/\s+/);
+      const recentContext = words.slice(-3000).join(" ");
+
+      const prompt = `You are a skilled fiction author. Write Chapter ${chapterNum} of "${book.title}".
+
+${recentContext ? `PREVIOUS CHAPTERS (context):\n${recentContext}\n` : ""}
+${chapter.outline ? `CHAPTER OUTLINE:\n${chapter.outline}\n` : ""}
+${premise ? `AUTHOR'S DIRECTION FOR THIS CHAPTER:\n${premise}\n` : ""}
+${book.dossier ? `STORY DOSSIER:\n${book.dossier.substring(0, 2000)}\n` : ""}
+
+Write Chapter ${chapterNum} as polished, publication-ready prose in ${tense} tense.
+- Match the voice and style established in previous chapters
+- Begin with the chapter title as a heading
+- Target 2000-3000 words
+- End on a compelling moment that pulls the reader forward
+- Do not include any meta-commentary or author notes
+
+Output ONLY the chapter prose.`;
+
+      const result = await callLLM(prompt, "powerful", undefined, 8192);
+
+      // Save to chapter
+      chapter.content = result;
+      chapter.status = "written";
+      await storage.saveBook(book);
+
+      // Trigger background world extraction (non-blocking)
+      extractWorldInBackground(book.id, chapterNum, result).catch(console.error);
+
+      res.json({ content: result, chapter_number: chapterNum });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── PANTSER: Autopilot (sequential fast writes) ───────────────────────────
+
+  // In-memory autopilot jobs
+  const autopilotJobs = new Map<string, {
+    status: "running" | "paused" | "done" | "error";
+    book_id: string;
+    current_chapter: number;
+    total_chapters: number;
+    error?: string;
+  }>();
+
+  app.post("/api/books/:id/autopilot/start", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const { premise = "", tense = "past", chapter_count = 30 } = req.body;
+      const jobId = randomUUID();
+
+      // Ensure chapters exist up to chapter_count
+      const existingCount = book.chapters.length;
+      if (existingCount < chapter_count) {
+        for (let i = existingCount + 1; i <= chapter_count; i++) {
+          book.chapters.push({
+            chapter_number: i,
+            title: `Chapter ${i}`,
+            outline: "",
+            content: null,
+            summary: null,
+            status: "outlined",
+          });
+        }
+        await storage.saveBook(book);
+      }
+
+      const firstUnwritten = book.chapters.find(c => !c.content)?.chapter_number ?? 1;
+
+      autopilotJobs.set(jobId, {
+        status: "running",
+        book_id: book.id,
+        current_chapter: firstUnwritten,
+        total_chapters: chapter_count,
+      });
+
+      res.json({ job_id: jobId, starting_chapter: firstUnwritten });
+
+      // Run autopilot in background
+      (async () => {
+        for (let cn = firstUnwritten; cn <= chapter_count; cn++) {
+          const job = autopilotJobs.get(jobId);
+          if (!job || job.status === "paused" || job.status === "error") break;
+
+          autopilotJobs.set(jobId, { ...job, current_chapter: cn, status: "running" });
+
+          try {
+            const freshBook = await storage.getBook(book.id);
+            if (!freshBook) break;
+            const chapter = freshBook.chapters.find(c => c.chapter_number === cn);
+            if (!chapter || chapter.content) continue; // skip already written
+
+            const prevText = freshBook.chapters
+              .filter(c => c.chapter_number < cn && c.content)
+              .sort((a, b) => a.chapter_number - b.chapter_number)
+              .map(c => c.content ?? "").join("\n\n");
+            const recentContext = prevText.split(/\s+/).slice(-3000).join(" ");
+
+            const result = await callLLM(
+              `You are a skilled fiction author writing "${freshBook.title}" chapter by chapter.
+
+${recentContext ? `RECENT STORY (last 3000 words):\n${recentContext}\n` : ""}
+${premise ? `STORY PREMISE:\n${premise}\n` : ""}
+${chapter.outline ? `CHAPTER OUTLINE:\n${chapter.outline}\n` : ""}
+
+Write Chapter ${cn} in ${tense} tense. 2000-3000 words. Match the established voice.
+Begin with the chapter title as a heading. End on a compelling moment.
+Output ONLY the chapter prose.`,
+              "powerful", undefined, 8192
+            );
+
+            chapter.content = result;
+            chapter.status = "written";
+            await storage.saveBook(freshBook);
+            extractWorldInBackground(freshBook.id, cn, result).catch(console.error);
+
+          } catch (err: any) {
+            autopilotJobs.set(jobId, { ...autopilotJobs.get(jobId)!, status: "error", error: err.message });
+            return;
+          }
+        }
+        const job = autopilotJobs.get(jobId);
+        if (job && job.status === "running") {
+          autopilotJobs.set(jobId, { ...job, status: "done" });
+        }
+      })();
+
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/autopilot/:jobId/pause", async (req, res) => {
+    const job = autopilotJobs.get(req.params.jobId);
+    if (!job) return res.status(404).json({ error: "Job not found" });
+    autopilotJobs.set(req.params.jobId, { ...job, status: "paused" });
+    res.json({ success: true });
+  });
+
+  app.get("/api/autopilot/:jobId/status", async (req, res) => {
+    const job = autopilotJobs.get(req.params.jobId);
+    if (!job) return res.status(404).json({ error: "Job not found" });
+    res.json(job);
+  });
+
+  // ── PANTSER: Background world extraction ──────────────────────────────────
+
+  async function extractWorldInBackground(bookId: string, chapterNum: number, chapterText: string): Promise<void> {
+    const book = await storage.getBook(bookId);
+    if (!book) return;
+
+    const raw = await callLLM(
+      `Extract world-building information from this chapter of "${book.title}".
+
+CHAPTER ${chapterNum}:
+${chapterText}
+
+Respond with ONLY a JSON object. No preamble, no markdown fences.
+{
+  "characters": [
+    { "name": "Full name", "notes": "1-2 sentences about this character" }
+  ],
+  "world_facts": ["New fact about the world established in this chapter"],
+  "open_threads": ["Unresolved question or thread introduced in this chapter"]
+}
+
+Only include:
+- characters who are NAMED (not "the man" or "she")
+- world facts that are NEW and specific to this story
+- open threads that are explicitly unresolved at chapter end
+If a category has nothing, return an empty array.`,
+      "cheap"
+    );
+
+    try {
+      const clean = raw.replace(/```json|```/g, "").trim();
+      const extracted = JSON.parse(clean);
+      const world = book.discovered_world ?? {
+        characters: [],
+        world_facts: [],
+        open_threads: [],
+        last_extracted_chapter: 0,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Merge characters (deduplicate by name)
+      for (const char of (extracted.characters ?? [])) {
+        const existing = world.characters.find(c =>
+          c.name.toLowerCase() === char.name.toLowerCase()
+        );
+        if (existing) {
+          existing.notes = existing.notes + " " + char.notes;
+          existing.last_seen_chapter = chapterNum;
+        } else {
+          world.characters.push({ ...char, first_chapter: chapterNum, last_seen_chapter: chapterNum });
+        }
+      }
+
+      // Merge world facts and threads (simple append, deduplicate by similarity later)
+      world.world_facts.push(...(extracted.world_facts ?? []));
+      world.open_threads = extracted.open_threads ?? world.open_threads; // replace with latest
+      world.last_extracted_chapter = chapterNum;
+      world.updated_at = new Date().toISOString();
+
+      book.discovered_world = world;
+      await storage.saveBook(book);
+    } catch {
+      // Silent fail -- world extraction is non-blocking
+    }
+  }
+
+  // ── PANTSER: Book creation with mode ─────────────────────────────────────
+
+  app.post("/api/books/pantser", async (req, res) => {
+    try {
+      const { title = "Untitled Book", premise = "" } = req.body;
+      const book = await storage.createBook(null, premise, "", title);
+      (book as any).mode = "pantser";
+
+      // Create Chapter 1 automatically
+      book.chapters = [{
+        chapter_number: 1,
+        title: "Chapter 1",
+        outline: premise || "",
+        content: null,
+        summary: null,
+        status: "outlined",
+      }];
+      await storage.saveBook(book);
+      res.json(book);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Get discovered world for a book
+  app.get("/api/books/:id/discovered-world", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+      res.json(book.discovered_world ?? { characters: [], world_facts: [], open_threads: [], last_extracted_chapter: 0 });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
