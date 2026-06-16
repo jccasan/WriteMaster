@@ -20,6 +20,7 @@ import {
 import { runPushGeneration, applyPushSession, checkSceneBriefAgainstBible, buildReviewItemsExport, extractCharactersFromText } from "./universePipeline";
 import { storage } from "./storage";
 import { extractText } from "./forge/parsing/manuscript-parser";
+import { callLLM } from "./llm";
 
 const router = Router();
 
@@ -285,7 +286,100 @@ const extractionJobs = new Map<string, {
   update_count?: number;
 }>();
 
-// Step 1: Upload a story file — responds immediately with job_id, runs extraction in background
+// Import a pre-existing character menagerie from a file
+// Parses structured character data rather than extracting from prose
+router.post("/:id/menagerie/import", bibleUpload.single("file"), async (req: any, res) => {
+  try {
+    const universe = await getUniverse(req.params.id);
+    if (!universe) return res.status(404).json({ error: "Universe not found" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const { source_label = req.file.originalname.replace(/\.[^.]+$/, "") } = req.body;
+    const job_id = randomUUID();
+
+    extractionJobs.set(job_id, { status: "running" });
+    res.json({ job_id, status: "running" });
+
+    (async () => {
+      try {
+        const text = await extractText(req.file.path, req.file.mimetype);
+        await fs.unlink(req.file.path).catch(() => {});
+
+        if (!text.trim()) throw new Error("File appears to be empty or unreadable");
+
+        console.log(`[MenagerieImport] Parsing menagerie from ${req.file.originalname} (${text.split(/\s+/).length} words)`);
+
+        // Use LLM to parse the structured menagerie into our character format
+        const raw = await callLLM(
+          `You are a data parser. Extract character records from this character menagerie document.
+
+SOURCE: "${source_label}"
+
+DOCUMENT:
+${text}
+
+Parse every character entry and output a JSON array. Each character object must have:
+{
+  "name": "Full name",
+  "aliases": ["any alternate names, titles, or nicknames"],
+  "role": "protagonist | antagonist | supporting | minor",
+  "status": "alive | dead | missing | retired | unknown",
+  "notes": "All notes about this character combined into 2-5 sentences"
+}
+
+Rules:
+- Include EVERY named character in the document
+- Combine all information about each character into the notes field
+- If status isn't specified, use "unknown"
+- If role isn't specified, infer from context or use "supporting"
+- Output ONLY the JSON array, no preamble, no markdown fences`,
+          "powerful",
+          undefined,
+          8192
+        );
+
+        const clean = raw.replace(/```json|```/g, "").trim();
+        const parsed = JSON.parse(clean);
+
+        const menagerie = await getMenagerie(req.params.id);
+        for (const char of parsed) {
+          const existing = findCharacterInMenagerie(menagerie, char.name);
+          char.is_new = !existing;
+          if (existing) char.existing_id = existing.id;
+          char.chapter_numbers = [];
+        }
+
+        extractionJobs.set(job_id, {
+          status: "done",
+          source_label,
+          word_count: text.split(/\s+/).filter(Boolean).length,
+          characters: parsed,
+          new_count: parsed.filter((c: any) => c.is_new).length,
+          update_count: parsed.filter((c: any) => !c.is_new).length,
+        });
+
+        console.log(`[MenagerieImport] Parsed ${parsed.length} characters`);
+      } catch (err: any) {
+        fs.unlink(req.file?.path ?? "").catch(() => {});
+        console.error(`[MenagerieImport] Failed:`, err.message);
+        extractionJobs.set(job_id, { status: "error", error: err.message });
+      }
+    })();
+  } catch (err: any) {
+    if (req.file) fs.unlink(req.file.path).catch(() => {});
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Poll import job (reuses same extraction job store)
+router.get("/:id/menagerie/import/:jobId", async (req, res) => {
+  const job = extractionJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: "Job not found" });
+  res.json(job);
+  if (job.status === "done" || job.status === "error") {
+    setTimeout(() => extractionJobs.delete(req.params.jobId), 60000);
+  }
+});
 router.post("/:id/menagerie/extract", bibleUpload.single("file"), async (req: any, res) => {
   try {
     const universe = await getUniverse(req.params.id);

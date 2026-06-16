@@ -373,74 +373,111 @@ export default function UniverseView() {
                 </button>
               ))}
               <span className="text-xs text-muted-foreground ml-auto">{filteredChars.length} character{filteredChars.length !== 1 ? "s" : ""}</span>
-
-              {/* Upload button */}
-              <label className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border cursor-pointer transition-colors",
-                menagerieUploading
-                  ? "border-primary/50 text-primary"
-                  : "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
-              )}>
-                {menagerieUploading
-                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Extracting... {menagerieElapsed > 5 ? `(${menagerieElapsed}s)` : ""}</>
-                  : <><Upload className="w-3.5 h-3.5" /> Import from story</>
-                }
-                <input
-                  type="file"
-                  accept=".pdf,.docx,.md,.txt"
-                  className="hidden"
-                  disabled={menagerieUploading}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setMenagerieUploading(true);
-                    setError(null);
-                    const formData = new FormData();
-                    formData.append("file", file);
-                    formData.append("source_label", file.name.replace(/\.[^.]+$/, ""));
-                    try {
-                      // Start the job
-                      const r = await fetch(`/api/universe/${universeId}/menagerie/extract`, {
-                        method: "POST",
-                        body: formData,
-                      });
-                      const data = await r.json();
-                      if (!r.ok) throw new Error(data.error ?? "Upload failed");
-
-                      const jobId = data.job_id;
-                      const startTime = Date.now();
-                      const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
-
-                      // Poll until done
-                      const poll = async (): Promise<void> => {
-                        if (Date.now() - startTime > TIMEOUT_MS) {
-                          throw new Error("Extraction timed out after 3 minutes. Try a smaller file.");
-                        }
-                        const pr = await fetch(`/api/universe/${universeId}/menagerie/extract/${jobId}`);
-                        if (!pr.ok) throw new Error("Lost connection to extraction job");
-                        const result = await pr.json();
-                        if (result.status === "error") throw new Error(result.error ?? "Extraction failed");
-                        if (result.status === "running") {
-                          return new Promise(resolve => setTimeout(() => resolve(poll()), 3000));
-                        }
-                        // done
-                        if (!result.characters || result.characters.length === 0) {
-                          throw new Error("No characters found in this file. Make sure it contains prose with named characters.");
-                        }
-                        setMenagerieExtracted(result.characters.map((c: any) => ({ ...c, accepted: true })));
-                        setMenagerieSourceLabel(result.source_label ?? file.name);
-                      };
-                      await poll();
-                    } catch (err: any) {
-                      setError(err.message ?? "Something went wrong");
-                    } finally {
-                      setMenagerieUploading(false);
-                      e.target.value = "";
-                    }
-                  }}
-                />
-              </label>
             </div>
+
+            {/* Upload buttons */}
+            <div className="flex gap-2 flex-wrap items-center">
+
+                {/* Import existing menagerie */}
+                <label className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border cursor-pointer transition-colors",
+                  menagerieUploading ? "opacity-50 pointer-events-none" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+                )}>
+                  <Upload className="w-3.5 h-3.5" /> Import menagerie
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.md,.txt"
+                    className="hidden"
+                    disabled={menagerieUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setMenagerieUploading(true);
+                      setError(null);
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      formData.append("source_label", file.name.replace(/\.[^.]+$/, ""));
+                      try {
+                        const r = await fetch(`/api/universe/${universeId}/menagerie/import`, { method: "POST", body: formData });
+                        const data = await r.json();
+                        if (!r.ok) throw new Error(data.error ?? "Upload failed");
+                        const jobId = data.job_id;
+                        const startTime = Date.now();
+                        const poll = async (): Promise<void> => {
+                          if (Date.now() - startTime > 3 * 60 * 1000) throw new Error("Import timed out after 3 minutes");
+                          const pr = await fetch(`/api/universe/${universeId}/menagerie/import/${jobId}`);
+                          if (!pr.ok) throw new Error("Lost connection");
+                          const result = await pr.json();
+                          if (result.status === "error") throw new Error(result.error ?? "Import failed");
+                          if (result.status === "running") return new Promise(resolve => setTimeout(() => resolve(poll()), 3000));
+                          if (!result.characters?.length) throw new Error("No characters found in file");
+                          setMenagerieExtracted(result.characters.map((c: any) => ({ ...c, accepted: true })));
+                          setMenagerieSourceLabel(result.source_label ?? file.name);
+                        };
+                        await poll();
+                      } catch (err: any) {
+                        setError(err.message ?? "Import failed");
+                      } finally {
+                        setMenagerieUploading(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+
+                {/* Extract from story */}
+                <label className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border cursor-pointer transition-colors",
+                  menagerieUploading
+                    ? "border-primary/50 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+                )}>
+                  {menagerieUploading
+                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Working... {menagerieElapsed > 5 ? `(${menagerieElapsed}s)` : ""}</>
+                    : <><Users className="w-3.5 h-3.5" /> Extract from story</>
+                  }
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.md,.txt"
+                    className="hidden"
+                    disabled={menagerieUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setMenagerieUploading(true);
+                      setError(null);
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      formData.append("source_label", file.name.replace(/\.[^.]+$/, ""));
+                      try {
+                        const r = await fetch(`/api/universe/${universeId}/menagerie/extract`, { method: "POST", body: formData });
+                        const data = await r.json();
+                        if (!r.ok) throw new Error(data.error ?? "Upload failed");
+                        const jobId = data.job_id;
+                        const startTime = Date.now();
+                        const TIMEOUT_MS = 10 * 60 * 1000; // 10 min for large files
+                        const poll = async (): Promise<void> => {
+                          if (Date.now() - startTime > TIMEOUT_MS) throw new Error("Extraction timed out");
+                          const pr = await fetch(`/api/universe/${universeId}/menagerie/extract/${jobId}`);
+                          if (!pr.ok) throw new Error("Lost connection to extraction job");
+                          const result = await pr.json();
+                          if (result.status === "error") throw new Error(result.error ?? "Extraction failed");
+                          if (result.status === "running") return new Promise(resolve => setTimeout(() => resolve(poll()), 3000));
+                          if (!result.characters?.length) throw new Error("No characters found in this file");
+                          setMenagerieExtracted(result.characters.map((c: any) => ({ ...c, accepted: true })));
+                          setMenagerieSourceLabel(result.source_label ?? file.name);
+                        };
+                        await poll();
+                      } catch (err: any) {
+                        setError(err.message ?? "Something went wrong");
+                      } finally {
+                        setMenagerieUploading(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              </div>
 
             {/* Extraction review panel */}
             {menagerieExtracted.length > 0 && (

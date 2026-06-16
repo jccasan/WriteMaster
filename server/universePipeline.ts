@@ -223,7 +223,7 @@ export async function extractCharactersFromText(
         // Merge notes, keep most severe status
         existing.notes = existing.notes + " " + newChar.notes;
         if (newChar.status === "dead") existing.status = "dead";
-        existing.aliases = [...new Set([...existing.aliases, ...newChar.aliases])];
+        existing.aliases = Array.from(new Set([...existing.aliases, ...newChar.aliases]));
       } else {
         allCharacters.push(newChar);
       }
@@ -670,7 +670,7 @@ export async function applyPushSession(session: PushSession): Promise<PushRecord
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function dedupe(arr: string[]): string[] {
-  return [...new Set(arr.map(s => s.trim()).filter(Boolean))];
+  return Array.from(new Set(arr.map(s => s.trim()).filter(Boolean)));
 }
 
 // ─── BIBLE COMPLIANCE CHECK (for Pipeline 3 pre-draft step) ─────────────────
