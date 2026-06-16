@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Loader2, ArrowRight, FileText, AlertCircle } from "lucide-react";
+import {
+  CheckCircle2, Circle, Loader2, AlertCircle,
+  ChevronDown, ChevronUp, Pause, Play, Sparkles
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PIPELINE_STEPS = [
@@ -32,249 +34,190 @@ interface StepResult {
 export default function StoryPipeline({ projectId, onComplete }: StoryPipelineProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [autoRun, setAutoRun] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
   const [isComplete, setIsComplete] = useState(false);
-  const autoRunRef = useRef(false);
-  const listRef = useRef<HTMLDivElement>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [expandedPreviews, setExpandedPreviews] = useState<Set<number>>(new Set());
+  const [currentStepName, setCurrentStepName] = useState(PIPELINE_STEPS[0].name);
+
+  const pausedRef = useRef(false);
+  const runningRef = useRef(false);
 
   const runNextStep = useCallback(async () => {
-    if (isProcessing) return;
+    if (isProcessing || pausedRef.current) return;
     setIsProcessing(true);
     setError(null);
-
     try {
-      const res = await fetch(`/api/project/${projectId}/run-step`, {
-        method: "POST",
-      });
+      const res = await fetch(`/api/project/${projectId}/run-step`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Step failed");
-
-      setStepResults((prev) => [
-        ...prev,
-        {
-          step: data.step_completed,
-          name: data.step_name,
-          preview: data.output_preview,
-        },
-      ]);
+      setStepResults(prev => [...prev, { step: data.step_completed, name: data.step_name, preview: data.output_preview }]);
       setCurrentStep(data.current_step);
-
+      setCurrentStepName(PIPELINE_STEPS[data.current_step]?.name ?? data.step_name);
       if (data.is_complete || data.current_step > 10) {
         setIsComplete(true);
-        setAutoRun(false);
-        autoRunRef.current = false;
+        runningRef.current = false;
       }
     } catch (err: any) {
       setError(err.message);
-      setAutoRun(false);
-      autoRunRef.current = false;
+      runningRef.current = false;
     } finally {
       setIsProcessing(false);
     }
   }, [projectId, isProcessing]);
 
+  // Auto-chain
   useEffect(() => {
-    autoRunRef.current = autoRun;
-  }, [autoRun]);
-
-  useEffect(() => {
-    if (autoRunRef.current && !isProcessing && !isComplete && !error) {
-      const timeout = setTimeout(() => {
-        if (autoRunRef.current) runNextStep();
-      }, 500);
-      return () => clearTimeout(timeout);
+    if (!isProcessing && !isComplete && !error && runningRef.current && !pausedRef.current) {
+      const t = setTimeout(runNextStep, 400);
+      return () => clearTimeout(t);
     }
-  }, [isProcessing, autoRun, isComplete, error, runNextStep]);
+  }, [isProcessing, isComplete, error, runNextStep]);
 
+  // Auto-start on mount
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
+    if (!runningRef.current) {
+      runningRef.current = true;
+      const t = setTimeout(runNextStep, 500);
+      return () => clearTimeout(t);
     }
-  }, [currentStep, stepResults]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const progressPercentage = Math.round((currentStep / PIPELINE_STEPS.length) * 100);
+  const handlePause = () => { pausedRef.current = true; setPaused(true); };
+  const handleResume = () => {
+    pausedRef.current = false;
+    setPaused(false);
+    runningRef.current = true;
+    runNextStep();
+  };
+
+  const togglePreview = (step: number) => {
+    setExpandedPreviews(prev => { const n = new Set(prev); n.has(step) ? n.delete(step) : n.add(step); return n; });
+  };
+
+  const progress = isComplete ? 100 : Math.round((currentStep / PIPELINE_STEPS.length) * 100);
 
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row gap-8 items-start">
-        <div className="flex-1 w-full space-y-6">
-          <div className="flex justify-between items-end mb-2">
-            <div>
-              <h2 className="text-3xl font-serif font-bold text-foreground">Pipeline Execution</h2>
-              <p className="text-muted-foreground mt-1">Refining your story concept</p>
-            </div>
-            <div className="text-right">
-              <span className="text-4xl font-light text-primary">{progressPercentage}%</span>
-            </div>
-          </div>
+    <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+      <div>
+        <h2 className="text-2xl font-serif font-bold">Story Dossier Pipeline</h2>
+        <p className="text-muted-foreground text-sm mt-1">AI developing your story from brain dump to full dossier</p>
+      </div>
 
-          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
+      {/* Main progress card */}
+      <div className={cn(
+        "rounded-xl border p-6 space-y-4 transition-colors",
+        isComplete ? "border-green-600/30 bg-green-600/5" :
+        error ? "border-destructive/30 bg-destructive/5" :
+        "border-primary/20 bg-primary/5"
+      )}>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">
+              {isComplete ? "Complete" : paused ? "Paused" : "Running..."}
+            </span>
+            <span className={cn("font-mono font-bold text-lg", isComplete ? "text-green-600" : "text-primary")}>
+              {progress}%
+            </span>
+          </div>
+          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary transition-all duration-700 ease-in-out"
-              style={{ width: `${progressPercentage}%` }}
+              className={cn("h-full rounded-full transition-all duration-700 ease-in-out", isComplete ? "bg-green-600" : "bg-primary")}
+              style={{ width: `${progress}%` }}
             />
           </div>
+        </div>
 
-          <Card className="border-border/60 shadow-md">
-            <CardHeader className="border-b border-border/40 bg-muted/20 pb-4">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <span>Active Operation</span>
-                {isProcessing && (
-                  <span className="text-xs font-mono text-primary animate-pulse flex items-center gap-2">
-                    <Loader2 className="w-3 h-3 animate-spin" /> PROCESSING
-                  </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div ref={listRef} className="h-[420px] overflow-y-auto p-4 flex flex-col gap-1 relative">
-                <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none z-10" />
-
-                {PIPELINE_STEPS.map((step, index) => {
-                  const isPast = index < currentStep;
-                  const isCurrent = index === currentStep;
-                  const isFuture = index > currentStep;
-                  const result = stepResults.find((r) => r.step === index);
-
-                  return (
-                    <div
-                      key={step.id}
-                      className={cn(
-                        "flex items-start gap-4 p-3 rounded-md transition-all duration-300",
-                        isCurrent && "bg-primary/5 border border-primary/20",
-                        isPast && "opacity-70",
-                        isFuture && "opacity-40"
-                      )}
-                    >
-                      <div className="mt-0.5 shrink-0">
-                        {isPast ? (
-                          <CheckCircle2 className="w-5 h-5 text-primary" />
-                        ) : isCurrent ? (
-                          isProcessing ? (
-                            <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-primary fill-primary/20" />
-                          )
-                        ) : (
-                          <Circle className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4
-                          className={cn(
-                            "font-medium",
-                            isCurrent ? "text-primary" : "text-foreground"
-                          )}
-                        >
-                          Step {index}: {step.name}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">{step.desc}</p>
-
-                        {result && (
-                          <div className="mt-2 text-xs font-mono bg-muted/50 p-2 rounded text-muted-foreground line-clamp-3 break-words">
-                            {result.preview}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md" data-testid="text-pipeline-error">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-              <Button variant="outline" size="sm" onClick={() => { setError(null); runNextStep(); }} className="ml-auto shrink-0">
-                Retry
-              </Button>
-            </div>
-          )}
-
-          <div className="flex gap-4">
-            {!isComplete ? (
-              !autoRun ? (
-                <>
-                  <Button
-                    onClick={runNextStep}
-                    disabled={isProcessing}
-                    className="flex-1"
-                    variant="outline"
-                    data-testid="button-step-next"
-                  >
-                    {isProcessing ? "Processing..." : "Run Next Step"}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setAutoRun(true);
-                      if (!isProcessing) runNextStep();
-                    }}
-                    disabled={isProcessing}
-                    className="flex-1 gap-2"
-                    data-testid="button-auto-run"
-                  >
-                    Auto-Run Pipeline <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  onClick={() => {
-                    setAutoRun(false);
-                    autoRunRef.current = false;
-                  }}
-                  variant="destructive"
-                  className="w-full"
-                  data-testid="button-pause-run"
-                >
-                  Pause Pipeline
-                </Button>
-              )
-            ) : (
-              <Button
-                onClick={onComplete}
-                className="w-full gap-2 bg-green-700 hover:bg-green-800 text-white"
-                data-testid="button-view-dossier"
-              >
-                <FileText className="w-4 h-4" /> View Final Dossier
-              </Button>
-            )}
+        {!isComplete && !error && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" /> :
+             paused ? <Pause className="w-4 h-4 shrink-0" /> :
+             <Sparkles className="w-4 h-4 text-primary shrink-0" />}
+            <span>{isProcessing ? `Running: ${currentStepName}` : paused ? `Paused at: ${currentStepName}` : `Next: ${currentStepName}`}</span>
+            <span className="text-xs text-muted-foreground/60 ml-auto">{currentStep}/{PIPELINE_STEPS.length} steps</span>
           </div>
-        </div>
+        )}
 
-        <div className="w-full md:w-64 space-y-4 shrink-0">
-          <Card className="bg-muted/30 border-none shadow-none">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                Model Usage
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="font-medium text-foreground">Claude Sonnet (Complex)</span>
-                  <span className="text-primary font-mono">5 tasks</span>
-                </div>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-[45%]" />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="font-medium text-foreground">Claude Haiku (Fast)</span>
-                  <span className="text-accent-foreground font-mono">6 tasks</span>
-                </div>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-accent-foreground/50 w-[55%]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {isComplete && (
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>All {PIPELINE_STEPS.length} steps complete — your Story Dossier is ready</span>
+          </div>
+        )}
+
+        {isComplete ? (
+          <Button onClick={onComplete} className="w-full bg-green-700 hover:bg-green-800 text-white gap-2">
+            <CheckCircle2 className="w-4 h-4" /> View Story Dossier
+          </Button>
+        ) : error ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 text-sm text-destructive">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{error}</span>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => { setError(null); handleResume(); }}>Retry</Button>
+          </div>
+        ) : paused ? (
+          <Button onClick={handleResume} className="w-full gap-2"><Play className="w-4 h-4" /> Resume</Button>
+        ) : (
+          <Button onClick={handlePause} variant="outline" className="w-full gap-2"><Pause className="w-4 h-4" /> Pause</Button>
+        )}
       </div>
+
+      {/* Show/hide details */}
+      <button
+        onClick={() => setShowDetails(!showDetails)}
+        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+      >
+        <div className="flex-1 h-px bg-border/40" />
+        {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        <span>{showDetails ? "Hide" : "Show"} step details</span>
+        {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        <div className="flex-1 h-px bg-border/40" />
+      </button>
+
+      {showDetails && (
+        <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+          {PIPELINE_STEPS.map(step => {
+            const isPast = step.id < currentStep;
+            const isCurrent = step.id === currentStep;
+            const result = stepResults.find(r => r.step === step.id);
+            const isExpanded = expandedPreviews.has(step.id);
+            return (
+              <div key={step.id} className={cn(
+                "flex items-start gap-3 p-3 rounded-lg transition-all",
+                isCurrent && "bg-primary/5 border border-primary/20",
+                isPast && "opacity-60",
+                step.id > currentStep && "opacity-30"
+              )}>
+                <div className="mt-0.5 shrink-0">
+                  {isPast ? <CheckCircle2 className="w-4 h-4 text-primary" /> :
+                   isCurrent && isProcessing ? <Loader2 className="w-4 h-4 text-primary animate-spin" /> :
+                   <Circle className={cn("w-4 h-4", isCurrent ? "text-primary fill-primary/20" : "text-muted-foreground")} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className={cn("text-sm font-medium", isCurrent ? "text-primary" : "text-foreground")}>{step.name}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
+                  {result && (
+                    <div className="mt-1.5">
+                      <button onClick={() => togglePreview(step.id)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        {isExpanded ? "Hide output" : "Show output"}
+                      </button>
+                      {isExpanded && (
+                        <div className="mt-1 text-xs font-mono bg-muted/50 p-2 rounded text-muted-foreground whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+                          {result.preview}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, Loader2, ArrowRight, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  CheckCircle2, Circle, Loader2, AlertCircle,
+  ChevronDown, ChevronUp, Pause, Play, Sparkles
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface PipelineStepDef {
@@ -27,7 +29,7 @@ interface PipelineRunnerProps {
   isAlreadyComplete?: boolean;
   onComplete: () => void;
   completeLabel?: string;
-  children?: React.ReactNode; // sidebar slot
+  children?: React.ReactNode;
 }
 
 export default function PipelineRunner({
@@ -43,13 +45,16 @@ export default function PipelineRunner({
 }: PipelineRunnerProps) {
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [autoRun, setAutoRun] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
   const [isComplete, setIsComplete] = useState(isAlreadyComplete);
+  const [showDetails, setShowDetails] = useState(false);
   const [expandedPreviews, setExpandedPreviews] = useState<Set<number>>(new Set());
-  const autoRunRef = useRef(false);
-  const listRef = useRef<HTMLDivElement>(null);
+  const [currentStepName, setCurrentStepName] = useState(steps[initialStep]?.name ?? "");
+
+  const pausedRef = useRef(false);
+  const runningRef = useRef(false);
 
   const togglePreview = (step: number) => {
     setExpandedPreviews(prev => {
@@ -60,191 +65,243 @@ export default function PipelineRunner({
   };
 
   const runNextStep = useCallback(async () => {
-    if (isProcessing) return;
+    if (isProcessing || pausedRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
       const data = await runStepFn();
-      setStepResults(prev => [...prev, { step: data.step_completed, name: data.step_name, preview: data.output_preview }]);
+      setStepResults(prev => [...prev, {
+        step: data.step_completed,
+        name: data.step_name,
+        preview: data.output_preview,
+      }]);
       setCurrentStep(data.current_step);
+      setCurrentStepName(steps[data.current_step]?.name ?? data.step_name);
       if (data.is_complete) {
         setIsComplete(true);
-        setAutoRun(false);
-        autoRunRef.current = false;
+        runningRef.current = false;
       }
     } catch (err: any) {
       setError(err.message ?? "Step failed");
-      setAutoRun(false);
-      autoRunRef.current = false;
+      runningRef.current = false;
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, runStepFn]);
+  }, [isProcessing, runStepFn, steps]);
 
-  useEffect(() => { autoRunRef.current = autoRun; }, [autoRun]);
-
+  // Auto-chain: run next step as soon as current finishes
   useEffect(() => {
-    if (autoRunRef.current && !isProcessing && !isComplete && !error) {
-      const t = setTimeout(() => { if (autoRunRef.current) runNextStep(); }, 400);
+    if (!isProcessing && !isComplete && !error && runningRef.current && !pausedRef.current) {
+      const t = setTimeout(runNextStep, 300);
       return () => clearTimeout(t);
     }
-  }, [isProcessing, autoRun, isComplete, error, runNextStep]);
+  }, [isProcessing, isComplete, error, runNextStep]);
 
+  // Auto-start on mount
   useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [currentStep, stepResults]);
+    if (!isAlreadyComplete && !runningRef.current) {
+      runningRef.current = true;
+      const t = setTimeout(runNextStep, 500);
+      return () => clearTimeout(t);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const progress = Math.round((currentStep / steps.length) * 100);
+  const handlePause = () => {
+    pausedRef.current = true;
+    setPaused(true);
+  };
+
+  const handleResume = () => {
+    pausedRef.current = false;
+    setPaused(false);
+    runningRef.current = true;
+    runNextStep();
+  };
+
+  const progress = isComplete ? 100 : Math.round((currentStep / steps.length) * 100);
 
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row gap-8 items-start">
-        <div className="flex-1 w-full space-y-6">
-          {/* Header */}
-          <div className="flex justify-between items-end">
-            <div>
-              <h2 className="text-3xl font-serif font-bold text-foreground">{title}</h2>
-              {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
-            </div>
-            <span className="text-4xl font-light text-primary">{isComplete ? "100" : progress}%</span>
-          </div>
+    <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
 
-          {/* Progress bar */}
-          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-serif font-bold">{title}</h2>
+        {subtitle && <p className="text-muted-foreground text-sm mt-1">{subtitle}</p>}
+      </div>
+
+      {/* Main progress card */}
+      <div className={cn(
+        "rounded-xl border p-6 space-y-4 transition-colors",
+        isComplete ? "border-green-600/30 bg-green-600/5" :
+        error ? "border-destructive/30 bg-destructive/5" :
+        "border-primary/20 bg-primary/5"
+      )}>
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">
+              {isComplete ? "Complete" : paused ? "Paused" : "Running..."}
+            </span>
+            <span className={cn(
+              "font-mono font-bold text-lg",
+              isComplete ? "text-green-600" : "text-primary"
+            )}>
+              {progress}%
+            </span>
+          </div>
+          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary transition-all duration-700 ease-in-out"
-              style={{ width: `${isComplete ? 100 : progress}%` }}
+              className={cn(
+                "h-full rounded-full transition-all duration-700 ease-in-out",
+                isComplete ? "bg-green-600" : "bg-primary"
+              )}
+              style={{ width: `${progress}%` }}
             />
-          </div>
-
-          {/* Step list */}
-          <Card className="border-border/60 shadow-md">
-            <CardHeader className="border-b border-border/40 bg-muted/20 pb-4">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <span>Pipeline Steps</span>
-                {isProcessing && (
-                  <span className="text-xs font-mono text-primary animate-pulse flex items-center gap-2">
-                    <Loader2 className="w-3 h-3 animate-spin" /> PROCESSING
-                  </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div ref={listRef} className="h-[460px] overflow-y-auto p-4 flex flex-col gap-1 relative">
-                <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none z-10" />
-                {steps.map((step) => {
-                  const isPast = step.id < currentStep;
-                  const isCurrent = step.id === currentStep;
-                  const isFuture = step.id > currentStep;
-                  const result = stepResults.find(r => r.step === step.id);
-                  const isExpanded = expandedPreviews.has(step.id);
-
-                  return (
-                    <div
-                      key={step.id}
-                      className={cn(
-                        "flex items-start gap-4 p-3 rounded-md transition-all duration-300",
-                        isCurrent && "bg-primary/5 border border-primary/20",
-                        isPast && "opacity-75",
-                        isFuture && "opacity-35"
-                      )}
-                    >
-                      <div className="mt-0.5 shrink-0">
-                        {isPast ? (
-                          <CheckCircle2 className="w-5 h-5 text-primary" />
-                        ) : isCurrent ? (
-                          isProcessing ? (
-                            <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-primary fill-primary/20" />
-                          )
-                        ) : (
-                          <Circle className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className={cn("font-medium text-sm", isCurrent ? "text-primary" : "text-foreground")}>
-                            {step.name}
-                          </h4>
-                          {step.model && (
-                            <Badge variant="outline" className="text-xs h-4 px-1.5 font-normal">
-                              {step.model === "powerful" ? "Sonnet" : "Haiku"}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
-                        {result && (
-                          <div className="mt-2">
-                            <button
-                              onClick={() => togglePreview(step.id)}
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                              {isExpanded ? "Hide output" : "Show output"}
-                            </button>
-                            {isExpanded && (
-                              <div className="mt-1 text-xs font-mono bg-muted/50 p-2 rounded text-muted-foreground whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
-                                {result.preview}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Error */}
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span className="flex-1">{error}</span>
-              <Button variant="outline" size="sm" onClick={() => { setError(null); runNextStep(); }} className="shrink-0">
-                Retry
-              </Button>
-            </div>
-          )}
-
-          {/* Controls */}
-          <div className="flex gap-4">
-            {!isComplete ? (
-              !autoRun ? (
-                <>
-                  <Button onClick={runNextStep} disabled={isProcessing} className="flex-1" variant="outline">
-                    {isProcessing ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Processing...</> : "Run Next Step"}
-                  </Button>
-                  <Button
-                    onClick={() => { setAutoRun(true); if (!isProcessing) runNextStep(); }}
-                    disabled={isProcessing}
-                    className="flex-1 gap-2"
-                  >
-                    Auto-Run All <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={() => { setAutoRun(false); autoRunRef.current = false; }} variant="destructive" className="w-full">
-                  Pause Pipeline
-                </Button>
-              )
-            ) : (
-              <Button onClick={onComplete} className="w-full gap-2 bg-green-700 hover:bg-green-800 text-white">
-                {completeLabel}
-              </Button>
-            )}
           </div>
         </div>
 
-        {/* Sidebar */}
-        {children && (
-          <div className="w-full md:w-64 shrink-0 space-y-4">
-            {children}
+        {/* Current step name */}
+        {!isComplete && !error && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {isProcessing ? (
+              <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+            ) : paused ? (
+              <Pause className="w-4 h-4 text-muted-foreground shrink-0" />
+            ) : (
+              <Sparkles className="w-4 h-4 text-primary shrink-0" />
+            )}
+            <span>
+              {isProcessing ? `Running: ${currentStepName}` :
+               paused ? `Paused at: ${currentStepName}` :
+               `Next: ${currentStepName}`}
+            </span>
+            <span className="text-xs text-muted-foreground/60 ml-auto">
+              {currentStep}/{steps.length} steps
+            </span>
           </div>
         )}
+
+        {isComplete && (
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>All {steps.length} steps complete</span>
+          </div>
+        )}
+
+        {/* Controls */}
+        {isComplete ? (
+          <Button
+            onClick={onComplete}
+            className="w-full bg-green-700 hover:bg-green-800 text-white gap-2"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            {completeLabel}
+          </Button>
+        ) : error ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 text-sm text-destructive">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => { setError(null); handleResume(); }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : paused ? (
+          <Button onClick={handleResume} className="w-full gap-2">
+            <Play className="w-4 h-4" /> Resume
+          </Button>
+        ) : (
+          <Button onClick={handlePause} variant="outline" className="w-full gap-2">
+            <Pause className="w-4 h-4" /> Pause
+          </Button>
+        )}
       </div>
+
+      {/* Show/hide details toggle */}
+      <button
+        onClick={() => setShowDetails(!showDetails)}
+        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+      >
+        <div className="flex-1 h-px bg-border/40" />
+        {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        <span>{showDetails ? "Hide" : "Show"} step details</span>
+        {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        <div className="flex-1 h-px bg-border/40" />
+      </button>
+
+      {/* Step details (collapsed by default) */}
+      {showDetails && (
+        <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+          {steps.map(step => {
+            const isPast = step.id < currentStep;
+            const isCurrent = step.id === currentStep;
+            const isFuture = step.id > currentStep;
+            const result = stepResults.find(r => r.step === step.id);
+            const isExpanded = expandedPreviews.has(step.id);
+
+            return (
+              <div
+                key={step.id}
+                className={cn(
+                  "flex items-start gap-3 p-3 rounded-lg transition-all",
+                  isCurrent && "bg-primary/5 border border-primary/20",
+                  isPast && "opacity-60",
+                  isFuture && "opacity-30"
+                )}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {isPast ? (
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                  ) : isCurrent && isProcessing ? (
+                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  ) : (
+                    <Circle className={cn("w-4 h-4", isCurrent ? "text-primary fill-primary/20" : "text-muted-foreground")} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-sm font-medium", isCurrent ? "text-primary" : "text-foreground")}>
+                      {step.name}
+                    </span>
+                    {step.model && (
+                      <Badge variant="outline" className="text-xs h-4 px-1.5">
+                        {step.model === "powerful" ? "Sonnet" : "Haiku"}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
+                  {result && (
+                    <div className="mt-2">
+                      <button
+                        onClick={() => togglePreview(step.id)}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        {isExpanded ? "Hide output" : "Show output"}
+                      </button>
+                      {isExpanded && (
+                        <div className="mt-1 text-xs font-mono bg-muted/50 p-2 rounded text-muted-foreground whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+                          {result.preview}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Sidebar */}
+      {children && (
+        <div className="space-y-4">{children}</div>
+      )}
     </div>
   );
 }
