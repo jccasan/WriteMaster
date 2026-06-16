@@ -38,13 +38,36 @@ export default function Home() {
       const hasWork = books.length > 0 || universes.length > 0 || projects.length > 0;
       setIsFirstTime(!hasWork);
 
-      // Build recent work list
+      // Build recent work list with chapter-level detail for books
       const items: any[] = [];
-      for (const b of books.slice(0, 4)) {
-        items.push({ type: "book", id: b.id, title: b.title, detail: `${b.chapters_written || 0}/${b.chapter_count || 0} chapters`, date: b.updated_at, route: `/book/${b.id}` });
+      for (const b of books.slice(0, 5)) {
+        const hasChapter = b.last_written_chapter !== null;
+        items.push({
+          type: "book",
+          id: b.id,
+          title: b.title,
+          detail: hasChapter
+            ? `Ch. ${b.last_written_chapter}: ${b.last_written_chapter_title ?? ""}`
+            : `${b.chapters_written || 0}/${b.chapter_count || 0} chapters`,
+          subdetail: b.chapter_count > 0 ? `${b.chapters_written}/${b.chapter_count} chapters` : null,
+          date: b.updated_at,
+          route: `/book/${b.id}`,
+          continueRoute: hasChapter
+            ? `/book/${b.id}/write/${b.last_written_chapter}`
+            : null,
+        });
       }
       for (const u of universes.slice(0, 2)) {
-        items.push({ type: "universe", id: u.id, title: u.name, detail: `${u.series_count} series`, date: u.updated_at, route: `/universe/${u.id}` });
+        items.push({
+          type: "universe",
+          id: u.id,
+          title: u.name,
+          detail: `${u.series_count} series`,
+          subdetail: null,
+          date: u.updated_at,
+          route: `/universe/${u.id}`,
+          continueRoute: null,
+        });
       }
       items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setRecentWork(items.slice(0, 6));
@@ -219,14 +242,22 @@ export default function Home() {
               >
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="p-2 bg-muted rounded-md group-hover:bg-primary/10 transition-colors shrink-0">
-                    {item.type === "book" ? <BookOpen className="w-4 h-4 text-muted-foreground group-hover:text-primary" /> : <Globe className="w-4 h-4 text-muted-foreground group-hover:text-primary" />}
+                    {item.type === "book"
+                      ? <BookOpen className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                      : <Globe className="w-4 h-4 text-muted-foreground group-hover:text-primary" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{item.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-xs text-muted-foreground capitalize">{item.type}</span>
                       <span className="text-xs text-muted-foreground/50">·</span>
-                      <span className="text-xs text-muted-foreground">{item.detail}</span>
+                      <span className="text-xs text-muted-foreground font-medium">{item.detail}</span>
+                      {item.subdetail && (
+                        <>
+                          <span className="text-xs text-muted-foreground/50">·</span>
+                          <span className="text-xs text-muted-foreground/70">{item.subdetail}</span>
+                        </>
+                      )}
                       <span className="text-xs text-muted-foreground/50">·</span>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-muted-foreground/50" />
@@ -234,7 +265,18 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-foreground shrink-0 transition-colors" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    {item.continueRoute && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={e => { e.stopPropagation(); navigate(item.continueRoute); }}
+                      >
+                        <Sparkles className="w-3 h-3" /> Continue
+                      </Button>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-foreground transition-colors" />
+                  </div>
                 </CardContent>
               </Card>
             ))}

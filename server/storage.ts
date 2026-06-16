@@ -295,22 +295,30 @@ export class FileStorage implements IStorage {
     await writeFile(filePath, JSON.stringify(book, null, 2));
   }
 
-  async listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number }>> {
+  async listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number; last_written_chapter: number | null; last_written_chapter_title: string | null }>> {
     if (!existsSync(BOOKS_DIR)) return [];
     const files = await readdir(BOOKS_DIR);
-    const books: Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number }> = [];
+    const books: Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number; last_written_chapter: number | null; last_written_chapter_title: string | null }> = [];
     for (const file of files) {
       if (!file.endsWith(".json")) continue;
       try {
         const content = await readFile(path.join(BOOKS_DIR, file), "utf-8");
         const data = JSON.parse(content) as BookProject;
+        // Find the most recently active chapter — highest written/committed chapter
+        const writtenChapters = data.chapters
+          .filter(c => c.status === "written" || c.status === "committed");
+        const lastChapter = writtenChapters.length > 0
+          ? writtenChapters[writtenChapters.length - 1]
+          : data.chapters.find(c => c.status === "outlined") ?? null;
         books.push({
           id: data.id,
           title: data.title,
           created_at: data.created_at,
           updated_at: data.updated_at,
           chapter_count: data.chapters.length,
-          chapters_written: data.chapters.filter(c => c.status === "written" || c.status === "committed").length,
+          chapters_written: writtenChapters.length,
+          last_written_chapter: lastChapter?.chapter_number ?? null,
+          last_written_chapter_title: lastChapter?.title ?? null,
         });
       } catch {
         continue;
