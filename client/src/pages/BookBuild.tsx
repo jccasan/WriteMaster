@@ -293,8 +293,8 @@ export default function BookBuild() {
               </div>
             )}
             {applied && (
-              <Button onClick={() => navigate(`/book/${bookId}/write-advanced`)} className="gap-2">
-                <FileText className="w-4 h-4" /> Write Chapters →
+              <Button onClick={() => navigate(`/book/${bookId}`)} className="gap-2">
+                <BookOpen className="w-4 h-4" /> Start Writing →
               </Button>
             )}
           </div>
