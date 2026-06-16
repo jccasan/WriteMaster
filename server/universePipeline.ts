@@ -193,7 +193,45 @@ export async function extractCharactersFromText(
   text: string,
   sourceLabel: string
 ): Promise<ExtractedCharacter[]> {
-  return extractCharacters(text, sourceLabel);
+  // Split into ~50k word chunks to stay well under token limits
+  const CHUNK_WORDS = 50000;
+  const words = text.split(/\s+/);
+
+  if (words.length <= CHUNK_WORDS) {
+    return extractCharacters(text, sourceLabel);
+  }
+
+  // Process in chunks and merge results
+  const allCharacters: ExtractedCharacter[] = [];
+  const chunks: string[] = [];
+  for (let i = 0; i < words.length; i += CHUNK_WORDS) {
+    chunks.push(words.slice(i, i + CHUNK_WORDS).join(" "));
+  }
+
+  console.log(`[CharacterExtract] Text too large (${words.length} words), splitting into ${chunks.length} chunks`);
+
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(`[CharacterExtract] Processing chunk ${i + 1}/${chunks.length}`);
+    const chunkResults = await extractCharacters(chunks[i], `${sourceLabel} (part ${i + 1})`);
+
+    for (const newChar of chunkResults) {
+      const existing = allCharacters.find(
+        c => c.name.toLowerCase() === newChar.name.toLowerCase() ||
+             c.aliases.some(a => a.toLowerCase() === newChar.name.toLowerCase())
+      );
+      if (existing) {
+        // Merge notes, keep most severe status
+        existing.notes = existing.notes + " " + newChar.notes;
+        if (newChar.status === "dead") existing.status = "dead";
+        existing.aliases = [...new Set([...existing.aliases, ...newChar.aliases])];
+      } else {
+        allCharacters.push(newChar);
+      }
+    }
+  }
+
+  console.log(`[CharacterExtract] Merged into ${allCharacters.length} unique characters`);
+  return allCharacters;
 }
 
 // ─── 1c: WORLD-BUILDING EXTRACTION ───────────────────────────────────────────
