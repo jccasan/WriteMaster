@@ -101,10 +101,39 @@ app.use((req, res, next) => {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
+      // reusePort removed — it was masking orphaned process collisions
     },
     () => {
       log(`serving on port ${port}`);
     },
   );
+
+  // Graceful shutdown — close the HTTP server cleanly so the port
+  // is released before the process exits. Without this, tsx/node
+  // process trees get orphaned and keep holding port 5000.
+  const shutdown = (signal: string) => {
+    log(`${signal} received — shutting down gracefully`);
+    httpServer.close(() => {
+      log("HTTP server closed");
+      process.exit(0);
+    });
+
+    // Force exit after 5 seconds if connections don't drain
+    setTimeout(() => {
+      log("Forced exit after timeout");
+      process.exit(1);
+    }, 5000).unref();
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT",  () => shutdown("SIGINT"));
+
+  // Catch unhandled errors so the process doesn't silently zombie
+  process.on("uncaughtException", (err) => {
+    console.error("Uncaught exception:", err);
+    shutdown("uncaughtException");
+  });
+  process.on("unhandledRejection", (reason) => {
+    console.error("Unhandled rejection:", reason);
+  });
 })();
