@@ -94,6 +94,25 @@ export default function PipelineNew() {
   useEffect(() => {
     fetch("/api/genres").then(r => r.json()).then(setGenres).catch(() => {});
     fetch("/api/outline/hybrid/questions").then(r => r.json()).then(d => setHybridQuestions(d.questions ?? [])).catch(() => {});
+
+    // Check for a pre-started guided session (from NewBookInUniverse)
+    const stored = sessionStorage.getItem("outline_session");
+    if (stored) {
+      sessionStorage.removeItem("outline_session");
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.session_id) {
+          fetch(`/api/outline/guided/${parsed.session_id}`)
+            .then(r => r.json())
+            .then(session => {
+              setGuidedSession(session);
+              setGenre(session.genre);
+              setMode("guided");
+            })
+            .catch(() => {});
+        }
+      } catch {}
+    }
   }, []);
 
   useEffect(() => {

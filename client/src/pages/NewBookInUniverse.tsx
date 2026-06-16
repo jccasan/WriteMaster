@@ -114,7 +114,7 @@ export default function NewBookInUniverse() {
         book_title: bookTitle.trim() || null,
       }));
 
-      navigate(`/outline/guided/${data.session_id}`);
+      navigate(`/pipeline/new?mode=guided&session=${data.session_id}`);
     } catch (err: any) {
       setError(err.message);
       setCreating(false);
