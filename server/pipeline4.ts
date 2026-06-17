@@ -44,6 +44,7 @@ export interface LineEditState {
   ai_isms_scan: string;
   dialogue_audit: string;
   pacing_audit: string;
+  addiction_loop_audit: string;
   edit_plan: string;
   edited_draft: string;
   verification: string;
@@ -56,6 +57,7 @@ const STEP_NAMES = [
   "AI-Isms Scan",
   "Dialogue Audit",
   "Pacing Audit",
+  "Addiction Loop Audit",
   "Edit Plan Consolidation",
   "Line Edit Rewrite",
   "Verification",
@@ -84,6 +86,7 @@ export function createEmptyLineEditState(
     ai_isms_scan: "",
     dialogue_audit: "",
     pacing_audit: "",
+    addiction_loop_audit: "",
     edit_plan: "",
     edited_draft: "",
     verification: "",
@@ -226,14 +229,69 @@ Output as: PACING AUDIT REPORT`,
       break;
     }
 
-    // ── 4: CONSOLIDATED EDIT PLAN ─────────────────────────────────────────────
+    // ── 4: ADDICTION LOOP AUDIT ───────────────────────────────────────────────
     case 4: {
+      const addictionLoop = getSkill("ADDICTION_LOOP_CHECK");
+      const result = await callLLM(
+        `You are a story structure editor specializing in reader engagement and narrative tension.
+Evaluate this chapter against the four-step addiction loop framework.
+
+${addictionLoop}
+
+CHAPTER ${state.chapter_number}: "${state.chapter_title}"
+${state.original_text}
+
+Score each element (0-3) and identify specific fixes:
+
+STAKES (0-3): [score]
+- Established by word 200? [yes/no]
+- Character identified? [yes/no]
+- Specific risk named? [yes/no]
+- Urgency present? [yes/no]
+- Fix needed: [specific fix or "none"]
+
+BIG QUESTION (0-3): [score]
+- Loaded early enough? [yes/no]
+- Specific enough for readers to predict? [yes/no]
+- Quote the Big Question as it currently appears (or "MISSING"):
+- Fix needed: [specific fix or "none"]
+
+HEAD FAKE (0-3): [score]
+- Does the chapter break the reader's prediction? [yes/no]
+- Is the outcome logical in retrospect? [yes/no]
+- What did readers predict vs. what happened:
+- Fix needed: [specific fix or "none"]
+
+RE-HOOK (0-3): [score]
+- Does a new question open before this one closes? [yes/no]
+- Is there a gap between loop close and next open? [yes/no]
+- Quote the re-hook as it currently appears (or "MISSING"):
+- Fix needed: [specific fix or "none"]
+
+TOTAL: [X]/12
+
+PRIORITY FIXES (only items scoring 0-1):
+List specific, actionable changes to the existing prose that would improve each weak element.
+Do NOT rewrite the chapter — flag and prescribe.`,
+        "cheap",
+        undefined,
+        4096
+      );
+      state.addiction_loop_audit = result.trim();
+      state.current_step = 5;
+      const score = result.match(/TOTAL:\s*(\d+)\/12/)?.[1] ?? "?";
+      outputPreview = `Addiction loop audit complete. Score: ${score}/12`;
+      break;
+    }
+
+    // ── 5: CONSOLIDATED EDIT PLAN ─────────────────────────────────────────────
+    case 5: {
       const styleSection = state.style_guide
         ? `PROSE STYLE GUIDE (ensure edits align with this voice):\n${state.style_guide}\n\n`
         : "";
 
       const result = await callLLM(
-        `You are a senior editor. Consolidate the three audit reports below into a single unified Edit Plan, ordered by impact.
+        `You are a senior editor. Consolidate the four audit reports below into a single unified Edit Plan, ordered by impact.
 
 AI-ISMS FLAG LIST:
 ${state.ai_isms_scan}
@@ -244,16 +302,19 @@ ${state.dialogue_audit}
 PACING AUDIT REPORT:
 ${state.pacing_audit}
 
+ADDICTION LOOP AUDIT:
+${state.addiction_loop_audit}
+
 ${styleSection}
 
 Instructions:
 1. Merge all findings into a single numbered list
 2. Remove duplicates (same phrase flagged by multiple audits — keep the most specific fix)
-3. Order by impact: prose-level AI-tells first (highest reader impact), then dialogue, then pacing
+3. Order by impact: addiction loop structural issues first (highest reader impact), then AI-isms, then dialogue, then pacing
 4. For global patterns (appearing 5+ times), write ONE combined fix instruction:
    "GLOBAL: Replace all instances of [pattern] with [specific fix approach]. Approximately N instances throughout."
 5. For specific instances, keep the exact quote + fix format
-6. Cap the total plan at 30 items — if there are more, combine related items
+6. Cap the total plan at 35 items — if there are more, combine related items
 
 Output as: UNIFIED EDIT PLAN
 Format: [N]. [GLOBAL/SPECIFIC]: [original] → [fix]`,
@@ -262,14 +323,14 @@ Format: [N]. [GLOBAL/SPECIFIC]: [original] → [fix]`,
         6144
       );
       state.edit_plan = result.trim();
-      state.current_step = 5;
+      state.current_step = 6;
       const planCount = (result.match(/^\[\d+\]\./gm) ?? []).length;
       outputPreview = `Edit plan consolidated: ${planCount} items.`;
       break;
     }
 
-    // ── 5: LINE EDIT REWRITE ──────────────────────────────────────────────────
-    case 5: {
+    // ── 6: LINE EDIT REWRITE ──────────────────────────────────────────────────
+    case 6: {
       const result = await callLLM(
         `You are a precise line editor. Implement the edit plan into the chapter. Change only what the plan specifies.
 
@@ -299,13 +360,13 @@ Output ONLY the edited chapter text.`,
         16384
       );
       state.edited_draft = result.trim();
-      state.current_step = 6;
+      state.current_step = 7;
       outputPreview = `Line edit complete (${result.length} chars, ~${Math.round(result.split(/\s+/).length)} words)`;
       break;
     }
 
-    // ── 6: VERIFICATION ───────────────────────────────────────────────────────
-    case 6: {
+    // ── 7: VERIFICATION ───────────────────────────────────────────────────────
+    case 7: {
       const result = await callLLM(
         `You are a quality control editor. Verify that the line edit was applied correctly.
 
@@ -328,7 +389,7 @@ If issues found: list each specifically so the human can review.`,
         "cheap"
       );
       state.verification = result.trim();
-      state.current_step = 7;
+      state.current_step = 8;
       const passed = result.includes("PASSED");
       outputPreview = passed
         ? "Verification passed. Line edit complete."

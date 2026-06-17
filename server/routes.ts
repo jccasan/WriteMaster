@@ -2677,8 +2677,14 @@ Write Chapter ${chapterNum} as polished, publication-ready prose in ${tense} ten
 - Match the voice and style established in previous chapters
 - Begin with the chapter title as a heading
 - Target 2000-3000 words
-- End on a compelling moment that pulls the reader forward
-- Do not include any meta-commentary or author notes
+
+ADDICTION LOOP — all four elements are required:
+1. STAKES: Establish character + specific risk + urgency in the first 200 words
+2. BIG QUESTION: Load a specific question readers can predict by page 2
+3. HEAD FAKE: Break the reader's prediction in a way that makes retroactive sense
+4. RE-HOOK: Open the next loop in the same beat as the chapter's resolution — no gap
+
+The final paragraph must open a new question. The reader should be unable to stop.
 
 Output ONLY the chapter prose.`;
 

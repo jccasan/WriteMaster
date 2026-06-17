@@ -454,6 +454,12 @@ For each POV or active character:
 For the POV character, indicate slider values that DIFFER from their baseline:
 [Only list sliders that deviate from baseline established in Character Sheet]
 
+### Addiction Loop
+**Stakes:** [Character + specific risk + urgency in THIS chapter — established in first 200 words]
+**Big Question:** [The specific question readers will be predicting — loaded by page 2]
+**Head Fake:** [What readers will predict vs. what actually happens — must be logical in retrospect]
+**Re-hook:** [The final beat — what new question opens as this chapter closes]
+
 ### What Changes
 [The single most important thing that is different at the end of this chapter vs. the start. If nothing changes, the chapter fails.]
 

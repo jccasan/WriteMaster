@@ -588,12 +588,18 @@ ${READER_VALUE_TEST}
 
 ${RAW_MATERIAL_MINDSET}
 
+ADDICTION LOOP REQUIREMENTS — these are mandatory, not optional:
+{{ADDICTION_LOOP_CHECK}}
+
 CRITICAL INSTRUCTIONS:
 - Write in ${state.tense} tense throughout all narration
 - Target word count: ${state.word_count_target} words — fill this; do not cut short
 - Begin with the chapter title as a Markdown heading
 - Follow the scene beats in the Scene Brief exactly — do not invent scenes not in the brief
-- End on the exact cliffhanger specified in the Scene Brief
+- STAKES must be established in the first 200 words
+- A BIG QUESTION must be loaded by page 2 — give readers something to predict
+- The HEAD FAKE must break the reader's prediction in a way that makes retroactive sense
+- The final beat must be a RE-HOOK — open the next loop before this one closes
 - Do NOT include any author notes, section labels, or meta-commentary in the prose
 - Apply the full self-debugging pass from the Layered Generation Workflow before outputting
 
