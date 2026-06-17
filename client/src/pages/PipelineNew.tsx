@@ -373,7 +373,7 @@ export default function PipelineNew() {
           <MessageCircle className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium">Story Interview</span>
           <Badge variant="outline" className="text-xs">
-            {guidedSession.question_count}/{guidedSession.max_questions} questions
+            {guidedSession.question_count} question{guidedSession.question_count !== 1 ? "s" : ""}
           </Badge>
         </div>
         <div className="flex items-center gap-3">
@@ -443,7 +443,7 @@ export default function PipelineNew() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground text-center mt-2">
-                {guidedSession.max_questions - guidedSession.question_count} questions remaining
+                {guidedSession.question_count} question{guidedSession.question_count !== 1 ? "s" : ""} so far · AI decides when ready
               </p>
             </div>
           )}

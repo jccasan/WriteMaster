@@ -151,41 +151,66 @@ router.post("/guided/:id/answer", async (req, res) => {
     };
     session.messages.push(userMessage);
 
-    const isLastQuestion = session.question_count >= session.max_questions;
-
     // Build conversation history for the AI
     const history = session.messages
       .map(m => `${m.role === "ai" ? "INTERVIEWER" : "AUTHOR"}: ${m.content}`)
       .join("\n\n");
 
+    // Full list of questions asked -- complete text so AI can detect paraphrases
+    const askedQuestions = session.messages
+      .filter(m => m.role === "ai" && m.question_number)
+      .map((m, i) => `${i + 1}. ${m.content}`)
+      .join("\n");
+
+    // Topics already covered -- derived from author answers to help AI skip covered ground
+    const coveredTopics = session.messages
+      .filter(m => m.role === "user")
+      .map(m => m.content.substring(0, 200))
+      .join(" | ");
+
+    const pastSoftLimit = session.question_count >= session.max_questions;
+
     // Run AI to get next question + contradiction check in parallel
+    // Note: NO hard stop -- AI always decides via READY_TO_SYNTHESIZE
     const [nextQuestionRaw, contradictionRaw] = await Promise.all([
-      isLastQuestion ? Promise.resolve("__DONE__") : callLLM(
+      callLLM(
         `You are a skilled story development interviewer helping an author build their story.
-Your job is to ask adaptive questions that draw out the story's potential.
 
 GENRE: ${session.genre}
-QUESTIONS ASKED SO FAR: ${session.question_count} of ${session.max_questions}
+QUESTIONS ASKED SO FAR: ${session.question_count}
+${pastSoftLimit ? `\nYou have asked ${session.question_count} questions. Push toward READY_TO_SYNTHESIZE unless critical story elements are genuinely unresolved.\n` : ""}
 ${session.bible_context ? `
 UNIVERSE BIBLE (world already established — skip world-building questions entirely):
 ${session.bible_context.substring(0, 2000)}
 Focus only on: protagonist, plot, character arcs, conflict, stakes specific to THIS book.
 ` : ""}
-CONVERSATION SO FAR:
+
+EVERY QUESTION YOU HAVE ALREADY ASKED — do not repeat, rephrase, or ask anything similar:
+${askedQuestions}
+
+TOPICS THE AUTHOR HAS ALREADY ADDRESSED (do not revisit these):
+${coveredTopics}
+
+FULL CONVERSATION:
 ${history}
 
-Ask the single most valuable next question based on what the author has shared.
+Your task: Ask the single most valuable NEXT question that hasn't been asked or answered yet.
 
 Rules:
-- Ask ONE question only
-- Make it specific to what they've said — don't ask generic questions
-- ${session.bible_context ? "Do NOT ask about world-building, magic systems, geography, or lore — that's already established in the bible above" : "Prioritize filling the most important gaps: protagonist's want/need, central conflict, stakes, world rules, ending"}
-- If they've given rich answers, go deeper. If sparse, broaden to find what excites them.
-- Keep it conversational — you're a curious collaborator, not a form
-- Do NOT repeat questions already asked
-- If you have enough to build a complete story (protagonist, conflict, world, stakes, rough ending), say exactly: READY_TO_SYNTHESIZE
+- ONE question only — never combine two
+- Check every question above before asking — if the topic is covered, skip it
+- Be specific to what the author said — no generic questions
+- ${session.bible_context ? "Skip world-building, magic, geography, lore — use bible" : "Priority gaps to fill: protagonist want/need → central conflict → antagonist → stakes → world rules → theme → ending"}
+- Go deeper on rich answers; broaden only if author is sparse
+- Signal READY_TO_SYNTHESIZE when ALL covered:
+  * Protagonist: who they are, what they want externally and internally
+  * Central conflict
+  * Antagonist or opposing force
+  * Stakes if protagonist fails
+  * Rough ending or resolution direction
+  * At least one distinctive world or tone detail
 
-Output ONLY the question text, or READY_TO_SYNTHESIZE. Nothing else.`,
+Output ONLY the question text, or READY_TO_SYNTHESIZE.`,
         "powerful"
       ),
       callLLM(
@@ -230,10 +255,9 @@ Respond with ONLY the JSON. No other text.`,
       }
     } catch {}
 
-    // Determine next state
-    const shouldSynthesize = isLastQuestion ||
-      nextQuestionRaw.trim() === "READY_TO_SYNTHESIZE" ||
-      nextQuestionRaw.trim() === "__DONE__";
+    // Determine next state -- AI decides via READY_TO_SYNTHESIZE, no hard stop
+    const shouldSynthesize =
+      nextQuestionRaw.trim() === "READY_TO_SYNTHESIZE";
 
     if (shouldSynthesize) {
       // Add wrap-up message
