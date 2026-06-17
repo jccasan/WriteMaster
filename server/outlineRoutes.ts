@@ -162,11 +162,15 @@ router.post("/guided/:id/answer", async (req, res) => {
       .map((m, i) => `${i + 1}. ${m.content}`)
       .join("\n");
 
-    // Topics already covered -- derived from author answers to help AI skip covered ground
-    const coveredTopics = session.messages
-      .filter(m => m.role === "user")
-      .map(m => m.content.substring(0, 200))
-      .join(" | ");
+    // Extract topics already answered from the user's responses
+    const answeredTopics = session.messages
+      .filter(m => m.role === "ai" && m.question_number)
+      .map((m, i) => {
+        const answer = session.messages.filter(msg => msg.role === "user")[i];
+        return answer ? `- Asked: "${m.content.substring(0, 80)}..." → Author answered` : null;
+      })
+      .filter(Boolean)
+      .join("\n");
 
     const pastSoftLimit = session.question_count >= session.max_questions;
 
@@ -188,8 +192,8 @@ Focus only on: protagonist, plot, character arcs, conflict, stakes specific to T
 EVERY QUESTION YOU HAVE ALREADY ASKED — do not repeat, rephrase, or ask anything similar:
 ${askedQuestions}
 
-TOPICS THE AUTHOR HAS ALREADY ADDRESSED (do not revisit these):
-${coveredTopics}
+QUESTIONS AND WHETHER THEY WERE ANSWERED:
+${answeredTopics}
 
 FULL CONVERSATION:
 ${history}
@@ -314,31 +318,45 @@ router.post("/guided/:id/synthesize", async (req, res) => {
     session.phase = "synthesizing";
     await saveSession(session);
 
-    const history = session.messages
-      .filter(m => m.role === "user")
-      .map((m, i) => `Q${i + 1}: ${m.content}`)
-      .join("\n\n");
+    // Build paired Q&A -- include the question so the LLM knows what each answer addressed
+    const qaPairs: string[] = [];
+    const aiMessages = session.messages.filter(m => m.role === "ai" && m.question_number);
+    const userMessages = session.messages.filter(m => m.role === "user");
+
+    for (let i = 0; i < userMessages.length; i++) {
+      const question = aiMessages[i]?.content ?? "";
+      const answer = userMessages[i].content;
+      if (question) {
+        qaPairs.push(`Q: ${question}\nA: ${answer}`);
+      } else {
+        qaPairs.push(`A: ${answer}`);
+      }
+    }
+    const history = qaPairs.join("\n\n");
 
     // Synthesize brain dump from Q&A
     const brainDump = await callLLM(
       `You are a story development editor. An author just completed a story development interview.
-Synthesize their answers into a rich, detailed brain dump for a story pipeline.
+Your job is to synthesize ONLY what the author said into a brain dump. Do not add, invent, or extrapolate.
 
 GENRE: ${session.genre}
 ${session.bible_context ? `
-UNIVERSE CONTEXT (established world — include relevant details in the brain dump):
+UNIVERSE (established world context):
 ${session.bible_context.substring(0, 2000)}
 ` : ""}
-AUTHOR'S ANSWERS (in order):
+
+INTERVIEW TRANSCRIPT — this is your ONLY source material:
 ${history}
 
-Write a comprehensive brain dump that captures everything the author shared.
-${session.bible_context ? "Weave in relevant universe context where it applies to this specific story." : ""}
-Write it as if the author wrote it themselves — first person or third, whatever fits.
-Include: characters, central conflict, world, themes, stakes, plot fragments, tone, ending hints.
-Do NOT invent anything not mentioned. Do NOT fill in gaps with generic content.
-Be specific — use the author's own details and language where possible.
-Aim for 400-800 words.`,
+Write a 400-800 word brain dump that:
+- Captures every specific detail the author mentioned
+- Uses their exact names, places, and concepts
+- Preserves their tone and voice
+- Does NOT add anything they didn't say
+- Does NOT use generic placeholder content
+- Covers: protagonist, central conflict, antagonist, stakes, world, theme, ending direction
+
+If the author was sparse on a topic, reflect that sparseness — do not fill gaps.`,
       "powerful"
     );
 
