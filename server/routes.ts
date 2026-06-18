@@ -2720,7 +2720,7 @@ Output ONLY the chapter prose.`;
       const book = await storage.getBook(req.params.id);
       if (!book) return res.status(404).json({ error: "Book not found" });
 
-      const { premise = "", tense = "past", chapter_count = 30 } = req.body;
+      const { premise = "", tense = "past", chapter_count = 30, start_chapter = 1 } = req.body;
       const jobId = randomUUID();
 
       // Ensure chapters exist up to chapter_count
@@ -2739,7 +2739,11 @@ Output ONLY the chapter prose.`;
         await storage.saveBook(book);
       }
 
-      const firstUnwritten = book.chapters.find(c => !c.content)?.chapter_number ?? 1;
+      // Find first unwritten chapter at or after start_chapter
+      const firstUnwritten = book.chapters
+        .filter(c => !c.content && c.chapter_number >= start_chapter)
+        .sort((a, b) => a.chapter_number - b.chapter_number)[0]?.chapter_number
+        ?? start_chapter;
 
       autopilotJobs.set(jobId, {
         status: "running",

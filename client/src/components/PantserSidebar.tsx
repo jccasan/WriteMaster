@@ -25,7 +25,7 @@ interface PantserSidebarProps {
 }
 
 type SidebarTab = "write" | "world";
-type WriteMode = "continue" | "chapter" | "book";
+type WriteMode = "chapter" | "batch" | "book";
 
 export default function PantserSidebar({
   bookId,
@@ -46,6 +46,7 @@ export default function PantserSidebar({
   const [autopilotJobId, setAutopilotJobId] = useState<string | null>(null);
   const [autopilotStatus, setAutopilotStatus] = useState<any>(null);
   const [bookChapterCount, setBookChapterCount] = useState(30);
+  const [batchCount, setBatchCount] = useState(2);
 
   // Discovered world
   const [world, setWorld] = useState<DiscoveredWorld | null>(null);
@@ -98,16 +99,29 @@ export default function PantserSidebar({
   const startAutopilot = async () => {
     setLoading(true);
     setError(null);
+    const isBatch = writeMode === "batch";
+    const chapterCount = isBatch
+      ? chapterNum + batchCount - 1  // write from current chapter to current + batchCount
+      : bookChapterCount;
     try {
       const r = await fetch(`/api/books/${bookId}/autopilot/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ premise, tense, chapter_count: bookChapterCount }),
+        body: JSON.stringify({
+          premise,
+          tense,
+          chapter_count: chapterCount,
+          start_chapter: chapterNum,
+        }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Failed to start");
       setAutopilotJobId(d.job_id);
-      setAutopilotStatus({ status: "running", current_chapter: d.starting_chapter, total_chapters: bookChapterCount });
+      setAutopilotStatus({
+        status: "running",
+        current_chapter: d.starting_chapter,
+        total_chapters: chapterCount,
+      });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -207,6 +221,7 @@ export default function PantserSidebar({
               <div className="flex gap-1">
                 {([
                   { key: "chapter" as const, label: "This Chapter" },
+                  { key: "batch" as const, label: "Next N Chapters" },
                   { key: "book" as const, label: "Whole Book" },
                 ]).map(m => (
                   <button
@@ -237,11 +252,34 @@ export default function PantserSidebar({
                 ))}
               </div>
 
+              {/* Batch count */}
+              {writeMode === "batch" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Write next:</span>
+                  <div className="flex gap-1">
+                    {[2, 3, 5].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setBatchCount(n)}
+                        className={cn("px-2.5 py-1 text-xs rounded border transition-colors",
+                          batchCount === n ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"
+                        )}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <span className="text-xs text-muted-foreground self-center">chapters</span>
+                  </div>
+                </div>
+              )}
+
               {/* Premise input */}
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">
                   {writeMode === "chapter"
                     ? `Direction for Chapter ${chapterNum} (optional)`
+                    : writeMode === "batch"
+                    ? `Direction for next ${batchCount} chapters (optional)`
                     : "Story premise (optional)"}
                 </label>
                 <Textarea
@@ -258,7 +296,7 @@ export default function PantserSidebar({
               {/* Book chapter count if writing whole book */}
               {writeMode === "book" && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Chapters:</span>
+                  <span className="text-xs text-muted-foreground">Total chapters:</span>
                   <select
                     value={bookChapterCount}
                     onChange={e => setBookChapterCount(parseInt(e.target.value))}
@@ -275,7 +313,7 @@ export default function PantserSidebar({
 
               {/* Write button */}
               <Button
-                onClick={writeMode === "book" ? startAutopilot : writeFast}
+                onClick={writeMode === "chapter" ? writeFast : startAutopilot}
                 disabled={loading}
                 className="w-full gap-2"
                 size="sm"
@@ -284,12 +322,17 @@ export default function PantserSidebar({
                   ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Writing...</>
                   : writeMode === "chapter"
                   ? <><Sparkles className="w-3.5 h-3.5" /> Write Chapter {chapterNum}</>
+                  : writeMode === "batch"
+                  ? <><Sparkles className="w-3.5 h-3.5" /> Write Next {batchCount} Chapters</>
                   : <><Sparkles className="w-3.5 h-3.5" /> Write {bookChapterCount} Chapters</>
                 }
               </Button>
 
               <p className="text-xs text-muted-foreground text-center">
-                Fast mode · ~30 sec per chapter
+                {writeMode === "batch"
+                  ? `Writes chapters ${chapterNum}–${chapterNum + batchCount - 1} · ~${batchCount * 30}s`
+                  : "Fast mode · ~30 sec per chapter"
+                }
               </p>
             </>
           )}

@@ -13,7 +13,7 @@ import {
   Loader2, ArrowLeft, BookOpen, Pencil, Check, X,
   ChevronLeft, ChevronRight, Download, Copy, FileText,
   Sparkles, RefreshCw, Lock, Unlock, GitCommit, Scissors,
-  BarChart3, Plus, GripVertical,
+  BarChart3, Plus, GripVertical, ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
@@ -655,22 +655,91 @@ export default function BookWriter() {
         <main className="flex-1 overflow-y-auto">
           {!currentChapter ? (
             // ── EMPTY STATE ─────────────────────────────────────────────
-            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-              <BookOpen className="w-12 h-12 text-muted-foreground/30 mb-4" />
-              <h3 className="text-xl font-serif font-semibold mb-2">
-                {book.chapters.length === 0 ? "Ready to Start" : "Select a Chapter"}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                {book.chapters.length === 0
-                  ? "Your dossier is loaded. Generate the outline for Chapter 1 to begin."
-                  : "Select a chapter from the sidebar to manage it."}
-              </p>
-              {book.chapters.length === 0 && (
-                <Button onClick={handleGenerateOutline} disabled={generating !== null} className="gap-2">
-                  {generating === "outline" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  Generate Chapter 1 Outline
-                </Button>
-              )}
+            <div className="flex flex-col items-center h-full p-8">
+              {/* Daily loop panel */}
+              {book.chapters.length > 0 && (() => {
+                const needsEdit = book.chapters.filter(c => c.content && !c.summary && c.status !== "committed");
+                const needsOutline = book.chapters.filter(c => !c.content && !c.outline);
+                const nextToWrite = book.chapters.filter(c => !c.content && c.outline).slice(0, 2);
+                const hasLoop = needsEdit.length > 0 || nextToWrite.length > 0;
+                if (!hasLoop) return null;
+                return (
+                  <div className="w-full max-w-xl mb-8">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Today's Loop</p>
+                    <div className="space-y-2">
+                      {needsEdit.length > 0 && (
+                        <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                          <p className="text-sm font-medium text-amber-700 mb-2">
+                            1. Edit {needsEdit.length > 1 ? `these ${needsEdit.length} chapters` : "this chapter"}
+                          </p>
+                          <div className="space-y-1">
+                            {needsEdit.slice(0, 3).map(c => (
+                              <button
+                                key={c.chapter_number}
+                                onClick={() => navigate(`/book/${bookId}/write/${c.chapter_number}`)}
+                                className="flex items-center gap-2 text-xs text-amber-700/80 hover:text-amber-700 transition-colors w-full text-left"
+                              >
+                                <ArrowRight className="w-3 h-3 shrink-0" />
+                                Ch. {c.chapter_number}: {c.title}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {nextToWrite.length > 0 && (
+                        <div className="p-4 rounded-lg border border-primary/30 bg-primary/5">
+                          <p className="text-sm font-medium text-primary mb-1">
+                            2. Review outlines for next {nextToWrite.length} chapter{nextToWrite.length > 1 ? "s" : ""}
+                          </p>
+                          <div className="space-y-1 mb-3">
+                            {nextToWrite.map(c => (
+                              <button
+                                key={c.chapter_number}
+                                onClick={() => setActiveChapter(c.chapter_number)}
+                                className="flex items-center gap-2 text-xs text-primary/80 hover:text-primary transition-colors w-full text-left"
+                              >
+                                <ArrowRight className="w-3 h-3 shrink-0" />
+                                Ch. {c.chapter_number}: {c.title}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Then trigger writes for those chapters and come back tomorrow.
+                          </p>
+                        </div>
+                      )}
+                      {needsOutline.length > 0 && (
+                        <div className="p-4 rounded-lg border border-border/60 bg-muted/10">
+                          <p className="text-sm font-medium text-muted-foreground mb-1">
+                            Also: {needsOutline.length} chapter{needsOutline.length !== 1 ? "s" : ""} need outlines
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Click any chapter in the sidebar to add an outline before writing.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="flex flex-col items-center justify-center flex-1 text-center">
+                <BookOpen className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-xl font-serif font-semibold mb-2">
+                  {book.chapters.length === 0 ? "Ready to Start" : "Select a Chapter"}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                  {book.chapters.length === 0
+                    ? "Your dossier is loaded. Generate the outline for Chapter 1 to begin."
+                    : "Select a chapter from the sidebar to manage it."}
+                </p>
+                {book.chapters.length === 0 && (
+                  <Button onClick={handleGenerateOutline} disabled={generating !== null} className="gap-2">
+                    {generating === "outline" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    Generate Chapter 1 Outline
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
