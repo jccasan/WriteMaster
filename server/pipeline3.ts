@@ -26,13 +26,18 @@
 
 import { callLLM } from "./llm";
 import {
+  PROSE_RULES,
+  SCENE_RULES,
+  CONTEXT_RULES,
+  DEFAULT_DECISION_RULE,
+  NARRATIVE_SLIDER_RULES,
+  CHAPTER_SUMMARY_TEMPLATE,
+  // Legacy aliases — empty strings now, kept for steps not yet updated
   AUTHOR_VOICE_CONTRACT,
   AI_WRITING_RULES,
   SCENE_WRITING_RULES,
-  NARRATIVE_SLIDER_RULES,
-  ANTI_SLOP_FILTER,
-  DEFAULT_DECISION_RULE,
   CONTEXT_ENGINEERING_RULES,
+  ANTI_SLOP_FILTER,
   LAYERED_GENERATION_WORKFLOW,
   READER_VALUE_TEST,
   RAW_MATERIAL_MINDSET,
@@ -571,43 +576,26 @@ ${styleSection}
 
 ${bibleSection}
 
-SCENE BRIEF (your complete writing guide — follow every element):
+SCENE BRIEF — follow every element:
 ${state.consolidated_brief}
 
-${CONTEXT_ENGINEERING_RULES}
+${CONTEXT_RULES}
 
-${AUTHOR_VOICE_CONTRACT}
+${PROSE_RULES}
 
-${AI_WRITING_RULES}
+${SCENE_RULES}
 
-${SCENE_WRITING_RULES}
-
-${LAYERED_GENERATION_WORKFLOW}
-
-${READER_VALUE_TEST}
-
-${RAW_MATERIAL_MINDSET}
-
-ADDICTION LOOP REQUIREMENTS — these are mandatory, not optional:
-{{ADDICTION_LOOP_CHECK}}
-
-CRITICAL INSTRUCTIONS:
-- Write in ${state.tense} tense throughout all narration
-- Target word count: ${state.word_count_target} words — fill this; do not cut short
-- Begin with the chapter title as a Markdown heading
-- Follow the scene beats in the Scene Brief exactly — do not invent scenes not in the brief
-- STAKES must be established in the first 200 words
-- A BIG QUESTION must be loaded by page 2 — give readers something to predict
-- The HEAD FAKE must break the reader's prediction in a way that makes retroactive sense
-- The final beat must be a RE-HOOK — open the next loop before this one closes
-- Do NOT include any author notes, section labels, or meta-commentary in the prose
-- Apply the full self-debugging pass from the Layered Generation Workflow before outputting
-
-${ANTI_SLOP_FILTER}
+ADDICTION LOOP — required in every chapter:
+- STAKES: Establish character + specific risk + urgency in the first 200 words
+- BIG QUESTION: Load a question readers can predict by page 2
+- HEAD FAKE: Break that prediction in a way that makes retroactive sense
+- RE-HOOK: Open the next loop in the same beat as this chapter's resolution — no gap
 
 ${DEFAULT_DECISION_RULE}
 
-Output ONLY the chapter prose.`,
+Write in ${state.tense} tense. Target ${state.word_count_target} words.
+Begin with the chapter title as a Markdown heading.
+Follow the scene brief exactly. Output ONLY the chapter prose.`,
         "powerful",
         undefined,
         16384
@@ -718,7 +706,7 @@ Instructions:
 - Output in ${state.tense} tense throughout all narration
 - Begin with the chapter title heading
 
-${ANTI_SLOP_FILTER}
+${PROSE_RULES}
 
 Output ONLY the chapter prose.`,
         "powerful",

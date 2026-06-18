@@ -160,3 +160,38 @@ These patterns indicate a "vending machine" chapter:
 - "And so they left" / "And that was that" — loop closers with no re-hook
 - Surprise that has no retroactive logical basis
 - Stakes that are abstract rather than specific and personal
+
+---
+
+## Re-hook Execution: Five Types
+
+The Re-hook is the mechanism that opens the next loop. Five types, vary across chapters:
+
+**1. Revelation Re-hook** — New information lands at the end that recontextualizes everything.
+End on the image, before the reaction. The reaction becomes the engine of the next chapter.
+STRONG: The last thing she sees is Daniel's badge — the one he reported stolen three months ago.
+WEAK: She discovered Daniel was the mole. She didn't know what to do with that yet. (circuit partially closed)
+
+**2. Action Re-hook** — Physical event cuts the chapter: gunshot, door closing, wire going dead.
+Most overused type. Use sparingly — max 1 in 4 chapter endings. End on the specific image, not the label.
+STRONG: The window shattered. She had time to see his face — just his face — before the lights went out.
+WEAK: Suddenly, shots rang out! What would happen next?
+
+**3. Decision Re-hook** — Protagonist commits to an irreversible choice. End before consequences arrive.
+STRONG: She picked up the phone. One call would end this. She dialed.
+WEAK: She wasn't sure what to do. She would have to decide soon.
+
+**4. Question Re-hook** — New problem introduced just as another resolves. Reader exhales, then tenses.
+STRONG: Everything made sense now — except one thing: why had they kept him alive for three days?
+WEAK: She had a bad feeling she couldn't shake.
+
+**5. Emotional Re-hook** — Relationship ruptured at maximum tension. No physical stakes required.
+Most underused and often most powerful. Readers read all night for relationship resolution.
+STRONG: He read the message twice. Then he put the phone face-down, poured the rest of his drink in the sink, and went to bed. He didn't reply.
+WEAK: She was devastated by what he'd said.
+
+**What kills the Re-hook:**
+- Reaction Close: ending on the character's response to the event rather than the event itself
+- Summary Close: narrator steps in and explains what the chapter meant
+- False Alarm: chapter-ending stakes that deflate immediately at the start of the next chapter
+- Dead air between loop close and next open — the Re-hook must fire IN THE SAME BEAT, not after a paragraph of resolution

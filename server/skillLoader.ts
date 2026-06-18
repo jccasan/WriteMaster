@@ -49,7 +49,7 @@ function loadAll(): void {
 
   walkDir(SKILLS_DIR, SKILLS_DIR);
   loaded = true;
-  console.log(`[SkillLoader] Loaded ${registry.size} skills:`, [...registry.keys()].join(", "));
+  console.log(`[SkillLoader] Loaded ${registry.size} skills:`, Array.from(registry.keys()).join(", "));
 }
 
 function walkDir(base: string, current: string): void {
@@ -116,7 +116,7 @@ export function injectSkills(prompt: string): string {
  */
 export function listSkills(): string[] {
   loadAll();
-  return [...registry.keys()].sort();
+  return Array.from(registry.keys()).sort();
 }
 
 /**
