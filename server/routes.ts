@@ -1198,6 +1198,14 @@ CRITICAL: Be specific and factual. Reference character names and concrete detail
           result = await runSceneScan(text, ctx, g, [1]);
           break;
         }
+        case "addiction_loop": {
+          const { runAddictionLoopAnalysis } = await import("./forge/analysis/modules/addiction-loop-analyzer");
+          result = await runAddictionLoopAnalysis(
+            [{ chapter_number: 1, title: "Chapter", content: text }],
+            1
+          );
+          break;
+        }
         default:
           return res.status(400).json({ error: `Unknown module: ${moduleName}` });
       }

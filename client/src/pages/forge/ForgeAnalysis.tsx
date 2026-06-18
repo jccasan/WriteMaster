@@ -21,6 +21,7 @@ const MODULES = [
   { key: "structure_analyzer", label: "Structure Analyzer" },
   { key: "character_tracker", label: "Character Tracker" },
   { key: "scene_scanner", label: "Scene Scanner" },
+  { key: "addiction_loop", label: "Addiction Loop Audit" },
 ];
 
 const QUICK_MODULES = ["editorial_assessment", "character_tracker", "developmental_editor"];

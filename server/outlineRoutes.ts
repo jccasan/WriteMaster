@@ -210,7 +210,9 @@ Rules:
   * Protagonist: who they are, what they want externally and internally
   * Central conflict
   * Antagonist or opposing force
-  * Stakes if protagonist fails
+  * Stakes: what the protagonist SPECIFICALLY loses if they fail (concrete, personal)
+  * Opening Big Question: what readers will predict in chapter 1
+  * Head Fake: how reader expectations will be subverted (at least gestured at)
   * Rough ending or resolution direction
   * At least one distinctive world or tone detail
 
@@ -441,10 +443,12 @@ Respond with ONLY a JSON array of ${chapter_count} objects:
 const HYBRID_QUESTIONS = [
   { id: "protagonist", label: "Who is your protagonist?", placeholder: "Name, what they want, what they're hiding from themselves..." },
   { id: "conflict", label: "What's the central conflict?", placeholder: "The main problem or opposition driving the story..." },
+  { id: "stakes", label: "What are the stakes? What does your protagonist lose if they fail?", placeholder: "Personal, professional, emotional — be specific. Generic stakes = no reader investment." },
   { id: "world", label: "Where and when does this take place?", placeholder: "Setting, time period, any unusual world rules..." },
-  { id: "stakes", label: "What happens if the protagonist fails?", placeholder: "Personal cost, world cost, or both..." },
   { id: "antagonist", label: "Who or what opposes the protagonist?", placeholder: "A person, a system, an inner demon..." },
+  { id: "hook", label: "What's the first big question the reader will be predicting?", placeholder: "The question that hooks readers in chapter 1 and keeps them reading — specific enough that they can actually form a guess..." },
   { id: "theme", label: "What is this story really about?", placeholder: "The deeper question or truth the story explores..." },
+  { id: "head_fake", label: "What will readers predict — and how will you surprise them?", placeholder: "What's the obvious outcome readers expect? What actually happens instead? (The head fake)" },
   { id: "tone", label: "What does this story feel like?", placeholder: "Comparable books/films, mood, pacing..." },
   { id: "ending", label: "How does it end? (rough is fine)", placeholder: "Even a vague sense — hero wins, bittersweet, open..." },
 ];
@@ -499,6 +503,13 @@ router.post("/hybrid/synthesize", async (req, res) => {
     const brainDump = await callLLM(
       `Synthesize these story development answers into a cohesive brain dump for a ${genre} novel.
 Write it as connected prose, not a list. Be specific, use the author's own details.
+
+Ensure the brain dump makes clear:
+- What the central stakes are (what the protagonist loses if they fail)
+- What the opening Big Question is (what readers will predict in chapter 1)
+- What the key head fake is (how reader expectations will be subverted)
+- How the story ends (even vaguely)
+
 400-600 words.
 
 ${parts.join("\n\n")}`,

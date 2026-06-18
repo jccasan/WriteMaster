@@ -60,6 +60,12 @@ const MODULES = [
     description: "Scene-by-scene breakdown: purpose, conflict, change, necessity rating",
     icon: <Eye className="w-5 h-5" />,
   },
+  {
+    id: "addiction_loop",
+    label: "Addiction Loop Audit",
+    description: "Scores each chapter 0-12: Stakes, Big Question, Head Fake, Re-hook. Flags weak elements with specific fixes.",
+    icon: <Sparkles className="w-5 h-5" />,
+  },
 ];
 
 const BETA_PROFILES = [
@@ -446,6 +452,75 @@ function SceneScanResult({ result }: { result: any }) {
   );
 }
 
+function AddictionLoopResult({ result }: { result: any }) {
+  const scores = result.chapter_scores ?? [];
+  const score = scores[0]?.score;
+  if (!score) return <p className="text-sm text-muted-foreground">No results.</p>;
+
+  const ELEMENT_LABELS: Record<string, string> = {
+    stakes: "Stakes", big_question: "Big Question",
+    head_fake: "Head Fake", re_hook: "Re-hook",
+  };
+
+  const ratingColor = {
+    addictive: "text-green-600 bg-green-600/10 border-green-600/30",
+    engaging: "text-primary bg-primary/10 border-primary/30",
+    flat: "text-amber-600 bg-amber-600/10 border-amber-600/30",
+    vending_machine: "text-destructive bg-destructive/10 border-destructive/30",
+  }[score.rating as string] ?? "";
+
+  return (
+    <div className="space-y-6">
+      {/* Overall score */}
+      <div className={`border rounded-xl p-5 ${ratingColor}`}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-lg capitalize">{score.rating?.replace("_", " ")}</h3>
+          <span className="text-3xl font-bold font-mono">{score.total}/12</span>
+        </div>
+        <div className="h-2 bg-black/10 rounded-full overflow-hidden">
+          <div className="h-full bg-current rounded-full transition-all" style={{ width: `${(score.total / 12) * 100}%` }} />
+        </div>
+      </div>
+
+      {/* Element breakdown */}
+      <div className="grid grid-cols-2 gap-3">
+        {(["stakes", "big_question", "head_fake", "re_hook"] as const).map(key => (
+          <div key={key} className="border border-border/60 rounded-lg p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{ELEMENT_LABELS[key]}</span>
+              <span className={`text-sm font-bold ${score[key] <= 1 ? "text-destructive" : score[key] === 3 ? "text-green-600" : "text-primary"}`}>
+                {score[key]}/3
+              </span>
+            </div>
+            <p className="text-xs text-foreground/80">{score[`${key}_notes`]}</p>
+            {key === "big_question" && score.big_question_quote !== "MISSING" && (
+              <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-2">"{score.big_question_quote}"</p>
+            )}
+            {key === "re_hook" && score.re_hook_quote !== "MISSING" && (
+              <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-2">"{score.re_hook_quote}"</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Priority fixes */}
+      {score.priority_fixes?.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold mb-3">Priority Fixes</h4>
+          <ol className="space-y-2">
+            {score.priority_fixes.map((fix: string, i: number) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <span className="text-primary font-mono shrink-0 mt-0.5">{i + 1}.</span>
+                <span className="text-foreground/80">{fix}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResultRenderer({ moduleName, result }: { moduleName: string; result: any }) {
   switch (moduleName) {
     case "editorial_assessment": return <EditorialResult result={result} />;
@@ -454,6 +529,7 @@ function ResultRenderer({ moduleName, result }: { moduleName: string; result: an
     case "proofreader": return <ProofreadResult result={result} />;
     case "beta_reader": return <BetaReaderResult result={result} />;
     case "scene_scanner": return <SceneScanResult result={result} />;
+    case "addiction_loop": return <AddictionLoopResult result={result} />;
     default: return <pre className="text-gray-300 text-xs whitespace-pre-wrap">{JSON.stringify(result, null, 2)}</pre>;
   }
 }

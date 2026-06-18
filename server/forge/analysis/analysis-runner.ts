@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { MemoryStore } from "../memory/memory-store";
 import { runEditorialAssessment } from "./modules/editorial-assessment";
 import { runDevEdit } from "./modules/developmental-editor";
+import { runAddictionLoopAnalysis } from "./modules/addiction-loop-analyzer";
 import { runCopyEdit } from "./modules/copy-editor";
 import { runProofread } from "./modules/proofreader";
 import { runFactCheck } from "./modules/fact-checker";
@@ -25,6 +26,7 @@ const MEMORY_MODULES = ["editorial_assessment", "character_tracker"];
 const PARALLEL_MODULES = [
   "developmental_editor", "copy_editor", "proofreader",
   "fact_checker", "structure_analyzer", "scene_scanner", "beta_reader",
+  "addiction_loop",
 ];
 
 export async function runAnalysisPipeline(
@@ -47,7 +49,7 @@ export async function runAnalysisPipeline(
 
   for (const chunk of chunks) {
     const chapterRange = `${chunk.startChapter}-${chunk.endChapter}`;
-    const chapterNumbers = [];
+    const chapterNumbers: number[] = [];
     for (let i = chunk.startChapter; i <= chunk.endChapter; i++) chapterNumbers.push(i);
 
     for (const mod of memoryModules) {
@@ -301,6 +303,40 @@ async function runModule(
       }
       for (const issue of result.issues || []) {
         await createIssue(revisionVersionId, chunk.id, issue, chunk.startChapter, chunk.chunkIndex, memory);
+      }
+      break;
+    }
+
+    case "addiction_loop": {
+      // Run per-chapter scoring on the chapters in this chunk
+      const chapterTexts = chapterNumbers.map(num => {
+        // Split chunk text by chapter if possible, otherwise use full chunk
+        return { chapter_number: num, title: `Chapter ${num}`, content: chunk.rawCombinedText };
+      });
+      const result = await runAddictionLoopAnalysis(chapterTexts, chapterTexts.length);
+
+      // Create issues for each weak chapter element
+      for (const chapterScore of result.chapter_scores) {
+        const score = chapterScore.score;
+
+        // Create an issue for any element scoring 0-1
+        const weakElements = [
+          { key: "stakes", val: score.stakes, notes: score.stakes_notes },
+          { key: "big_question", val: score.big_question, notes: score.big_question_notes },
+          { key: "head_fake", val: score.head_fake, notes: score.head_fake_notes },
+          { key: "re_hook", val: score.re_hook, notes: score.re_hook_notes },
+        ].filter(e => e.val <= 1);
+
+        for (const el of weakElements) {
+          await createIssue(revisionVersionId, chunk.id, {
+            type: "addiction_loop",
+            severity: el.val === 0 ? "major" : "minor",
+            title: `Weak ${el.key.replace("_", " ")} in Ch. ${chapterScore.chapter_number}`,
+            description: `Addiction loop score: ${score.total}/12 (${score.rating}). ${el.notes}`,
+            evidence: score.priority_fixes.slice(0, 2),
+            suggestion: score.priority_fixes[0] ?? `Strengthen the ${el.key.replace("_", " ")} element.`,
+          }, chapterScore.chapter_number, chunk.chunkIndex, memory);
+        }
       }
       break;
     }
