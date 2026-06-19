@@ -9,6 +9,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import ProseText from "@/components/ProseText";
 import ProseEditor from "@/components/ProseEditor";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
+import TropePicker from "@/components/TropePicker";
 import {
   Loader2, ArrowLeft, BookOpen, Pencil, Check, X,
   ChevronLeft, ChevronRight, Download, Copy, FileText,
@@ -723,7 +724,17 @@ export default function BookWriter() {
                 );
               })()}
 
-              <div className="flex flex-col items-center justify-center flex-1 text-center">
+              <div className="w-full max-w-2xl mb-6">
+                <TropePicker
+                  bookId={bookId!}
+                  onSave={(sel, _label) => {
+                    setBook(prev => prev ? { ...prev, tropes: sel } as any : prev);
+                  }}
+                  initialSelection={(book as any).tropes ?? null}
+                />
+              </div>
+
+              <div className="flex flex-col items-center text-center">
                 <BookOpen className="w-12 h-12 text-muted-foreground/30 mb-4" />
                 <h3 className="text-xl font-serif font-semibold mb-2">
                   {book.chapters.length === 0 ? "Ready to Start" : "Select a Chapter"}

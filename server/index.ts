@@ -66,6 +66,7 @@ app.use((req, res, next) => {
   app.use("/api/forge", forgeRouter);
   app.use("/api/universe", universeRouter);
   app.use("/api/outline", (await import("./outlineRoutes")).default);
+  app.use("/api/tropes", (await import("./tropes/tropeRoutes")).default);
   await registerRoutes(httpServer, app);
   
   seedDemoProject().catch(err => console.log("[FORGE] Seed skipped or failed:", err.message));

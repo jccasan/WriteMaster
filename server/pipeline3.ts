@@ -569,12 +569,27 @@ Output the complete unified Scene Brief.`,
         ? `PROSE STYLE GUIDE (match this voice exactly):\n${state.style_guide}\n`
         : "";
 
+      // Build trope context if book has tropes set
+      let tropeBlock = "";
+      if (state.book_id) {
+        try {
+          const { buildTropePromptBlock } = await import("./tropes/tropeSystem");
+          const book = await (await import("./storage")).storage.getBook(state.book_id);
+          const tropeSelection = (book as any)?.tropes;
+          if (tropeSelection?.primary) {
+            tropeBlock = buildTropePromptBlock(tropeSelection, "full");
+          }
+        } catch { /* non-blocking */ }
+      }
+
       const result = await callLLM(
         `You are a skilled novelist. Write Chapter ${cn}: "${ct}" as polished, publication-ready prose.
 
 ${styleSection}
 
 ${bibleSection}
+
+${tropeBlock ? `${tropeBlock}\n` : ""}
 
 SCENE BRIEF — follow every element:
 ${state.consolidated_brief}

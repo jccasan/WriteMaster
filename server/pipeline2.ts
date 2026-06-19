@@ -409,8 +409,24 @@ This is the FINAL World-Building Sheet.`,
     // ── CHAPTER OUTLINE ───────────────────────────────────────────────────────
 
     case 7: {
+      // Build trope context if book has tropes set
+      let tropeOutlineBlock = "";
+      if (state.book_id) {
+        try {
+          const { buildTropePromptBlock } = await import("./tropes/tropeSystem");
+          const { storage: bookStorage } = await import("./storage");
+          const book = await bookStorage.getBook(state.book_id);
+          const tropeSelection = (book as any)?.tropes;
+          if (tropeSelection?.primary) {
+            tropeOutlineBlock = buildTropePromptBlock(tropeSelection, "outline");
+          }
+        } catch { /* non-blocking */ }
+      }
+
       const result = await callLLM(
         `You are a master story architect creating a complete Chapter-by-Chapter Outline for a ${state.genre} novel.
+
+${tropeOutlineBlock ? `${tropeOutlineBlock}\n` : ""}
 
 STORY DOSSIER:
 ${state.dossier}
