@@ -423,11 +423,24 @@ This is the FINAL World-Building Sheet.`,
         } catch { /* non-blocking */ }
       }
 
+      // Build dimension context if book has dimensions set
+      let dimOutlineBlock = "";
+      if (state.book_id) {
+        try {
+          const { buildDimensionPromptBlock } = await import("./dimensions/dimensionSystem");
+          const { storage: bookStorage } = await import("./storage");
+          const book = await bookStorage.getBook(state.book_id);
+          const dimSelections = (book as any)?.dimensions;
+          if (dimSelections && Object.keys(dimSelections).length > 0) {
+            dimOutlineBlock = buildDimensionPromptBlock(dimSelections, "outline");
+          }
+        } catch { /* non-blocking */ }
+      }
+
       const result = await callLLM(
         `You are a master story architect creating a complete Chapter-by-Chapter Outline for a ${state.genre} novel.
 
-${tropeOutlineBlock ? `${tropeOutlineBlock}\n` : ""}
-
+${tropeOutlineBlock ? `${tropeOutlineBlock}\n` : ""}${dimOutlineBlock ? `${dimOutlineBlock}\n` : ""}
 STORY DOSSIER:
 ${state.dossier}
 

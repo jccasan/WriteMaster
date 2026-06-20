@@ -113,6 +113,19 @@ export async function runP4Step(state: LineEditState): Promise<{
 
     // ── 1: AI-ISMS SCAN ───────────────────────────────────────────────────────
     case 1: {
+      // Load dimension-specific defaults to avoid if book has dimensions set
+      let dimensionDefaultsBlock = "";
+      if (state.book_id) {
+        try {
+          const { buildDimensionPromptBlock } = await import("./dimensions/dimensionSystem");
+          const book = await (await import("./storage")).storage.getBook(state.book_id);
+          const dimSelections = (book as any)?.dimensions;
+          if (dimSelections && Object.keys(dimSelections).length > 0) {
+            dimensionDefaultsBlock = buildDimensionPromptBlock(dimSelections, "edit");
+          }
+        } catch { /* non-blocking */ }
+      }
+
       const result = await callLLM(
         `You are a line editor specializing in detecting AI-generated prose patterns. Scan the chapter below and produce a flagged list of every AI-tell instance found.
 
@@ -122,9 +135,11 @@ ${state.original_text}
 AI-ISMS DETECTION GUIDE:
 ${aiIsms}
 
+${dimensionDefaultsBlock ? `DIMENSION-SPECIFIC PATTERNS TO CHECK:\n${dimensionDefaultsBlock}\n` : ""}
 Instructions:
 - Work through the chapter systematically, paragraph by paragraph
 - Flag every instance of a banned word, banned phrase, banned structural pattern, or anti-pattern
+- Also flag any violations of the dimension-specific prose requirements above
 - For each flag: quote the exact problematic phrase, identify which category of AI-tell it is, and provide a specific replacement
 - Do NOT flag the same pattern type more than 10 times — after 10 instances of the same issue, note "X additional instances of [pattern] found throughout — apply fix globally"
 - Do NOT rewrite yet — produce the flagged list only

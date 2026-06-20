@@ -10,6 +10,7 @@ import ProseText from "@/components/ProseText";
 import ProseEditor from "@/components/ProseEditor";
 import NarrativeSliders, { DEFAULT_SLIDERS, type NarrativeSliderValues } from "@/components/NarrativeSliders";
 import TropePicker from "@/components/TropePicker";
+import DimensionPicker from "@/components/DimensionPicker";
 import {
   Loader2, ArrowLeft, BookOpen, Pencil, Check, X,
   ChevronLeft, ChevronRight, Download, Copy, FileText,
@@ -724,7 +725,7 @@ export default function BookWriter() {
                 );
               })()}
 
-              <div className="w-full max-w-2xl mb-6">
+              <div className="w-full max-w-2xl mb-6 space-y-6">
                 <TropePicker
                   bookId={bookId!}
                   onSave={(sel, _label) => {
@@ -732,6 +733,15 @@ export default function BookWriter() {
                   }}
                   initialSelection={(book as any).tropes ?? null}
                 />
+                <div className="border-t border-border/40 pt-5">
+                  <DimensionPicker
+                    bookId={bookId!}
+                    initialSelections={(book as any).dimensions ?? null}
+                    onSave={dims => {
+                      setBook(prev => prev ? { ...prev, dimensions: dims } as any : prev);
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="flex flex-col items-center text-center">

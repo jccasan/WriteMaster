@@ -582,6 +582,19 @@ Output the complete unified Scene Brief.`,
         } catch { /* non-blocking */ }
       }
 
+      // Build dimension context if book has dimensions set
+      let dimensionBlock = "";
+      if (state.book_id) {
+        try {
+          const { buildDimensionPromptBlock } = await import("./dimensions/dimensionSystem");
+          const book = await (await import("./storage")).storage.getBook(state.book_id);
+          const dimSelections = (book as any)?.dimensions;
+          if (dimSelections && Object.keys(dimSelections).length > 0) {
+            dimensionBlock = buildDimensionPromptBlock(dimSelections, "write");
+          }
+        } catch { /* non-blocking */ }
+      }
+
       const result = await callLLM(
         `You are a skilled novelist. Write Chapter ${cn}: "${ct}" as polished, publication-ready prose.
 
@@ -589,8 +602,7 @@ ${styleSection}
 
 ${bibleSection}
 
-${tropeBlock ? `${tropeBlock}\n` : ""}
-
+${tropeBlock ? `${tropeBlock}\n` : ""}${dimensionBlock ? `${dimensionBlock}\n` : ""}
 SCENE BRIEF — follow every element:
 ${state.consolidated_brief}
 
