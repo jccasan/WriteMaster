@@ -14,7 +14,7 @@
  */
 
 import { Router } from "express";
-import { readFile, writeFile, mkdir } from "fs/promises";
+import { readFile, writeFile, mkdir, readdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -72,6 +72,60 @@ async function loadSession(id: string): Promise<GuidedSession | null> {
   if (!existsSync(p)) return null;
   return JSON.parse(await readFile(p, "utf-8"));
 }
+
+/** Extract a readable title from session messages — first user answer, trimmed */
+function sessionTitle(session: GuidedSession): string {
+  const firstUser = session.messages.find(m => m.role === "user");
+  if (!firstUser) return `${session.genre} story`;
+  const text = firstUser.content.trim();
+  return text.length > 60 ? text.slice(0, 57) + "..." : text;
+}
+
+// ─── LIST IN-PROGRESS SESSIONS ───────────────────────────────────────────────
+
+router.get("/guided", async (_req, res) => {
+  try {
+    if (!existsSync(SESSIONS_DIR)) return res.json([]);
+    const files = (await readdir(SESSIONS_DIR)).filter(f => f.endsWith(".json"));
+    const sessions = await Promise.all(
+      files.map(async f => {
+        try {
+          const session: GuidedSession = JSON.parse(
+            await readFile(path.join(SESSIONS_DIR, f), "utf-8")
+          );
+          return {
+            session_id: session.session_id,
+            title: sessionTitle(session),
+            genre: session.genre,
+            phase: session.phase,
+            question_count: session.question_count,
+            created_at: session.created_at,
+            universe_id: session.universe_id ?? null,
+          };
+        } catch { return null; }
+      })
+    );
+    // Return active sessions only (not complete/error), newest first
+    const active = sessions
+      .filter(s => s && s.phase === "questioning" || s?.phase === "synthesizing")
+      .sort((a, b) => new Date(b!.created_at).getTime() - new Date(a!.created_at).getTime());
+    res.json(active);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DELETE SESSION ───────────────────────────────────────────────────────────
+
+router.delete("/guided/:id", async (req, res) => {
+  try {
+    const p = path.join(SESSIONS_DIR, `${req.params.id}.json`);
+    if (existsSync(p)) await unlink(p);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ─── GUIDED MODE ──────────────────────────────────────────────────────────────
 

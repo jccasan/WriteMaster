@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Loader2, Sparkles, MessageCircle, FileText, Layers,
   AlertTriangle, Check, ChevronDown, ChevronUp, Plus, Minus,
-  ArrowRight, Send
+  ArrowRight, Send, Save, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +64,8 @@ export default function PipelineNew() {
   const [genre, setGenre] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedSessions, setSavedSessions] = useState<any[]>([]);
+  const [dismissedSessions, setDismissedSessions] = useState<Set<string>>(new Set());
 
   // Guided state
   const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
@@ -94,6 +96,12 @@ export default function PipelineNew() {
   useEffect(() => {
     fetch("/api/genres").then(r => r.json()).then(setGenres).catch(() => {});
     fetch("/api/outline/hybrid/questions").then(r => r.json()).then(d => setHybridQuestions(d.questions ?? [])).catch(() => {});
+
+    // Load in-progress sessions
+    fetch("/api/outline/guided")
+      .then(r => r.json())
+      .then(sessions => setSavedSessions(Array.isArray(sessions) ? sessions : []))
+      .catch(() => {});
 
     // Check for a pre-started guided session (from NewBookInUniverse)
     const stored = sessionStorage.getItem("outline_session");
@@ -278,6 +286,25 @@ export default function PipelineNew() {
 
   // ── MODE PICKER ───────────────────────────────────────────────────────────────
 
+  const resumeSession = async (sessionId: string) => {
+    try {
+      const r = await fetch(`/api/outline/guided/${sessionId}`);
+      if (!r.ok) return;
+      const session = await r.json();
+      setGuidedSession(session);
+      setGenre(session.genre);
+      if (session.phase !== "questioning") setReadyToSynthesize(true);
+      setMode("guided");
+    } catch {}
+  };
+
+  const dismissSession = async (sessionId: string) => {
+    setDismissedSessions(prev => new Set(Array.from(prev).concat(sessionId)));
+    // Optionally delete from server
+    await fetch(`/api/outline/guided/${sessionId}`, { method: "DELETE" }).catch(() => {});
+    setSavedSessions(prev => prev.filter(s => s.session_id !== sessionId));
+  };
+
   if (mode === "pick") return (
     <Layout>
       <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -288,6 +315,43 @@ export default function PipelineNew() {
           <h1 className="text-4xl font-serif font-bold mb-3">Write an Outline</h1>
           <p className="text-muted-foreground text-lg">How would you like to build your story?</p>
         </div>
+
+        {/* Resume in-progress sessions */}
+        {savedSessions.filter(s => !dismissedSessions.has(s.session_id)).length > 0 && (
+          <div className="mb-6 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resume in progress</p>
+            {savedSessions
+              .filter(s => !dismissedSessions.has(s.session_id))
+              .map(session => (
+                <div
+                  key={session.session_id}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5"
+                >
+                  <MessageCircle className="w-4 h-4 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{session.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {session.genre} · {session.question_count} question{session.question_count !== 1 ? "s" : ""} answered
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs gap-1 shrink-0"
+                    onClick={() => resumeSession(session.session_id)}
+                  >
+                    Resume
+                  </Button>
+                  <button
+                    onClick={() => dismissSession(session.session_id)}
+                    className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                    title="Discard interview"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+          </div>
+        )}
 
         <div className="mb-6">
           <Label className="text-sm font-medium mb-2 block">Genre</Label>
@@ -376,12 +440,26 @@ export default function PipelineNew() {
             {guidedSession.question_count} question{guidedSession.question_count !== 1 ? "s" : ""}
           </Badge>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {unresolved > 0 && (
             <Badge variant="outline" className="text-xs border-amber-500 text-amber-600 gap-1">
               <AlertTriangle className="w-3 h-3" /> {unresolved} conflict{unresolved !== 1 ? "s" : ""}
             </Badge>
           )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="gap-1.5 h-8 text-muted-foreground hover:text-foreground text-xs"
+            onClick={() => {
+              // Session is already persisted server-side on every answer.
+              // Store session ID so we can surface it on the home/my-work page.
+              localStorage.setItem("saved_interview_session", guidedSession.session_id);
+              navigate("/");
+            }}
+          >
+            <Save className="w-3.5 h-3.5" />
+            Save & Exit
+          </Button>
           {readyToSynthesize && (
             <Button
               size="sm"
