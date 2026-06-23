@@ -373,7 +373,7 @@ export default function Home() {
         )}
 
         {recentWork.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-6 grid grid-cols-3 gap-3">
             <div className="p-4 rounded-lg border border-border/60 hover:border-primary/30 transition-all group relative">
               <BookOpen className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
               <p className="text-sm font-medium">New Book</p>
@@ -387,6 +387,14 @@ export default function Home() {
               <Globe className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
               <p className="text-sm font-medium">New Universe</p>
               <p className="text-xs text-muted-foreground mt-0.5">Build a world or series</p>
+            </button>
+            <button
+              onClick={() => navigate("/expand")}
+              className="p-4 rounded-lg border border-border/60 hover:border-primary/30 text-left transition-all group"
+            >
+              <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
+              <p className="text-sm font-medium">Expand a Chapter</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Upload a book, expand with AI</p>
             </button>
           </div>
         )}

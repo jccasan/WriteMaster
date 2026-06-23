@@ -28,6 +28,7 @@ import ForgeScenes from "@/pages/forge/ForgeScenes";
 import ForgeFactCheck from "@/pages/forge/ForgeFactCheck";
 import ForgeBetaReaders from "@/pages/forge/ForgeBetaReaders";
 import ForgeQuickFeedback from "@/pages/forge/ForgeQuickFeedback";
+import Expand from "@/pages/Expand";
 import ForgeChat from "@/pages/forge/ForgeChat";
 import PublishingHub from "@/pages/PublishingHub";
 import TropeResearch from "@/pages/TropeResearch";
@@ -87,6 +88,7 @@ function Router() {
       <Route path="/publishing/blurbs/:id" component={BlurbGenerator} />
       <Route path="/publishing/titles-keywords" component={PublishingTools} />
       <Route path="/publishing/titles-keywords/:id" component={PublishingTools} />
+      <Route path="/expand" component={Expand} />
       <Route component={NotFound} />
     </Switch>
   );
