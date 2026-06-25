@@ -453,7 +453,7 @@ export default function Expand() {
           <div>
             <h1 className="text-2xl font-serif font-bold">{selectedChapter?.title}</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {INTEGRATION_MODES.find(m => m.id === integrationMode)?.label} · {result.split(/\s+/).filter(Boolean).length.toLocaleString()} words
+              {INTEGRATION_MODES.find(m => m.id === integrationMode)?.label}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -487,10 +487,17 @@ export default function Expand() {
           </div>
         </div>
 
-        <div className="prose prose-sm max-w-none bg-muted/20 rounded-xl border border-border/60 p-6">
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground m-0">
-            {result}
-          </pre>
+        <div className="rounded-xl border border-border/60 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-muted/20">
+            <span className="text-xs text-muted-foreground">Edit freely — changes are local to this session</span>
+            <span className="text-xs text-muted-foreground">{result.split(/\s+/).filter(Boolean).length.toLocaleString()} words</span>
+          </div>
+          <textarea
+            value={result}
+            onChange={e => setResult(e.target.value)}
+            className="w-full min-h-[60vh] p-6 text-sm leading-relaxed font-sans bg-background resize-none focus:outline-none"
+            spellCheck
+          />
         </div>
       </div>
     </Layout>

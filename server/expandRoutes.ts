@@ -18,6 +18,7 @@ import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { callLLM } from "./llm";
+import { PROSE_RULES } from "./writing-rules";
 
 const router = Router();
 
@@ -351,13 +352,11 @@ ${interviewSummary}
 
 TASK: ${modeInstructions[integration_mode]}
 
-PROSE RULES:
+${PROSE_RULES}
+
+ADDITIONAL REQUIREMENTS:
 - Match the voice and style of the existing chapter where content is being preserved
-- Do not use the banned words: delve, pivotal, crucial, vibrant, tapestry, nestled, groundbreaking, profound
-- Do not use "not just X but Y" constructions
-- Show emotion through physical behavior, not labeled feelings
-- Vary sentence length; end sentences on the strongest word
-- Every page must earn its space — no filler
+- Every page must earn its space — no filler passages
 
 Output only the prose. No author notes, no labels, no preamble.`;
 
