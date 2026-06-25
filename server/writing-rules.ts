@@ -47,7 +47,7 @@ BANNED PATTERNS:
 - Participial tails that editorialize: "...highlighting the importance of..." — cut.
 - Copula avoidance: "serves as / stands as / marks / represents" when "is" works — use "is".
 - Thesaurus cycling: calling the same thing three different fancy names — pick one.
-- Em-dash overuse — use commas or break into two sentences.
+- Em-dash overuse: use commas or break into two sentences instead. Never more than one per page.
 - "Suddenly" — once per chapter maximum.
 - "Little did they know" — never.
 

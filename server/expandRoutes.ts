@@ -18,7 +18,8 @@ import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { callLLM } from "./llm";
-import { PROSE_RULES } from "./writing-rules";
+import { PROSE_RULES, SCENE_RULES, CONTEXT_RULES, DEFAULT_DECISION_RULE } from "./writing-rules";
+import { getSkill } from "./skillLoader";
 
 const router = Router();
 
@@ -352,11 +353,21 @@ ${interviewSummary}
 
 TASK: ${modeInstructions[integration_mode]}
 
+${CONTEXT_RULES}
+
 ${PROSE_RULES}
+
+${SCENE_RULES}
+
+AI-ISMS TO AVOID IN THIS PIECE:
+${getSkill("AI_ISMS") || ""}
+
+${DEFAULT_DECISION_RULE}
 
 ADDITIONAL REQUIREMENTS:
 - Match the voice and style of the existing chapter where content is being preserved
-- Every page must earn its space — no filler passages
+- Every scene must do at least two things simultaneously (plot + character, action + revelation, etc.)
+- Every page must earn its space
 
 Output only the prose. No author notes, no labels, no preamble.`;
 
