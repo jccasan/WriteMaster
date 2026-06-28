@@ -45,6 +45,15 @@ const CATEGORY_COLORS: Record<IssueCategory, string> = {
 
 // ─── PARSERS ─────────────────────────────────────────────────────────────────
 
+// Strip markdown bold/italic from AI output
+function stripMd(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .trim();
+}
+
 function parseCategory(raw: string): IssueCategory {
   const s = raw.toLowerCase();
   if (s.includes("character")) return "Character";
@@ -77,7 +86,7 @@ export function parseContinuityOutput(text: string, chapters: EditorChapter[]): 
     const fix = block.match(/FIX:\s*([\s\S]+?)(?=\n\[|\n\n|$)/i)?.[1]?.trim() ?? "";
     const quoteMatch = problem.match(/"([^"]{10,})"/);
     if (problem || fix) {
-      issues.push({ id, category: parseCategory(category), chapter, chapterIdx: resolveChapterIdx(chapter, chapters), problem, fix, quote: quoteMatch?.[1] ?? "", status: "open" });
+      issues.push({ id, category: parseCategory(category), chapter: stripMd(chapter), chapterIdx: resolveChapterIdx(chapter, chapters), problem: stripMd(problem), fix: stripMd(fix), quote: quoteMatch?.[1] ?? "", status: "open" });
     }
   }
   return issues;
@@ -240,6 +249,9 @@ interface IssueCardProps {
 }
 
 function IssueCard({ issue, isActive, implementing, onImplement, onMarkDone, onSkip }: IssueCardProps) {
+  const [showFix, setShowFix] = useState(false);
+  const hasQuote = !!issue.quote;
+
   if (issue.status !== "open") return (
     <div className={cn("px-3 py-2 rounded-lg border flex items-center justify-between gap-2 text-xs",
       issue.status === "done" ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-700" : "bg-muted/20 border-border/40 text-muted-foreground"
@@ -255,14 +267,29 @@ function IssueCard({ issue, isActive, implementing, onImplement, onMarkDone, onS
         <div className="flex items-start gap-2 flex-wrap">
           <Badge variant="outline" className={cn("text-xs border shrink-0", CATEGORY_COLORS[issue.category])}>{issue.category}</Badge>
           {issue.chapter && (
-            <span className="text-xs text-muted-foreground truncate">{issue.chapter.slice(0, 24)}{issue.chapter.length > 24 ? "..." : ""}</span>
+            <span className="text-xs text-muted-foreground truncate">{issue.chapter.slice(0, 28)}{issue.chapter.length > 28 ? "..." : ""}</span>
           )}
         </div>
         <p className="text-xs leading-relaxed text-foreground/80">{issue.problem}</p>
+        {showFix && issue.fix && (
+          <div className="bg-muted/30 rounded p-2 border border-border/30 text-xs text-foreground/70 leading-relaxed">
+            {issue.fix}
+          </div>
+        )}
         <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-          <Button size="sm" className="h-7 text-xs gap-1.5" onClick={onImplement}>
-            <Wrench className="w-3 h-3" /> Implement
+          <Button size="sm"
+            className={cn("h-7 text-xs gap-1.5", !hasQuote && "opacity-80")}
+            variant={hasQuote ? "default" : "outline"}
+            onClick={onImplement}
+            title={hasQuote ? "Navigate to passage and rewrite with AI" : "Navigate to chapter — fix manually (no specific passage quoted)"}
+          >
+            <Wrench className="w-3 h-3" />
+            {hasQuote ? "Rewrite" : "Go to chapter"}
           </Button>
+          <button onClick={() => setShowFix(!showFix)} className="text-xs text-muted-foreground hover:text-foreground">
+            {showFix ? "Hide" : "Show"} fix
+          </button>
+          <span className="text-muted-foreground/30 text-xs">·</span>
           <button onClick={onMarkDone} className="text-xs text-emerald-600 hover:underline">Done</button>
           <span className="text-muted-foreground/30 text-xs">·</span>
           <button onClick={onSkip} className="text-xs text-muted-foreground hover:underline">Skip</button>
