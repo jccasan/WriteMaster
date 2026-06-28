@@ -70,6 +70,7 @@ app.use((req, res, next) => {
   app.use("/api/dimensions", (await import("./dimensions/dimensionRoutes")).default);
   app.use("/api/expand", (await import("./expandRoutes")).default);
   app.use("/api/romance", (await import("./romance/romanceRoutes")).default);
+  app.use("/api/edit-book", (await import("./editBookRoutes")).default);
   await registerRoutes(httpServer, app);
   
   seedDemoProject().catch(err => console.log("[FORGE] Seed skipped or failed:", err.message));
