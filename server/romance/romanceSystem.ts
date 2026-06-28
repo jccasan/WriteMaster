@@ -147,13 +147,29 @@ The town is a character — it meddles, gossips, ships the couple before they do
 Workplace ETL:
 Both leads want the same thing professionally and only one can have it. The professional conflict and romantic conflict resolve separately — getting the person cannot also mean getting the professional win; one of them loses something real. The "can't act on this" tension is professional with actual consequences (HR, optics, power dynamic, contract). Required scenes: forced collaboration on something neither can do alone; watching the other be genuinely brilliant (this is where respect cracks the enmity); the professional win that costs them relationally.
 
-KU PACING
-- Chapter 1: Both leads introduced or meet has occurred. Premise clear.
-- Chapter 3: Reader knows what they're rooting for and why it can't happen yet.
-- Midpoint (40-50%): Shift that changes stakes — genuine intimacy, reversal, or revelation.
-- Dark moment (75-80%): Everything falls apart, both characters responsible, not just one.
-- Resolution: They choose each other actively. HEA shows glimpse of shared future.
-Never stall. Every conflict must change something — new information, new consequence, new self-awareness.`;
+KU PACING — NOVELLA (TARGET: 20,000-25,000 WORDS)
+This is a high-throughput novella, not a full commercial romance. Every word earns its place.
+
+Word budget (approximate):
+- Act 1 (setup, meet, enmity established): 4,000-5,000 words
+- Act 2a (escalating tension, almost-moments, vulnerability cracks): 6,000-8,000 words
+- Act 2b (midpoint shift through dark moment): 6,000-8,000 words
+- Act 3 (break, choice, HEA): 4,000-5,000 words
+
+Novella-specific rules:
+- Secondary characters get ONE defining trait, not a full arc
+- No chapters exist purely for world-building or backstory
+- Backstory arrives in one line of dialogue or a two-sentence memory, never a flashback scene
+- The dark moment must arrive by the 75% mark and resolve within 3,000 words
+- HEA is earned, specific, and brief: a scene, not a chapter
+- No subplot that does not directly pressure the central romance
+
+Chapter 1: Both leads introduced or meet has occurred. Premise clear. Hook landed.
+Chapter 3: Reader knows what they're rooting for and why it cannot happen yet.
+Midpoint (40-50%): Genuine intimacy or reversal that changes stakes.
+Dark moment (75%): Everything falls apart. Both responsible.
+Resolution: Active choice. HEA shows the future in a scene, not a summary.
+Never stall. Every scene must change something.`;
 
 // ─── SUBGENRE LABELS ─────────────────────────────────────────────────────────
 

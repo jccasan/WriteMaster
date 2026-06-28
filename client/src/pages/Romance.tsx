@@ -32,7 +32,7 @@ const EMPTY_PARAMS = {
   billionaire_lead: "" as any,
   setting: "",
   series_or_standalone: "standalone" as const,
-  target_word_count: "75,000",
+  target_word_count: "22,000",
   enmity_reason: "",
   lead_a: { ...EMPTY_CHAR },
   lead_b: { ...EMPTY_CHAR },

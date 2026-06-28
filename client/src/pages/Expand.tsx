@@ -79,9 +79,10 @@ export default function Expand() {
   // Editor state
   const [editorChapters, setEditorChapters] = useState<{ title: string; content: string }[]>([]);
   const [activeChapterIdx, setActiveChapterIdx] = useState(0);
-  const [aiPanel, setAiPanel] = useState<"none" | "scan" | "rewrite">("none");
+  const [aiPanel, setAiPanel] = useState<"none" | "scan" | "rewrite" | "continuity">("continuity");
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<string>("");
+  const [continuityResult, setContinuityResult] = useState<string>("");
   const [rewritePassage, setRewritePassage] = useState("");
   const [rewriteInstruction, setRewriteInstruction] = useState("");
   const [rewriteResult, setRewriteResult] = useState("");
@@ -236,6 +237,27 @@ export default function Expand() {
 
   const updateChapterContent = (idx: number, content: string) => {
     setEditorChapters(prev => prev.map((ch, i) => i === idx ? { ...ch, content } : ch));
+  };
+
+  const runContinuityCheck = async () => {
+    setAiLoading("continuity");
+    setContinuityResult("");
+    setError(null);
+    try {
+      const r = await fetch("/api/edit-book/continuity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapters: editorChapters }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error);
+      setContinuityResult(data.result);
+      setAiPanel("continuity");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setAiLoading(null);
+    }
   };
 
   const runLineEdit = async () => {
@@ -697,14 +719,24 @@ export default function Expand() {
                 <AlertCircle className="w-3.5 h-3.5" /> {error}
               </span>
             )}
+            <Button
+              size="sm"
+              className={cn("gap-1.5 h-8 text-xs", aiPanel === "continuity" && continuityResult ? "bg-amber-600 hover:bg-amber-700" : "")}
+              onClick={runContinuityCheck}
+              disabled={!!aiLoading}
+              title="Analyze full manuscript for inconsistencies, plot holes, and weak passages"
+            >
+              {aiLoading === "continuity" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertCircle className="w-3.5 h-3.5" />}
+              Full Manuscript Check
+            </Button>
             <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs"
               onClick={runLineEdit} disabled={!!aiLoading}>
               {aiLoading === "line-edit" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-              Line Edit
+              Line Edit Chapter
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs"
               onClick={runScan} disabled={!!aiLoading}>
-              {aiLoading === "scan" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertCircle className="w-3.5 h-3.5" />}
+              {aiLoading === "scan" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
               Scan AI-Tells
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs"
@@ -773,12 +805,39 @@ export default function Expand() {
               <div className="w-96 border-l border-border/40 flex flex-col shrink-0">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {aiPanel === "scan" ? "AI-Tell Scan Results" : "Rewrite Passage"}
+                    {aiPanel === "scan" ? "AI-Tell Scan" : aiPanel === "continuity" ? "Manuscript Analysis" : "Rewrite Passage"}
                   </p>
                   <button onClick={() => setAiPanel("none")} className="text-muted-foreground hover:text-foreground">
-                    <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
+
+                {aiPanel === "continuity" && (
+                  <div className="flex-1 overflow-y-auto p-4">
+                    {aiLoading === "continuity" ? (
+                      <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground py-8">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <p>Reading full manuscript...</p>
+                        <p className="text-xs text-center">Checking character consistency, plot logic, timeline, and prose quality across all chapters.</p>
+                      </div>
+                    ) : continuityResult ? (
+                      <div className="space-y-3">
+                        <div className="flex justify-end">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1"
+                            onClick={() => editorCopy(continuityResult, "continuity")}>
+                            {editorCopied === "continuity" ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} Copy all
+                          </Button>
+                        </div>
+                        <pre className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/80">{continuityResult}</pre>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <AlertCircle className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                        <p className="text-xs">Click "Full Manuscript Check" to analyze all chapters for inconsistencies and weak passages.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {aiPanel === "scan" && (
                   <div className="flex-1 overflow-y-auto p-4">

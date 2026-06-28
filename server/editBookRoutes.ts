@@ -144,4 +144,85 @@ ${DEFAULT_DECISION_RULE}
   }
 });
 
+// ─── CONTINUITY CHECK ─────────────────────────────────────────────────────────
+// Full-manuscript analysis: character consistency, plot logic, timeline,
+// setting, knowledge gaps, and weak passages. Runs on the full text.
+
+router.post("/continuity", async (req, res) => {
+  const { chapters } = req.body as { chapters: { title: string; content: string }[] };
+  if (!chapters?.length) return res.status(400).json({ error: "chapters array required" });
+
+  const fullText = chapters
+    .map(ch => `=== ${ch.title} ===\n\n${ch.content}`)
+    .join("\n\n");
+
+  const aiIsms = getSkill("AI_ISMS") ?? "";
+
+  const prompt = `You are a developmental and line editor reviewing a complete manuscript before publication. Your job is to find every problem that would make a reader stop trusting the story.
+
+FULL MANUSCRIPT:
+${fullText}
+
+Run these checks in order. For every issue found, output it in the format below. Be specific — quote the exact passage, name the chapter, state what the problem is and what the fix is. Do not pad the list with minor style preferences. Only flag things that genuinely damage the reading experience.
+
+═══ CHECK 1: CHARACTER CONSISTENCY ═══
+Track every named character across all chapters:
+- Do descriptions contradict? (eye color changes, height inconsistent, etc.)
+- Does behavior contradict established character? (coward suddenly brave with no arc, etc.)
+- Does a character's knowledge contradict when they learned something?
+- Are names spelled consistently?
+- Do relationships between characters stay consistent?
+
+═══ CHECK 2: PLOT LOGIC ═══
+- Does any event require the reader to ignore established facts?
+- Is any problem solved too easily given the established stakes?
+- Does any revelation come from nowhere with no setup?
+- Does any setup go nowhere (Chekhov's gun violations)?
+- Are cause and effect sequences logical?
+- Does any character make a decision that contradicts their stated goals or beliefs without explanation?
+
+═══ CHECK 3: TIMELINE & CONTINUITY ═══
+- Are time references consistent? (events that happen "the next morning" vs. "three days later")
+- Do objects appear or disappear without explanation?
+- Are locations consistent? (characters who couldn't logistically be somewhere)
+- Does something happen before it's been set up?
+- Are physical injuries, exhaustion, or resource depletion tracked consistently?
+
+═══ CHECK 4: INFORMATION GAPS ═══
+- Does the narrator or a character know something they shouldn't know yet?
+- Is any information withheld from the reader in a way that feels manipulative rather than purposeful?
+- Is any critical piece of backstory assumed but never established?
+
+═══ CHECK 5: WEAK PASSAGES ═══
+Using these craft standards:
+${PROSE_RULES}
+
+AI-ISMS:
+${aiIsms}
+
+Flag:
+- Scenes that violate show-don't-tell at a consequential moment (major emotional beats, reveals, climax)
+- Chapter endings that close on resolution rather than an open circuit
+- Passages with 3+ banned constructions in close proximity
+- Any section where the pacing collapses (events that needed a scene get a summary; scenes that needed compression are drawn out)
+- The weakest 2-3 passages in the manuscript overall (prose quality, not preference)
+
+═══ OUTPUT FORMAT ═══
+For each issue:
+[N]. CATEGORY: Character / Plot / Timeline / Information / Prose
+     CHAPTER: [chapter title]
+     PROBLEM: [one specific sentence describing what's wrong, with a direct quote where relevant]
+     FIX: [one concrete suggestion]
+
+End with:
+SUMMARY: X issues found. [One sentence on the most critical problem to address first.]`;
+
+  try {
+    const result = await callLLM(prompt, "powerful", undefined, 8192);
+    res.json({ result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
