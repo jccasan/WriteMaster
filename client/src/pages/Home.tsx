@@ -4,7 +4,7 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, BookOpen, Globe, ArrowRight, Clock, ChevronRight, Sparkles, Library, ChevronDown, Plus } from "lucide-react";
+import { Loader2, BookOpen, Globe, ArrowRight, Clock, ChevronRight, Sparkles, Library, ChevronDown, Plus, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function formatDate(iso: string) {
@@ -373,7 +373,7 @@ export default function Home() {
         )}
 
         {recentWork.length > 0 && (
-          <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="mt-6 grid grid-cols-2 gap-3">
             <div className="p-4 rounded-lg border border-border/60 hover:border-primary/30 transition-all group relative">
               <BookOpen className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
               <p className="text-sm font-medium">New Book</p>
@@ -395,6 +395,14 @@ export default function Home() {
               <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
               <p className="text-sm font-medium">Expand a Chapter</p>
               <p className="text-xs text-muted-foreground mt-0.5">Upload a book, expand with AI</p>
+            </button>
+            <button
+              onClick={() => navigate("/romance")}
+              className="p-4 rounded-lg border border-border/60 hover:border-rose-400/30 text-left transition-all group"
+            >
+              <Heart className="w-5 h-5 text-muted-foreground group-hover:text-rose-400 mb-2 transition-colors" />
+              <p className="text-sm font-medium">Romance Studio</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Billionaire · ETL · KU-optimized</p>
             </button>
           </div>
         )}
