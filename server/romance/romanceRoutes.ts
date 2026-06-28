@@ -18,6 +18,7 @@ import { readFile, writeFile, readdir, unlink, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import multer from "multer";
 import { callLLM } from "../llm";
 import {
   ROMANCE_SYSTEM_PROMPT,
@@ -30,6 +31,7 @@ import {
 
 const router = Router();
 const PROJECTS_DIR = path.resolve("data/romance-projects");
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 if (!existsSync(PROJECTS_DIR)) {
   mkdir(PROJECTS_DIR, { recursive: true }).catch(() => {});
@@ -80,6 +82,7 @@ router.get("/", async (_req, res) => {
       has_beat_sheet: !!p.beat_sheet,
       scene_count: p.scenes.length,
       has_parameters: !!p.parameters,
+      manuscript_chapters: p.manuscript?.length ?? 0,
     })));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -125,6 +128,58 @@ router.delete("/:id", async (req, res) => {
   const p = path.join(PROJECTS_DIR, `${req.params.id}.json`);
   if (existsSync(p)) await unlink(p).catch(() => {});
   res.json({ success: true });
+});
+
+// ─── MANUSCRIPT UPLOAD ───────────────────────────────────────────────────────
+// Parse an uploaded file and store chapters in the project.
+
+router.post("/:id/upload", upload.single("file"), async (req, res) => {
+  const project = await loadProject(req.params.id);
+  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+  try {
+    // Reuse the expand upload parsing logic
+    const FormData = (await import("form-data")).default;
+    const fetch = (await import("node-fetch")).default as any;
+    const form = new FormData();
+    form.append("file", req.file.buffer, { filename: req.file.originalname, contentType: req.file.mimetype });
+
+    // Parse using the existing expand endpoint
+    const parseRes = await fetch(`http://localhost:${process.env.PORT ?? 5000}/api/expand/upload`, {
+      method: "POST",
+      body: form,
+      headers: form.getHeaders(),
+    });
+    const parsed = await parseRes.json() as any;
+    if (!parseRes.ok) throw new Error(parsed.error ?? "Parse failed");
+
+    const manuscript = parsed.chapters.map((ch: any, i: number) => ({
+      title: ch.title,
+      content: parsed.chapter_contents[i] ?? "",
+    }));
+
+    project.manuscript = manuscript;
+    await saveProject(project);
+    res.json({ chapter_count: manuscript.length, chapters: manuscript.map((c: any) => c.title) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── MANUSCRIPT CHAPTER SAVE ─────────────────────────────────────────────────
+// Save edited chapter content back to the project.
+
+router.put("/:id/manuscript", async (req, res) => {
+  const project = await loadProject(req.params.id);
+  if (!project) return res.status(404).json({ error: "Project not found" });
+
+  const { chapters } = req.body as { chapters: { title: string; content: string }[] };
+  if (!Array.isArray(chapters)) return res.status(400).json({ error: "chapters array required" });
+
+  project.manuscript = chapters;
+  await saveProject(project);
+  res.json({ saved: chapters.length });
 });
 
 // ─── OUTLINE ──────────────────────────────────────────────────────────────────

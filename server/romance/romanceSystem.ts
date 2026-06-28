@@ -57,6 +57,7 @@ export interface RomanceProject {
   outline?: string;
   beat_sheet?: string;
   scenes: RomanceScene[];
+  manuscript?: { title: string; content: string }[];
 }
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────

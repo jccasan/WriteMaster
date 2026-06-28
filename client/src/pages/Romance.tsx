@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,10 @@ import {
 import { cn } from "@/lib/utils";
 
 import { ManuscriptUpload, ManuscriptEditorView, type EditorChapter, type Issue, type IssueSource } from "@/components/ManuscriptEditor";
+import { Input } from "@/components/ui/input";
 
-type View = "hub" | "new-project" | "parameters" | "studio" | "upload-edit" | "editor";
-type StudioTab = "outline" | "beat_sheet" | "scenes" | "new_scene";
+type View = "hub" | "new-project" | "parameters" | "studio";
+type StudioTab = "outline" | "beat_sheet" | "scenes" | "new_scene" | "manuscript";
 
 const SUBGENRES = [
   { id: "billionaire", label: "Billionaire Romance", desc: "Power differential, wealth as obstacle, fish-out-of-water moments" },
@@ -108,6 +109,8 @@ export default function Romance() {
   const [editorChapters, setEditorChapters] = useState<EditorChapter[]>([]);
   const [editorIssues, setEditorIssues] = useState<Issue[]>([]);
   const [editorIssueSource, setEditorIssueSource] = useState<IssueSource>(null);
+  const [manuscriptUploading, setManuscriptUploading] = useState(false);
+  const manuscriptFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/romance").then(r => r.json()).then(setProjects).catch(() => {});
@@ -118,6 +121,11 @@ export default function Romance() {
     const p = await r.json();
     setSelectedProject(p);
     if (p.parameters) setParams(p.parameters);
+    if (p.manuscript?.length) {
+      setEditorChapters(p.manuscript);
+      setEditorIssues([]);
+      setEditorIssueSource(null);
+    }
     setView("studio");
   };
 
@@ -222,30 +230,43 @@ export default function Romance() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const uploadManuscript = useCallback(async (file: File) => {
+    if (!selectedProject) return;
+    setManuscriptUploading(true);
+    setError(null);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const r = await fetch(`/api/romance/${selectedProject.id}/upload`, { method: "POST", body: form });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "Upload failed");
+      // Reload project to get manuscript
+      const updated = await fetch(`/api/romance/${selectedProject.id}`).then(r => r.json());
+      setSelectedProject(updated);
+      if (updated.manuscript) {
+        setEditorChapters(updated.manuscript);
+        setEditorIssues([]);
+        setEditorIssueSource(null);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setManuscriptUploading(false);
+    }
+  }, [selectedProject]);
+
+  const saveManuscriptEdits = useCallback(async (chapters: EditorChapter[]) => {
+    if (!selectedProject) return;
+    await fetch(`/api/romance/${selectedProject.id}/manuscript`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chapters }),
+    });
+  }, [selectedProject]);
+
   const leadAName = params?.lead_a?.name || "Lead A";
   const leadBName = params?.lead_b?.name || "Lead B";
 
-  if (view === "upload-edit") return (
-    <Layout>
-      <ManuscriptUpload
-        onParsed={chapters => { setEditorChapters(chapters); setView("editor"); }}
-        onBack={() => setView("hub")}
-        backLabel="Romance Studio"
-      />
-    </Layout>
-  );
-
-  if (view === "editor") return (
-    <ManuscriptEditorView
-      initialChapters={editorChapters}
-      onBack={() => setView("hub")}
-      backLabel="Romance Studio"
-      persistedIssues={editorIssues}
-      persistedIssueSource={editorIssueSource}
-      onIssuesChange={(issues, src) => { setEditorIssues(issues); setEditorIssueSource(src ?? null); }}
-      onClearSession={() => { setEditorChapters([]); setEditorIssues([]); setEditorIssueSource(null); setView("hub"); }}
-    />
-  );
 
   if (view === "hub") return (
     <Layout>
@@ -264,29 +285,7 @@ export default function Romance() {
           <Button onClick={() => setView("new-project")} className="gap-2">
             <Plus className="w-4 h-4" /> New Project
           </Button>
-          <Button variant="outline" onClick={() => setView("upload-edit")} className="gap-2">
-            <Upload className="w-4 h-4" /> Upload for Editing
-          </Button>
         </div>
-        {editorChapters.length > 0 && (
-          <button
-            onClick={() => setView("editor")}
-            className="w-full text-left p-4 rounded-lg border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all mb-2 group"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-primary">Resume editing session</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {editorChapters.length} chapter{editorChapters.length !== 1 ? "s" : ""} loaded
-                  {editorIssues.length > 0 && ` · ${editorIssues.filter(i => i.status === "open").length} issues remaining`}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <ChevronRight className="w-4 h-4 text-primary/60 group-hover:text-primary transition-colors" />
-              </div>
-            </div>
-          </button>
-        )}
         {projects.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-border/40 rounded-xl">
             <Heart className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
@@ -311,6 +310,7 @@ export default function Romance() {
                       {p.has_outline && <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-500/30">Outline ✓</Badge>}
                       {p.has_beat_sheet && <Badge variant="outline" className="text-xs text-blue-600 border-blue-500/30">Beat Sheet ✓</Badge>}
                       {p.scene_count > 0 && <Badge variant="outline" className="text-xs">{p.scene_count} scene{p.scene_count !== 1 ? "s" : ""}</Badge>}
+                      {p.manuscript_chapters > 0 && <Badge variant="outline" className="text-xs text-rose-600 border-rose-500/30">Manuscript ✓</Badge>}
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-foreground transition-colors" />
@@ -484,6 +484,7 @@ export default function Romance() {
           { id: "beat_sheet", label: "Beat Sheet", icon: <Layers className="w-3.5 h-3.5" /> },
           { id: "scenes", label: `Scenes (${selectedProject.scenes?.length ?? 0})`, icon: <BookOpen className="w-3.5 h-3.5" /> },
           { id: "new_scene", label: "Draft Scene", icon: <Plus className="w-3.5 h-3.5" /> },
+          { id: "manuscript", label: selectedProject.manuscript?.length ? `Manuscript (${selectedProject.manuscript.length} ch.)` : "Manuscript", icon: <FileText className="w-3.5 h-3.5" /> },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as StudioTab)}
             className={cn("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors",
@@ -684,6 +685,55 @@ export default function Romance() {
               {generating === "scene" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {generating === "scene" ? "Writing..." : "Draft Scene"}
             </Button>
+          </div>
+        )}
+
+        {tab === "manuscript" && (
+          <div className="max-w-3xl mx-auto">
+            {selectedProject.manuscript?.length ? (
+              <ManuscriptEditorView
+                initialChapters={editorChapters.length ? editorChapters : selectedProject.manuscript}
+                onBack={() => setTab("outline")}
+                backLabel=""
+                persistedIssues={editorIssues}
+                persistedIssueSource={editorIssueSource}
+                onIssuesChange={(issues, src) => { setEditorIssues(issues); setEditorIssueSource(src ?? null); }}
+                onClearSession={async () => {
+                  await fetch(`/api/romance/${selectedProject.id}/manuscript`, {
+                    method: "PUT", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ chapters: [] }),
+                  });
+                  setSelectedProject((p: any) => ({ ...p, manuscript: [] }));
+                  setEditorChapters([]); setEditorIssues([]); setEditorIssueSource(null);
+                }}
+              />
+            ) : (
+              <div
+                onDrop={e => { e.preventDefault(); e.dataTransfer.files[0] && uploadManuscript(e.dataTransfer.files[0]); }}
+                onDragOver={e => e.preventDefault()}
+                onClick={() => manuscriptFileRef.current?.click()}
+                className="border-2 border-dashed border-border/60 hover:border-rose-400/50 rounded-xl p-16 text-center cursor-pointer transition-all group"
+              >
+                {manuscriptUploading ? (
+                  <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                    <Loader2 className="w-8 h-8 animate-spin text-rose-400" />
+                    <p className="text-sm">Parsing chapters...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 text-muted-foreground group-hover:text-foreground transition-colors">
+                    <Upload className="w-8 h-8" />
+                    <div>
+                      <p className="font-medium">Upload your manuscript</p>
+                      <p className="text-sm mt-1">Saved to this project — persistent across sessions</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground/60 mt-2">.docx · .txt · .md · .pdf</p>
+                  </div>
+                )}
+                <input ref={manuscriptFileRef} type="file" accept=".txt,.md,.docx,.pdf" className="hidden"
+                  onChange={e => e.target.files?.[0] && uploadManuscript(e.target.files[0])} />
+              </div>
+            )}
+            {error && <p className="text-sm text-destructive mt-4">{error}</p>}
           </div>
         )}
       </div>
