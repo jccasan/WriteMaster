@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Heart, ArrowLeft, Plus, Loader2, Sparkles,
   BookOpen, FileText, Layers, ChevronRight,
-  Check, Copy, Pencil, Trash2, X, ChevronDown, ChevronUp
+  Check, Copy, Pencil, Trash2, X, ChevronDown, ChevronUp, Upload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type View = "hub" | "new-project" | "parameters" | "studio";
+import { ManuscriptUpload, ManuscriptEditorView, type EditorChapter } from "@/components/ManuscriptEditor";
+
+type View = "hub" | "new-project" | "parameters" | "studio" | "upload-edit" | "editor";
 type StudioTab = "outline" | "beat_sheet" | "scenes" | "new_scene";
 
 const SUBGENRES = [
@@ -103,6 +105,7 @@ export default function Romance() {
   const [editingScene, setEditingScene] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [showLeadB, setShowLeadB] = useState(false);
+  const [editorChapters, setEditorChapters] = useState<EditorChapter[]>([]);
 
   useEffect(() => {
     fetch("/api/romance").then(r => r.json()).then(setProjects).catch(() => {});
@@ -220,6 +223,24 @@ export default function Romance() {
   const leadAName = params?.lead_a?.name || "Lead A";
   const leadBName = params?.lead_b?.name || "Lead B";
 
+  if (view === "upload-edit") return (
+    <Layout>
+      <ManuscriptUpload
+        onParsed={chapters => { setEditorChapters(chapters); setView("editor"); }}
+        onBack={() => setView("hub")}
+        backLabel="Romance Studio"
+      />
+    </Layout>
+  );
+
+  if (view === "editor") return (
+    <ManuscriptEditorView
+      initialChapters={editorChapters}
+      onBack={() => setView("hub")}
+      backLabel="Romance Studio"
+    />
+  );
+
   if (view === "hub") return (
     <Layout>
       <div className="max-w-2xl mx-auto py-10 animate-in fade-in duration-300">
@@ -236,6 +257,9 @@ export default function Romance() {
           </div>
           <Button onClick={() => setView("new-project")} className="gap-2">
             <Plus className="w-4 h-4" /> New Project
+          </Button>
+          <Button variant="outline" onClick={() => setView("upload-edit")} className="gap-2">
+            <Upload className="w-4 h-4" /> Upload for Editing
           </Button>
         </div>
         {projects.length === 0 ? (
