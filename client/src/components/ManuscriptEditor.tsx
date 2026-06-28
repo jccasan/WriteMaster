@@ -147,8 +147,7 @@ export function ManuscriptUpload({ onParsed, onBack, backLabel = "Back" }: Uploa
 interface ImplementPanelProps {
   issue: Issue;
   chapters: EditorChapter[];
-  onApplyDirect: (issue: Issue, fixText: string) => void;
-  onApplyWithAI: (issue: Issue, fixText: string) => void;
+  onApplyWithAI: (issue: Issue, instruction: string) => void;
   onCancel: () => void;
   aiLoading: string | null;
   aiResult: string;
@@ -156,8 +155,8 @@ interface ImplementPanelProps {
   onDiscardAI: () => void;
 }
 
-function ImplementPanel({ issue, chapters, onApplyDirect, onApplyWithAI, onCancel, aiLoading, aiResult, onApproveAI, onDiscardAI }: ImplementPanelProps) {
-  const [fixText, setFixText] = useState(issue.fix);
+function ImplementPanel({ issue, chapters, onApplyWithAI, onCancel, aiLoading, aiResult, onApproveAI, onDiscardAI }: ImplementPanelProps) {
+  const [instruction, setInstruction] = useState(issue.fix);
   const chapterContent = issue.chapterIdx >= 0 ? chapters[issue.chapterIdx]?.content ?? "" : "";
   const quoteInChapter = issue.quote && chapterContent.includes(issue.quote);
 
@@ -180,25 +179,22 @@ function ImplementPanel({ issue, chapters, onApplyDirect, onApplyWithAI, onCance
         {issue.quote && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">
-              Passage {quoteInChapter ? <span className="text-emerald-600">(selected in editor)</span> : <span className="text-amber-600">(not found in chapter)</span>}
+              Passage to rewrite{" "}
+              {quoteInChapter
+                ? <span className="text-emerald-600">(selected in editor)</span>
+                : <span className="text-amber-600">(not found — edit manually)</span>}
             </p>
             <p className="text-xs bg-muted/30 border border-border/40 rounded p-2 font-mono leading-relaxed">{issue.quote}</p>
           </div>
         )}
 
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Fix — edit as needed</p>
-          <Textarea value={fixText} onChange={e => setFixText(e.target.value)}
-            className="resize-none min-h-[100px] text-xs" placeholder="Describe or write the fix..." />
-        </div>
-
         {aiResult ? (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">AI rewrite:</p>
+            <p className="text-xs font-medium text-muted-foreground">Rewritten passage — review before applying:</p>
             <pre className="text-xs leading-relaxed whitespace-pre-wrap bg-emerald-500/5 border border-emerald-500/20 rounded p-3">{aiResult}</pre>
             <div className="flex gap-2">
               <Button size="sm" className="flex-1 h-7 text-xs gap-1" onClick={() => onApproveAI(issue, aiResult)}>
-                <Check className="w-3 h-3" /> Apply rewrite
+                <Check className="w-3 h-3" /> Apply to editor
               </Button>
               <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={onDiscardAI}>
                 <X className="w-3 h-3" /> Discard
@@ -206,20 +202,24 @@ function ImplementPanel({ issue, chapters, onApplyDirect, onApplyWithAI, onCance
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            {issue.quote && quoteInChapter && (
-              <Button className="w-full h-8 text-xs gap-1.5" onClick={() => onApplyDirect(issue, fixText)} disabled={!fixText.trim() || !!aiLoading}>
-                <Check className="w-3.5 h-3.5" /> Apply fix directly
-              </Button>
-            )}
-            {issue.quote && (
-              <Button variant="outline" className="w-full h-8 text-xs gap-1.5" onClick={() => onApplyWithAI(issue, fixText)} disabled={!!aiLoading}>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Instruction for AI rewrite
+                <span className="font-normal text-muted-foreground/60 ml-1">— edit if needed</span>
+              </p>
+              <Textarea value={instruction} onChange={e => setInstruction(e.target.value)}
+                className="resize-none min-h-[80px] text-xs" placeholder="What should the AI do with this passage?" />
+            </div>
+            {issue.quote && quoteInChapter ? (
+              <Button className="w-full h-8 text-xs gap-1.5" onClick={() => onApplyWithAI(issue, instruction)} disabled={!instruction.trim() || !!aiLoading}>
                 {aiLoading === `ai-${issue.id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-                Rewrite with AI first
+                Rewrite passage with AI
               </Button>
-            )}
-            {!issue.quote && (
-              <p className="text-xs text-muted-foreground text-center py-2">No quoted passage found. Fix manually in the editor.</p>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-2 bg-muted/20 rounded border border-border/40">
+                {issue.quote ? "Passage not found in chapter — fix this manually in the editor." : "No specific passage quoted — fix manually in the editor using the guidance above."}
+              </p>
             )}
           </div>
         )}
@@ -343,16 +343,6 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
     setAiPanel("issues");
     if (issue.chapterIdx >= 0) setActiveIdx(issue.chapterIdx);
     selectQuoteInEditor(issue);
-  };
-
-  const handleApplyDirect = (issue: Issue, fixText: string) => {
-    const targetIdx = issue.chapterIdx >= 0 ? issue.chapterIdx : activeIdx;
-    const ch = chapters[targetIdx];
-    if (!ch || !issue.quote) return;
-    // Replace the quoted passage with the fix text
-    updateContent(targetIdx, ch.content.replace(issue.quote, fixText));
-    updateIssue(issue.id, { status: "done" });
-    setImplementingId(null);
   };
 
   const handleApplyWithAI = async (issue: Issue, fixText: string) => {
@@ -519,7 +509,6 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
               <ImplementPanel
                 issue={implementingIssue}
                 chapters={chapters}
-                onApplyDirect={handleApplyDirect}
                 onApplyWithAI={handleApplyWithAI}
                 onCancel={() => { setImplementingId(null); setImplementAiResult(""); }}
                 aiLoading={aiLoading}
