@@ -282,9 +282,10 @@ interface EditorProps {
   persistedIssues: Issue[];
   persistedIssueSource: IssueSource;
   onIssuesChange: (issues: Issue[], source: IssueSource) => void;
+  onClearSession?: () => void;
 }
 
-export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Back", persistedIssues, persistedIssueSource, onIssuesChange }: EditorProps) {
+export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Back", persistedIssues, persistedIssueSource, onIssuesChange, onClearSession }: EditorProps) {
   const [chapters, setChapters] = useState<EditorChapter[]>(initialChapters);
   const [activeIdx, setActiveIdx] = useState(0);
   const [aiPanel, setAiPanel] = useState<"none" | "issues" | "rewrite">(persistedIssues.length > 0 ? "issues" : "issues");
@@ -445,7 +446,7 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 h-11 border-b border-border/40 shrink-0 gap-2">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={onBack} className="text-muted-foreground hover:text-foreground shrink-0"><ArrowLeft className="w-4 h-4" /></button>
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground shrink-0" title="Back (session kept)"><ArrowLeft className="w-4 h-4" /></button>
           <span className="text-sm font-medium truncate">{activeChapter?.title}</span>
           <Badge variant="outline" className="text-xs shrink-0">{wordCount.toLocaleString()} w</Badge>
           <span className="text-xs text-muted-foreground/40 hidden sm:inline">{totalWords.toLocaleString()} total</span>
@@ -467,6 +468,11 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
           <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={exportManuscript}>
             <Download className="w-3.5 h-3.5" /> Export
           </Button>
+          {onClearSession && (
+            <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs text-muted-foreground hover:text-destructive" onClick={() => { if (confirm("Close this editing session? Chapters and issues will be cleared.")) onClearSession(); }}>
+              <X className="w-3.5 h-3.5" /> Close session
+            </Button>
+          )}
         </div>
       </div>
 

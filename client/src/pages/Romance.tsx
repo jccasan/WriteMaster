@@ -243,6 +243,7 @@ export default function Romance() {
       persistedIssues={editorIssues}
       persistedIssueSource={editorIssueSource}
       onIssuesChange={(issues, src) => { setEditorIssues(issues); setEditorIssueSource(src ?? null); }}
+      onClearSession={() => { setEditorChapters([]); setEditorIssues([]); setEditorIssueSource(null); setView("hub"); }}
     />
   );
 
@@ -267,6 +268,25 @@ export default function Romance() {
             <Upload className="w-4 h-4" /> Upload for Editing
           </Button>
         </div>
+        {editorChapters.length > 0 && (
+          <button
+            onClick={() => setView("editor")}
+            className="w-full text-left p-4 rounded-lg border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all mb-2 group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-primary">Resume editing session</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {editorChapters.length} chapter{editorChapters.length !== 1 ? "s" : ""} loaded
+                  {editorIssues.length > 0 && ` · ${editorIssues.filter(i => i.status === "open").length} issues remaining`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <ChevronRight className="w-4 h-4 text-primary/60 group-hover:text-primary transition-colors" />
+              </div>
+            </div>
+          </button>
+        )}
         {projects.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-border/40 rounded-xl">
             <Heart className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />

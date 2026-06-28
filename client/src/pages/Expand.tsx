@@ -710,6 +710,7 @@ export default function Expand() {
       persistedIssues={editorIssues}
       persistedIssueSource={editorIssueSource}
       onIssuesChange={(issues, src) => { setEditorIssues(issues); setEditorIssueSource(src ?? null); }}
+      onClearSession={() => { setEditorChapters([]); setEditorIssues([]); setEditorIssueSource(null); setStep("upload"); }}
     />
   );
 
