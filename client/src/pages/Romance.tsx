@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { ManuscriptUpload, ManuscriptEditorView, type EditorChapter } from "@/components/ManuscriptEditor";
+import { ManuscriptUpload, ManuscriptEditorView, type EditorChapter, type Issue, type IssueSource } from "@/components/ManuscriptEditor";
 
 type View = "hub" | "new-project" | "parameters" | "studio" | "upload-edit" | "editor";
 type StudioTab = "outline" | "beat_sheet" | "scenes" | "new_scene";
@@ -106,6 +106,8 @@ export default function Romance() {
   const [editContent, setEditContent] = useState("");
   const [showLeadB, setShowLeadB] = useState(false);
   const [editorChapters, setEditorChapters] = useState<EditorChapter[]>([]);
+  const [editorIssues, setEditorIssues] = useState<Issue[]>([]);
+  const [editorIssueSource, setEditorIssueSource] = useState<IssueSource>(null);
 
   useEffect(() => {
     fetch("/api/romance").then(r => r.json()).then(setProjects).catch(() => {});
@@ -238,6 +240,9 @@ export default function Romance() {
       initialChapters={editorChapters}
       onBack={() => setView("hub")}
       backLabel="Romance Studio"
+      persistedIssues={editorIssues}
+      persistedIssueSource={editorIssueSource}
+      onIssuesChange={(issues, src) => { setEditorIssues(issues); setEditorIssueSource(src ?? null); }}
     />
   );
 
