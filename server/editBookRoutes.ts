@@ -103,7 +103,7 @@ If nothing is found: "No issues found."`;
 // ─── REWRITE ─────────────────────────────────────────────────────────────────
 
 router.post("/rewrite", async (req, res) => {
-  const { passage, instruction, chapter_context } = req.body;
+  const { passage, instruction, chapter_context, style_guide } = req.body;
   if (!passage?.trim()) return res.status(400).json({ error: "passage is required" });
 
   const prompt = `You are a prose editor rewriting a specific passage from a manuscript.
@@ -113,17 +113,62 @@ ${passage}
 
 ${chapter_context ? `SURROUNDING CONTEXT (do not rewrite this, just use it to match voice and continuity):\n${chapter_context}\n` : ""}
 
-${instruction ? `SPECIFIC INSTRUCTION:\n${instruction}\n` : "Improve the prose quality — fix AI-tells, sharpen the language, make it sound more human and specific."}
+${instruction ? `SPECIFIC INSTRUCTION:\n${instruction}\n` : "Improve the prose quality while preserving the author's voice."}
 
-RULES:
+${style_guide ? `AUTHOR'S VOICE (this is the highest priority — match this precisely):\n${style_guide}\n` : ""}
+
+PROSE RULES (apply after voice guide):
 ${PROSE_RULES}
 
 ${DEFAULT_DECISION_RULE}
 
-- Match the voice and register of the surrounding context
+- The author's voice guide above overrides generic prose rules where they conflict
+- Match the rhythm, sentence length, internal monologue style, and register of the author's voice guide
 - Keep the same plot events and character beats
 - Do not add new story content unless the instruction specifically requests it
 - Return ONLY the rewritten passage — no commentary, no labels`;
+
+  try {
+    const result = await callLLM(prompt, "powerful", undefined, 4096);
+    res.json({ result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── WRITE IN VOICE ──────────────────────────────────────────────────────────
+// Generate new prose at a specific position in the manuscript.
+// Not a rewrite — creates content that doesn't exist yet.
+
+router.post("/write-in-voice", async (req, res) => {
+  const { instruction, before_context, after_context, style_guide, approximate_length, chapter_title } = req.body;
+  if (!instruction?.trim()) return res.status(400).json({ error: "instruction is required" });
+
+  const prompt = `You are a ghostwriter writing new prose in the author's established voice.
+
+CHAPTER: ${chapter_title ?? "Untitled"}
+
+YOUR TASK:
+${instruction}
+
+${before_context ? `WHAT COMES IMMEDIATELY BEFORE (match tone, register, and momentum):\n${before_context}\n` : ""}
+
+${after_context ? `WHAT COMES IMMEDIATELY AFTER (new content must lead naturally into this):\n${after_context}\n` : ""}
+
+${style_guide ? `AUTHOR'S VOICE (match this exactly — this is the most important instruction):\n${style_guide}\n` : ""}
+
+PROSE RULES:
+${PROSE_RULES}
+
+${DEFAULT_DECISION_RULE}
+
+TARGET LENGTH: ${approximate_length ?? "150–300 words"}
+
+RULES:
+- Write in the author's voice as defined above. Match their sentence rhythm, paragraph length, internal monologue style, and register exactly.
+- The new content must feel continuous with the surrounding text — same POV, same tension level, same character voice.
+- Do not summarize. Write scene-level prose.
+- Return ONLY the new prose. No labels, no commentary, no explanations.`;
 
   try {
     const result = await callLLM(prompt, "powerful", undefined, 4096);

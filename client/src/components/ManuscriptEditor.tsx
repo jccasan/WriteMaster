@@ -315,14 +315,20 @@ interface EditorProps {
 export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Back", persistedIssues, persistedIssueSource, onIssuesChange, onClearSession }: EditorProps) {
   const [chapters, setChapters] = useState<EditorChapter[]>(initialChapters);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [aiPanel, setAiPanel] = useState<"none" | "issues" | "rewrite">(persistedIssues.length > 0 ? "issues" : "issues");
+  const [aiPanel, setAiPanel] = useState<"none" | "issues" | "rewrite" | "write">(persistedIssues.length > 0 ? "issues" : "issues");
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [implementingId, setImplementingId] = useState<number | null>(null);
   const [implementAiResult, setImplementAiResult] = useState("");
   const [rewritePassage, setRewritePassage] = useState("");
+  const [writeInstruction, setWriteInstruction] = useState("");
+  const [writeLength, setWriteLength] = useState("150-300 words");
+  const [writeResult, setWriteResult] = useState("");
   const [rewriteInstruction, setRewriteInstruction] = useState("");
   const [rewriteResult, setRewriteResult] = useState("");
   const [styleNotes, setStyleNotes] = useState("");
+  const [styleGuide, setStyleGuide] = useState("");
+  const [savedGuides, setSavedGuides] = useState<{filename:string;name:string;content:string}[]>([]);
+  const [guideLoaded, setGuideLoaded] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -333,6 +339,11 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
   const updateIssue = (id: number, patch: Partial<Issue>) => {
     onIssuesChange(issues.map(i => i.id === id ? { ...i, ...patch } : i), issueSource);
   };
+
+  // Load saved style guides on mount
+  useEffect(() => {
+    fetch("/api/tools/style-guides").then(r => r.json()).then(d => setSavedGuides(d.guides ?? [])).catch(() => {});
+  }, []);
 
   const activeChapter = chapters[activeIdx];
   const wordCount = activeChapter?.content.split(/\s+/).filter(Boolean).length ?? 0;
@@ -380,7 +391,7 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
       const targetIdx = issue.chapterIdx >= 0 ? issue.chapterIdx : activeIdx;
       const r = await fetch("/api/edit-book/rewrite", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passage: issue.quote, instruction: fixText, chapter_context: chapters[targetIdx]?.content.slice(0, 600) ?? "" }),
+        body: JSON.stringify({ passage: issue.quote, instruction: fixText, chapter_context: chapters[targetIdx]?.content.slice(0, 600) ?? "", style_guide: styleGuide }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
@@ -436,10 +447,37 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
     if (!rewritePassage.trim()) return;
     setAiLoading("rewrite"); setRewriteResult(""); setError(null);
     try {
-      const r = await fetch("/api/edit-book/rewrite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passage: rewritePassage, instruction: rewriteInstruction, chapter_context: activeChapter.content.slice(0, 600) }) });
+      const r = await fetch("/api/edit-book/rewrite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passage: rewritePassage, instruction: rewriteInstruction, chapter_context: activeChapter.content.slice(0, 600), style_guide: styleGuide }) });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
       setRewriteResult(data.result);
+    } catch (err: any) { setError(err.message); }
+    finally { setAiLoading(null); }
+  };
+
+  const runWrite = async () => {
+    if (!writeInstruction.trim()) return;
+    setAiLoading("write"); setWriteResult(""); setError(null);
+    // Auto-populate context from current chapter position
+    const chapterContent = activeChapter?.content ?? "";
+    const midpoint = Math.floor(chapterContent.length / 2);
+    const beforeCtx = chapterContent.slice(Math.max(0, midpoint - 800), midpoint);
+    const afterCtx = chapterContent.slice(midpoint, midpoint + 400);
+    try {
+      const r = await fetch("/api/edit-book/write-in-voice", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instruction: writeInstruction,
+          before_context: beforeCtx,
+          after_context: afterCtx,
+          style_guide: styleGuide,
+          approximate_length: writeLength,
+          chapter_title: activeChapter?.title,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error);
+      setWriteResult(data.result);
     } catch (err: any) { setError(err.message); }
     finally { setAiLoading(null); }
   };
@@ -482,6 +520,15 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
           <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => { setAiPanel(aiPanel === "rewrite" ? "issues" : "rewrite"); setImplementingId(null); }}>
             <Wand2 className="w-3.5 h-3.5" /> Rewrite
           </Button>
+          <Button
+            variant={styleGuide ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5 h-8 text-xs"
+            onClick={() => { setAiPanel(aiPanel === "write" ? "issues" : "write"); setImplementingId(null); }}
+            title={styleGuide ? "Write new content in your voice" : "Load a voice guide first for best results"}
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Write
+          </Button>
           <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={exportManuscript}>
             <Download className="w-3.5 h-3.5" /> Export
           </Button>
@@ -519,8 +566,29 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
               );
             })}
           </div>
-          <div className="p-2 border-t border-border/40">
-            <Textarea value={styleNotes} onChange={e => setStyleNotes(e.target.value)} placeholder="Style notes..." className="text-xs resize-none min-h-[48px]" />
+          <div className="p-2 border-t border-border/40 space-y-2">
+            {savedGuides.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Voice guide</p>
+                <select
+                  value={guideLoaded}
+                  onChange={e => {
+                    const g = savedGuides.find(g => g.filename === e.target.value);
+                    setGuideLoaded(e.target.value);
+                    setStyleGuide(g?.content ?? "");
+                  }}
+                  className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 focus:outline-none"
+                >
+                  <option value="">No voice guide</option>
+                  {savedGuides.map(g => <option key={g.filename} value={g.filename}>{g.name}</option>)}
+                </select>
+                {guideLoaded && <p className="text-xs text-emerald-600 mt-1">Voice active</p>}
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Style notes</p>
+              <Textarea value={styleNotes} onChange={e => setStyleNotes(e.target.value)} placeholder="Any additional notes..." className="text-xs resize-none min-h-[40px]" />
+            </div>
           </div>
         </div>
 
@@ -543,6 +611,45 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
                 onApproveAI={handleApproveAI}
                 onDiscardAI={() => setImplementAiResult("")}
               />
+            ) : aiPanel === "write" ? (
+              // Write in voice panel
+              <>
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 shrink-0">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Write in Your Voice</p>
+                    {!styleGuide && <p className="text-xs text-amber-600 mt-0.5">No voice guide loaded — load one in sidebar for best results</p>}
+                  </div>
+                  <button onClick={() => setAiPanel("issues")} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">What do you want written?</label>
+                    <Textarea value={writeInstruction} onChange={e => setWriteInstruction(e.target.value)}
+                      placeholder="e.g. 'Write a paragraph where Alexander acknowledges he went against Maya's wishes before continuing the confrontation' or 'Add a bridge scene where Miranda processes what she just read before leaving the SCIF'"
+                      className="resize-none min-h-[120px] text-xs" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Approximate length</label>
+                    <input value={writeLength} onChange={e => setWriteLength(e.target.value)}
+                      className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 focus:outline-none"
+                      placeholder="150-300 words" />
+                  </div>
+                  <Button onClick={runWrite} disabled={!writeInstruction.trim() || !!aiLoading} className="w-full gap-2 h-8 text-xs">
+                    {aiLoading === "write" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    {aiLoading === "write" ? "Writing..." : "Write"}
+                  </Button>
+                  {writeResult && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground">Result — paste where needed</p>
+                        <button onClick={() => { navigator.clipboard.writeText(writeResult); }} className="text-xs text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /></button>
+                      </div>
+                      <pre className="text-xs leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3 border border-border/40">{writeResult}</pre>
+                      <p className="text-xs text-muted-foreground">Copy and paste into the editor where you want it.</p>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : aiPanel === "rewrite" ? (
               // Rewrite panel
               <>
