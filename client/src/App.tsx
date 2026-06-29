@@ -30,6 +30,7 @@ import ForgeBetaReaders from "@/pages/forge/ForgeBetaReaders";
 import ForgeQuickFeedback from "@/pages/forge/ForgeQuickFeedback";
 import Expand from "@/pages/Expand";
 import Romance from "@/pages/Romance";
+import StyleExtractor from "@/pages/StyleExtractor";
 import ForgeChat from "@/pages/forge/ForgeChat";
 import PublishingHub from "@/pages/PublishingHub";
 import TropeResearch from "@/pages/TropeResearch";
@@ -91,6 +92,7 @@ function Router() {
       <Route path="/publishing/titles-keywords/:id" component={PublishingTools} />
       <Route path="/expand" component={Expand} />
       <Route path="/romance" component={Romance} />
+      <Route path="/style-extractor" component={StyleExtractor} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -2270,33 +2270,79 @@ Respond with ONLY the JSON, no preamble.`;
 
   // ── STYLE GUIDE EXTRACTOR ────────────────────────────────────────────────────
 
+  // Two-step style extraction:
+  // Step 1: Extract representative passages (calm, dialogue, action, comedy)
+  // Step 2: Generate style guide from those passages
+  // This mirrors the video approach — ensures full coverage across scene types.
+
   app.post("/api/tools/extract-style-guide", async (req, res) => {
     try {
-      const { sample_text, author_name } = req.body;
-      if (!sample_text || sample_text.trim().length < 200) {
-        return res.status(400).json({ error: "Sample text must be at least 200 characters." });
+      const { sample_text, author_name, genre } = req.body;
+      if (!sample_text || sample_text.trim().length < 500) {
+        return res.status(400).json({ error: "Sample text must be at least 500 characters. Provide 2,000+ words for best results." });
       }
 
       const { getSkill } = await import("./skillLoader");
       const styleExtractor = getSkill("STYLE_EXTRACTOR");
 
-      const result = await callLLM(
-        `You are an expert literary analyst. Analyze the prose sample below and produce a comprehensive Style Guide following the framework provided.
+      // Step 1: Extract representative passages by scene type
+      // Run in parallel for the three mandatory types
+      const [calmPassage, dialoguePassage, actionPassage] = await Promise.all([
+        callLLM(`You are selecting a prose passage for style analysis.
 
-AUTHOR: ${author_name || "Unknown"}
-
-PROSE SAMPLE:
+WRITING SAMPLE:
 ${sample_text}
+
+Your task: Find and reproduce verbatim approximately 400 words of CALM, DESCRIPTIVE text from this sample. This should be a moment with more description and atmosphere and less dialogue or action — a quiet scene, introspective moment, or setting description. Reproduce the passage exactly as written, including any paragraph breaks. Output only the passage, no commentary.`, "powerful", undefined, 1024),
+
+        callLLM(`You are selecting a prose passage for style analysis.
+
+WRITING SAMPLE:
+${sample_text}
+
+Your task: Find and reproduce verbatim approximately 400 words of DIALOGUE-HEAVY text from this sample. Choose a section with active conversation between characters. Reproduce the passage exactly as written, including paragraph breaks. Output only the passage, no commentary.`, "powerful", undefined, 1024),
+
+        callLLM(`You are selecting a prose passage for style analysis.
+
+WRITING SAMPLE:
+${sample_text}
+
+Your task: Find and reproduce verbatim approximately 400 words of ACTION or HIGH-TENSION text from this sample. Choose a scene with physical action, confrontation, or dramatic momentum. If no clear action scene exists, select the most emotionally intense or dramatically heightened passage. Reproduce exactly as written. Output only the passage, no commentary.`, "powerful", undefined, 1024),
+      ]);
+
+      // Step 2: Generate style guide from the representative passages
+      const combinedPassages = `CALM/DESCRIPTIVE PASSAGE:
+${calmPassage}
+
+DIALOGUE PASSAGE:
+${dialoguePassage}
+
+ACTION/TENSION PASSAGE:
+${actionPassage}`;
+
+      const styleGuide = await callLLM(
+        `You are an expert literary analyst. Analyze the prose passages below and produce a comprehensive Style Guide following the framework provided.
+
+These passages were selected to represent the full range of this author's voice across different scene types.
+
+AUTHOR: ${author_name || "Unknown"}${genre ? `
+GENRE: ${genre}` : ""}
+
+PROSE SAMPLES:
+${combinedPassages}
 
 ${styleExtractor}
 
-Important: Base every finding strictly on patterns present in the sample. Do not assume or invent characteristics. If the sample is too short to determine a pattern definitively, say so.`,
+Important: Base every finding strictly on patterns present in the samples. Quote verbatim examples. Do not assume or invent characteristics.`,
         "powerful",
         undefined,
         8192
       );
 
-      res.json({ style_guide: result });
+      res.json({
+        style_guide: styleGuide,
+        passages: { calm: calmPassage, dialogue: dialoguePassage, action: actionPassage }
+      });
     } catch (err: any) {
       console.error("[Style Extractor Error]", err);
       res.status(500).json({ error: err.message });

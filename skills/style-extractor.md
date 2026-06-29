@@ -1,124 +1,76 @@
-STYLE EXTRACTOR — GENERATING A PROSE STYLE GUIDE FROM SAMPLE TEXT
+STYLE EXTRACTOR — PROSE STYLE GUIDE GENERATION
 
-Use this guide when analyzing an author's existing prose to produce a style guide that can be injected into chapter-writing prompts to replicate their voice.
-
----
-
-## PURPOSE
-
-A prose style guide derived from actual text is more accurate than a self-described style. Writers don't always know what makes their prose distinctive. This extraction process identifies the measurable, reproducible elements of a writing voice by analyzing patterns across multiple dimensions.
-
-The output style guide is used as context in chapter writing to constrain the AI toward the author's actual voice rather than a default or generic one.
+Given writing samples, produce a style guide that instructs an LLM how to write in this author's voice.
+Frame everything as instruction, not observation. You are telling the AI what to DO, not describing what the author does.
+Base every finding strictly on the provided samples. Quote verbatim examples.
 
 ---
 
-## EXTRACTION PROCEDURE
+Produce the style guide with exactly this structure:
 
-Given a sample of the author's prose (minimum 1,000 words, ideally 3,000+), analyze and document the following:
+# Style Guide
 
----
+## 1. Narrative Rhythm
+- **Summary:** One–two sentences describing the overall pacing and rhythm.
+- **Key traits:** Bullet list of 3–5 specific rhythmic habits with verbatim examples (e.g., mix of short/long sentences, use of pauses, etc.)
 
-### 1. SENTENCE ARCHITECTURE
+## 2. Close vs Distant POV
+- **POV distance:** Explain whether the POV feels very close, moderately close, or distant. Focus only on the distance, not the actual POV type (first/third). Mention things like show vs tell or deep point of view.
+- **Evidence:** Brief descriptions of how internal thoughts, emotions, or observations are handled, with verbatim examples from the text.
 
-- **Average sentence length**: Count roughly. Is the author running short (under 12 words), medium (12–20), or long (20+)?
-- **Length variation pattern**: Do they vary deliberately (short-long-short) or tend to stay in one range?
-- **Fragment use**: Do they use intentional fragments? How frequently? For what effect?
-- **Sentence openers**: What do sentences start with? Subject-verb, participial phrases, time markers, dialogue tags?
-- **Clause structure**: Do they favor simple (subject-verb-object), compound (two clauses joined), or complex (subordinate clauses) sentences?
+## 3. Formality
+- **Formality level:** Label as very informal / informal / neutral / formal / very formal.
+- **Indicators:** Bullet list of language choices that signal this level.
 
-### 2. PARAGRAPH STRUCTURE
+## 4. Overall Tone
+- **Core tone adjectives:** 3–5 adjectives that reliably describe the tone, with a brief explanation of each.
+- **Tone stability:** Explain whether the tone stays consistent or shifts noticeably.
 
-- **Paragraph length**: Are paragraphs typically 1–2 sentences, 3–4 sentences, or longer?
-- **Dialogue paragraph treatment**: How is dialogue formatted relative to action beats?
-- **Action block formatting**: Does physical action get its own paragraphs or fold into dialogue exchanges?
+## 5. Emotional Range
+- **Range description:** Describe how wide the emotional range is (narrow, moderate, wide) in 2–3 sentences.
+- **Common emotions:** List the emotions that show up most often in the writing with specific examples.
 
-### 3. VOCABULARY AND DICTION
+## 6. Average Sentence Length and Rhythm
+- **Sentence length:** Characterize the average sentence length (short, medium, long) and variation.
+- **Rhythmic patterns:** Note recurring patterns such as clusters of short sentences, long flowing sentences, fragments, or frequent use of questions. Include verbatim examples.
 
-- **Formality level**: Is the vocabulary elevated (literary), conversational (accessible), or technical (specialist)?
-- **Concrete vs. abstract ratio**: Do most sentences ground in physical/sensory detail, or do they operate in abstractions?
-- **Specificity level**: Does the author name specific brands, models, places, colors? Or do they stay general ("a car," "a gun")?
-- **Repeated words/phrases**: What words appear more than three times in the sample? Are these intentional anchors or unintentional habits?
-- **Regional or cultural vocabulary**: Any dialect markers, professional jargon, historical diction?
+## 7. Paragraphing
+- **Paragraph length:** Describe typical paragraph length (short, medium, long) and variation.
+- **Paragraph function:** Explain how paragraphs are used (e.g., one idea per paragraph, frequent line breaks for emphasis, long blended paragraphs, etc.).
 
-### 4. POINT OF VIEW AND INTERIORITY
+## 8. Average Grade Level
+- **Estimated grade level:** Provide a single estimated grade level (a specific grade, not a range).
+- **Complexity factors:** Mention what drives this level (sentence complexity, vocabulary difficulty, density of ideas). Give specific examples.
 
-- **POV type**: First person, third limited, third omniscient, second?
-- **Interiority frequency**: How often do we enter the character's thoughts? Every paragraph? Every page? Rarely?
-- **Interiority format**: Are thoughts italicized? Direct thought in plain text? Summarized internal state?
-- **Interiority style**: Flowing internal monologue? Clipped fragments? Philosophical reflection? Immediate tactical thinking?
+## 9. Dialogue Style
+- **Voice and realism:** Characterize how natural, stylized, or heightened the dialogue feels.
+- **Tag and beat usage:** Note patterns in dialogue tags (e.g., mostly "said", varied tags) and action beats. Instruct to mostly use "said" or "asked" or dialogue beats.
 
-### 5. EMOTIONAL RENDERING
+## 10. Sentence Openings
+- **Common opening patterns:** Describe the most frequent ways sentences begin (for example, with pronouns, character names, conjunctions, adverbs, or prepositional phrases).
+- **Variety vs repetition:** Explain whether sentence openings feel varied or repetitive. Encourage more variation if needed.
+- **Distinctive habits:** List any notable quirks (for example, frequent use of "And/But/So" at the start of sentences) and whether they should be treated as features to preserve, eliminate, or mix in occasionally.
 
-- **Direct vs. indirect**: Does the author name emotions ("she was afraid") or show them through physical response?
-- **Physical symptom specificity**: What body parts and behaviors are used to show emotion? Are they clichés or fresh?
-- **Emotional pacing**: How quickly do characters process and react to major events? Immediate? Delayed?
+## 11. Clause Structure and Complexity
+- **Typical clause types:** Describe the balance of simple, compound, and complex sentences.
+- **Stacking vs splitting:** Explain how often the author stacks multiple clauses in one sentence compared to splitting ideas into separate sentences. Give specific examples.
+- **Subordination patterns:** Note any recurring use of subordinating structures (for example, "because," "although," "even though") and how they shape the feel of the prose.
 
-### 6. DIALOGUE STYLE
+## 12. Punctuation Habits (No Em Dashes)
+- **Core punctuation tools:** Describe how the author uses commas, semicolons, colons, parentheses, ellipses, question marks, and exclamation marks.
+- **Constraints and guidance:**
+  - Explicitly state that em dashes must NOT be used when imitating this style.
+  - Suggest which other punctuation marks should be used instead of em dashes to achieve similar effects (for example, commas, periods, etc.)
 
-- **Dialogue tag preference**: "Said" almost exclusively? Varied action beats? Avoidance of tags entirely?
-- **Interruption and overlap**: Do characters interrupt each other, or do conversations feel polite and turn-based?
-- **Subtext density**: Do characters say what they mean? Or does meaning operate beneath the surface?
-- **Dialect and voice differentiation**: Do different characters sound distinct? How?
+## 13. Emphasis and Cadence Tricks
+- **Emphasis techniques:** Describe how the author creates emphasis at the sentence level (for example, one-word sentences, fragments, repetition, or contrast).
+- **Rhythmic patterns:** Explain any noticeable rhythmic habits (for example, long sentences followed by short punchy ones, clusters of short sentences, or repeated parallel structures).
+- **Signature moves:** List 3–5 specific "signature" emphasis or cadence tricks that someone should mimic to reproduce the feel of this style.
 
-### 7. PACING AND RHYTHM
-
-- **Action scene pacing**: Short staccato sentences? One action per line? Compressed paragraphs?
-- **Quiet scene pacing**: Expanded sensory detail? Longer paragraphs? Reflection allowed?
-- **Transition style**: Hard cuts between scenes? Bridging paragraphs? Time jumps signaled how?
-- **White space use**: Are there single-sentence paragraphs used for emphasis? Line breaks mid-scene?
-
-### 8. DISTINCTIVE PATTERNS
-
-- **Signature moves**: What does this author do that another author wouldn't? What is unmistakably theirs?
-- **Avoidance patterns**: What does this author never do? What constructions are absent from their prose?
-- **Recurring structural habits**: Do they always open a scene with action? End on a sensory detail? Begin chapters with weather?
-
----
-
-## OUTPUT FORMAT
-
-Produce the style guide in this structure:
-
-```
-PROSE STYLE GUIDE — [Author/Book Name]
-
-SENTENCE ARCHITECTURE:
-[Findings + 2-3 representative examples from the text]
-
-PARAGRAPH STRUCTURE:
-[Findings]
-
-VOCABULARY AND DICTION:
-[Findings + specific words/phrases that are distinctive]
-
-POINT OF VIEW AND INTERIORITY:
-[Findings + example of how interiority is rendered]
-
-EMOTIONAL RENDERING:
-[Findings + example of how emotion is shown vs. told]
-
-DIALOGUE STYLE:
-[Findings + example of a characteristic exchange]
-
-PACING AND RHYTHM:
-[Findings + example of an action passage and a quiet passage]
-
-DISTINCTIVE PATTERNS:
-[3-5 specific, reproducible signature moves unique to this author]
-
-THINGS TO NEVER DO (based on this author's avoidance patterns):
-[3-5 specific constructions absent from their work]
-```
+## Summarized Style Rules (Checklist)
+- Bullet list of 8–15 concrete "do" rules that someone should follow to imitate this style. Make sure each bulleted item is a complete sentence.
+- Bullet list of 8–15 "avoid" rules that would break the style. Make sure each bulleted item is a complete sentence.
 
 ---
 
-## QUALITY STANDARDS
-
-A good style guide is:
-- **Specific**: Not "writes with a conversational tone" but "uses contractions in narration, keeps sentences under 15 words in action scenes, favors fragments during internal monologue"
-- **Reproducible**: Another writer (or AI) should be able to apply it and produce something recognizably similar
-- **Evidence-based**: Every claim should be derivable from patterns in the provided text, not assumptions about the author's intent
-- **Actionable**: The person using it should know what to DO differently, not just what the author's work feels like
-
-A weak style guide says: "This author writes with a gritty, cinematic style."
-A strong style guide says: "This author uses 3-word sentence fragments to close action sequences. They never describe physical appearance directly — always through another character's assessment. Their dialogue has no performative pleasantries — characters begin conversations mid-thought. Interior monologue uses present tense inside past-tense narration, without italics."
+Do not focus on specific characters or other details from the samples, just focus on the prose style. The style sheet should be thorough.

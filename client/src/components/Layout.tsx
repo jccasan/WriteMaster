@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { BookOpen, Scissors, Anvil, FileText, BookMarked, ChevronDown, Globe, Library } from "lucide-react";
+import { BookOpen, Scissors, Anvil, FileText, BookMarked, ChevronDown, Globe, Library, Sparkles } from "lucide-react";
 
 const TOOLS = [
   { label: "Chapter Analyzer", path: "/chapter-analyzer", icon: <Scissors className="w-3.5 h-3.5" /> },
   { label: "Editor", path: "/editor", icon: <FileText className="w-3.5 h-3.5" /> },
   { label: "Story Forge", path: "/forge", icon: <Anvil className="w-3.5 h-3.5" /> },
   { label: "Publishing", path: "/publishing", icon: <BookMarked className="w-3.5 h-3.5" /> },
+  { label: "Style Extractor", path: "/style-extractor", icon: <Sparkles className="w-3.5 h-3.5" /> },
 ];
 
 interface LayoutProps {

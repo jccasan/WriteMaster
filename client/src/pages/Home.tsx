@@ -404,6 +404,14 @@ export default function Home() {
               <p className="text-sm font-medium">Romance Studio</p>
               <p className="text-xs text-muted-foreground mt-0.5">Billionaire · ETL · KU-optimized</p>
             </button>
+            <button
+              onClick={() => navigate("/style-extractor")}
+              className="p-4 rounded-lg border border-border/60 hover:border-primary/30 text-left transition-all group"
+            >
+              <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
+              <p className="text-sm font-medium">Style Extractor</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Build your voice guide from samples</p>
+            </button>
           </div>
         )}
       </div>
