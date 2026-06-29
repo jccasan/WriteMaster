@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Loader2, Sparkles, Check, Copy,
-  BookOpen, ChevronDown, ChevronUp, AlertCircle, Pencil
+  BookOpen, ChevronDown, ChevronUp, AlertCircle, Pencil, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Saved style guides from data/style-guides/
+function SavedGuides({ onLoad }: { onLoad: (content: string, name: string) => void }) {
+  const [guides, setGuides] = useState<{ filename: string; name: string; content: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/tools/style-guides").then(r => r.json()).then(d => setGuides(d.guides ?? [])).catch(() => {});
+  }, []);
+  if (!guides.length) return null;
+  return (
+    <div className="border border-border/60 rounded-lg p-3 bg-muted/10">
+      <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Saved style guides</p>
+      <div className="space-y-1">
+        {guides.map(g => (
+          <button key={g.filename} onClick={() => onLoad(g.content, g.name)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-muted/40 transition-colors text-left">
+            <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            {g.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type Step = "input" | "generating" | "result";
 
@@ -111,6 +134,9 @@ export default function StyleExtractor() {
 
         {step === "input" && (
           <div className="space-y-5">
+            {/* Saved style guides */}
+            <SavedGuides onLoad={(guide, name) => { setStyleGuide(guide); setAuthorName(name); setStep("result"); fetch("/api/books").then(r => r.json()).then(setBooks).catch(() => {}); }} />
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Author name (optional)</label>

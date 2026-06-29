@@ -2275,6 +2275,25 @@ Respond with ONLY the JSON, no preamble.`;
   // Step 2: Generate style guide from those passages
   // This mirrors the video approach — ensures full coverage across scene types.
 
+  // List saved style guide files from data/style-guides/
+  app.get("/api/tools/style-guides", async (_req, res) => {
+    try {
+      const { readdir, readFile } = await import("fs/promises");
+      const { existsSync } = await import("fs");
+      const dir = "data/style-guides";
+      if (!existsSync(dir)) return res.json({ guides: [] });
+      const files = (await readdir(dir)).filter(f => f.endsWith(".md"));
+      const guides = await Promise.all(files.map(async f => ({
+        filename: f,
+        name: f.replace(".md", "").replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        content: await readFile(`${dir}/${f}`, "utf-8"),
+      })));
+      res.json({ guides });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/tools/extract-style-guide", async (req, res) => {
     try {
       const { sample_text, author_name, genre } = req.body;
