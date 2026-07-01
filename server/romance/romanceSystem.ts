@@ -3,6 +3,15 @@
  * The Romance Novel Ghostwriter system prompt and project types.
  */
 
+import { readFileSync, existsSync } from "fs";
+import path from "path";
+
+function loadRomanceStyleGuide(): string {
+  const p = path.resolve("data/style-guides/ku-romance.md");
+  if (!existsSync(p)) return "";
+  try { return readFileSync(p, "utf-8"); } catch { return ""; }
+}
+
 export type RomanceSubgenre = "billionaire" | "small_town_etl" | "workplace_etl";
 export type RomanceMode = "outline" | "beat_sheet" | "scene_draft";
 
@@ -183,6 +192,7 @@ export const SUBGENRE_LABELS: Record<RomanceSubgenre, string> = {
 // ─── BUILD OUTLINE PROMPT ─────────────────────────────────────────────────────
 
 export function buildOutlinePrompt(params: RomanceParameters): string {
+  const romanceStyleGuide = loadRomanceStyleGuide();
   return `MODE: OUTLINE
 
 STORY PARAMETERS:
@@ -225,7 +235,10 @@ Generate a 4–6 paragraph story overview following the OUTLINE mode format. Inc
 4. The break — what pulls them apart at 75%
 5. The HEA/HFN — what it looks like and what it cost them to get there
 
-Write with the sharp, witty voice of this series. This is a concept document, not scene-level detail.`;
+Write with the sharp, witty voice of this series. This is a concept document, not scene-level detail.
+
+${romanceStyleGuide ? `VOICE REFERENCE (for tone calibration):
+${romanceStyleGuide.slice(0, 2000)}` : ""}`;
 }
 
 export function buildBeatSheetPrompt(params: RomanceParameters, outline: string): string {
@@ -270,6 +283,7 @@ export function buildSceneDraftPrompt(
 ): string {
   const povChar = pov === "lead_a" ? params.lead_a : params.lead_b;
   const otherChar = pov === "lead_a" ? params.lead_b : params.lead_a;
+  const romanceStyleGuide = loadRomanceStyleGuide();
 
   return `MODE: SCENE-DRAFT
 
@@ -296,5 +310,8 @@ Draft the scene in polished prose. Apply all craft rules:
 - Show attraction through noticing, involuntary response, competence failure, betrayal of attention — never name it
 - At least one relationship or emotional shift must occur
 - Close on an open circuit
-- All prose rules apply (no banned words, no em dash overuse, emotion through behavior not declaration)`;
+- All prose rules apply (no banned words, no em dash overuse, emotion through behavior not declaration)
+
+${romanceStyleGuide ? `KU ROMANCE PROSE STYLE GUIDE (apply to all prose):
+${romanceStyleGuide}` : ""}`;
 }
