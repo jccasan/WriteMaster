@@ -289,4 +289,96 @@ ${ISSUE_FORMAT.replace("[START_N]", "1")}`, "powerful", undefined, 4096);
   }
 });
 
+
+// ─── AUTO-FIX CHAPTER ────────────────────────────────────────────────────────
+
+router.post("/auto-fix-chapter", async (req, res) => {
+  const { chapter_title, content: chapterContent, issues, style_guide } = req.body as {
+    chapter_title: string;
+    content: string;
+    issues: Array<{ id: number; category: string; problem: string; fix: string; quote: string }>;
+    style_guide?: string;
+  };
+
+  if (!chapterContent?.trim()) return res.status(400).json({ error: "content required" });
+  if (!issues?.length) return res.json({ result: chapterContent, applied: [], unfixable: [] });
+
+  const fixable = issues.filter((i: any) => i.quote?.trim());
+  const unfixable = issues.filter((i: any) => !i.quote?.trim());
+
+  if (!fixable.length) {
+    return res.json({ result: chapterContent, applied: [], unfixable });
+  }
+
+  const issueList = fixable.map((issue: any, idx: number) => {
+    return [
+      "ISSUE " + (idx + 1) + " (id: " + issue.id + "):",
+      "CATEGORY: " + issue.category,
+      'QUOTED PASSAGE: "' + issue.quote + '"',
+      "PROBLEM: " + issue.problem,
+      "FIX INSTRUCTION: " + issue.fix,
+    ].join("\n");
+  }).join("\n\n");
+
+  const aiIsms = getSkill("AI_ISMS") ?? "";
+  const voiceSection = style_guide ? ("AUTHOR'S VOICE (match in all rewrites):\n" + style_guide + "\n\n") : "";
+
+  const prompt = [
+    "You are a manuscript editor applying targeted fixes to a chapter. Apply every fix listed. Change nothing else.",
+    "",
+    "CHAPTER: " + chapter_title,
+    "",
+    "CHAPTER TEXT:",
+    chapterContent,
+    "",
+    voiceSection,
+    "PROSE RULES:",
+    PROSE_RULES,
+    "",
+    "AI-ISMS TO AVOID:",
+    aiIsms,
+    "",
+    "FIXES TO APPLY:",
+    issueList,
+    "",
+    "RULES:",
+    "- For each issue, find the QUOTED PASSAGE verbatim in the chapter and rewrite only that passage",
+    "- If a quoted passage does not appear verbatim, skip it and list it in NOT_FOUND",
+    "- Do not change anything outside the quoted passages",
+    "- Match the author's voice and surrounding register",
+    "- No em dashes",
+    "",
+    "Return in EXACTLY this format:",
+    "FIXED_CHAPTER:",
+    "[complete chapter with all fixes applied]",
+    "",
+    "APPLIED:",
+    "[one line per fixed issue: id:N]",
+    "",
+    "NOT_FOUND:",
+    "[one line per skipped issue: id:N]",
+  ].join("\n");
+
+  try {
+    const raw = await callLLM(prompt, "powerful", undefined, 8192);
+
+    const chapterMatch = raw.match(/FIXED_CHAPTER:\n([\s\S]+?)(?=\nAPPLIED:|$)/);
+    const appliedMatch = raw.match(/APPLIED:\n([\s\S]+?)(?=\nNOT_FOUND:|$)/);
+    const notFoundMatch = raw.match(/NOT_FOUND:\n([\s\S]+?)$/);
+
+    const fixedContent = chapterMatch?.[1]?.trim() ?? chapterContent;
+    const appliedIds = (appliedMatch?.[1] ?? "").match(/id:(\d+)/g)?.map((s: string) => parseInt(s.slice(3))) ?? [];
+    const notFoundIds = (notFoundMatch?.[1] ?? "").match(/id:(\d+)/g)?.map((s: string) => parseInt(s.slice(3))) ?? [];
+    const notFoundIssues = fixable.filter((i: any) => notFoundIds.includes(i.id));
+
+    res.json({
+      result: fixedContent,
+      applied: appliedIds,
+      unfixable: [...unfixable, ...notFoundIssues],
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

@@ -323,6 +323,9 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
   const [writeInstruction, setWriteInstruction] = useState("");
   const [writeLength, setWriteLength] = useState("150-300 words");
   const [writeResult, setWriteResult] = useState("");
+  const [autoFixing, setAutoFixing] = useState(false);
+  const [autoFixProgress, setAutoFixProgress] = useState<{chapter: string; done: number; total: number} | null>(null);
+  const [autoFixSummary, setAutoFixSummary] = useState<{applied: number; unfixable: number; reviewItems: any[]} | null>(null);
   const [rewriteInstruction, setRewriteInstruction] = useState("");
   const [rewriteResult, setRewriteResult] = useState("");
   const [styleNotes, setStyleNotes] = useState("");
@@ -482,6 +485,85 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
     finally { setAiLoading(null); }
   };
 
+  const runAutoFix = async () => {
+    if (!issues.length) return;
+    const fixableIssues = issues.filter(i => i.status === "open");
+    if (!fixableIssues.length) return;
+
+    setAutoFixing(true);
+    setAutoFixProgress(null);
+    setAutoFixSummary(null);
+    setError(null);
+
+    // Group open issues by chapter
+    const byChapter = new Map<number, typeof fixableIssues>();
+    for (const issue of fixableIssues) {
+      const idx = issue.chapterIdx >= 0 ? issue.chapterIdx : 0;
+      if (!byChapter.has(idx)) byChapter.set(idx, []);
+      byChapter.get(idx)!.push(issue);
+    }
+
+    const chapterEntries = Array.from(byChapter.entries());
+    let totalApplied = 0;
+    const allUnfixable: typeof fixableIssues = [];
+    const allAppliedIds: number[] = [];
+    let updatedChapters = [...chapters];
+
+    try {
+      for (let i = 0; i < chapterEntries.length; i++) {
+        const [chIdx, chIssues] = chapterEntries[i];
+        const ch = updatedChapters[chIdx];
+        if (!ch) continue;
+
+        setAutoFixProgress({ chapter: ch.title, done: i, total: chapterEntries.length });
+
+        const r = await fetch("/api/edit-book/auto-fix-chapter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chapter_title: ch.title,
+            content: ch.content,
+            issues: chIssues.map(i => ({ id: i.id, category: i.category, problem: i.problem, fix: i.fix, quote: i.quote })),
+            style_guide: styleGuide,
+          }),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error);
+
+        // Update the chapter content
+        updatedChapters = updatedChapters.map((c, idx) => idx === chIdx ? { ...c, content: data.result } : c);
+
+        // Mark applied issues as done
+        allAppliedIds.push(...(data.applied ?? []));
+        totalApplied += (data.applied ?? []).length;
+        allUnfixable.push(...(data.unfixable ?? []));
+      }
+
+      // Apply all chapter updates at once
+      setChapters(updatedChapters);
+
+      // Mark issues as done/open based on results
+      onIssuesChange(
+        issues.map(i => ({
+          ...i,
+          status: allAppliedIds.includes(i.id) ? "done" as const : i.status,
+        })),
+        issueSource
+      );
+
+      setAutoFixSummary({
+        applied: totalApplied,
+        unfixable: allUnfixable.length,
+        reviewItems: allUnfixable,
+      });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setAutoFixing(false);
+      setAutoFixProgress(null);
+    }
+  };
+
   const applyManualRewrite = () => {
     if (!rewriteResult || !rewritePassage) return;
     updateContent(activeIdx, activeChapter.content.replace(rewritePassage, rewriteResult));
@@ -508,9 +590,17 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {error && <span className="text-xs text-destructive max-w-[160px] truncate">{error}</span>}
-          <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={runContinuityCheck} disabled={!!aiLoading}>
+          <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={runContinuityCheck} disabled={!!aiLoading || autoFixing}>
             {aiLoading === "continuity" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertCircle className="w-3.5 h-3.5" />} Full Check
           </Button>
+          {issues.filter(i => i.status === "open").length > 0 && (
+            <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs border-amber-500/40 text-amber-700 hover:bg-amber-500/10"
+              onClick={runAutoFix} disabled={autoFixing || !!aiLoading}
+              title="Auto-apply all fixable issues. Structural issues without a specific quoted passage will go to a review queue.">
+              {autoFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wrench className="w-3.5 h-3.5" />}
+              {autoFixing ? (autoFixProgress ? `Fixing ${autoFixProgress.chapter.slice(0,20)}...` : "Fixing...") : `Auto-Fix (${issues.filter(i => i.status === "open").length})`}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={runLineEdit} disabled={!!aiLoading}>
             {aiLoading === "line-edit" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Line Edit
           </Button>
@@ -717,6 +807,25 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
                 )}
 
                 <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {autoFixSummary && (
+                    <div className="rounded-lg border border-border/60 p-3 space-y-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <p className="text-xs font-semibold text-emerald-700">{autoFixSummary.applied} fixes applied automatically</p>
+                      </div>
+                      {autoFixSummary.unfixable > 0 && (
+                        <div>
+                          <p className="text-xs text-amber-600 font-medium mb-1">{autoFixSummary.unfixable} need manual review (structural, no specific passage):</p>
+                          <div className="space-y-1">
+                            {autoFixSummary.reviewItems.map((item: any) => (
+                              <p key={item.id} className="text-xs text-muted-foreground pl-2 border-l-2 border-amber-400/40 leading-relaxed">{item.problem.slice(0, 120)}{item.problem.length > 120 ? "..." : ""}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <button onClick={() => setAutoFixSummary(null)} className="text-xs text-muted-foreground hover:text-foreground">Dismiss</button>
+                    </div>
+                  )}
                   {(aiLoading === "continuity" || aiLoading === "scan") ? (
                     <div className="flex flex-col items-center gap-3 text-muted-foreground py-8 text-center">
                       <Loader2 className="w-5 h-5 animate-spin" />
