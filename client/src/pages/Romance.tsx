@@ -13,7 +13,6 @@ import {
 import { cn } from "@/lib/utils";
 
 import { ManuscriptUpload, ManuscriptEditorView, type EditorChapter, type Issue, type IssueSource } from "@/components/ManuscriptEditor";
-import { Input } from "@/components/ui/input";
 
 type View = "hub" | "new-project" | "parameters" | "studio";
 type StudioTab = "outline" | "beat_sheet" | "scenes" | "new_scene" | "manuscript";
