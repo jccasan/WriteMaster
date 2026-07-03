@@ -199,13 +199,24 @@ router.post("/continuity", async (req, res) => {
   if (!chapters?.length) return res.status(400).json({ error: "chapters array required" });
 
   const fullText = buildManuscriptText(chapters);
+
+  // Cap at ~60k characters (~15k tokens) per pass to avoid timeouts.
+  // For a 25k word manuscript this is roughly 150k chars — trim to first 60k
+  // which covers ~10k words, enough for structural analysis.
+  const MAX_CHARS = 60000;
+  const trimmedText = fullText.length > MAX_CHARS
+    ? fullText.slice(0, MAX_CHARS) + "\n\n[... manuscript continues — focus analysis on what is provided above ...]"
+    : fullText;
+
+  console.log(`[Continuity] chapters=${chapters.length} chars=${fullText.length} trimmed=${trimmedText.length}`);
+
   const aiIsms = getSkill("AI_ISMS") ?? "";
 
   // Pass 1: Character and Plot
   const pass1 = callLLM(`You are a developmental editor checking CHARACTER CONSISTENCY and PLOT LOGIC only.
 
 MANUSCRIPT:
-${fullText}
+${trimmedText}
 
 CHARACTER CONSISTENCY — check every named character across all chapters:
 - Physical descriptions that contradict each other
@@ -229,7 +240,7 @@ If no issues found in a category, write "No [category] issues found." and move o
   const pass2 = callLLM(`You are a developmental editor checking TIMELINE, CONTINUITY, and INFORMATION GAPS only.
 
 MANUSCRIPT:
-${fullText}
+${trimmedText}
 
 TIMELINE AND CONTINUITY:
 - Time references that contradict ("next morning" vs "three days later" for the same gap)
@@ -251,7 +262,7 @@ If no issues found in a category, write "No [category] issues found." and move o
   const pass3 = callLLM(`You are a line editor checking PROSE QUALITY and WEAK PASSAGES only.
 
 MANUSCRIPT:
-${fullText}
+${trimmedText}
 
 PROSE RULES:
 ${PROSE_RULES}
@@ -270,6 +281,7 @@ ${ISSUE_FORMAT.replace("[START_N]", "1")}`, "powerful", undefined, 4096);
 
   try {
     const [r1, r2, r3] = await Promise.all([pass1, pass2, pass3]);
+    console.log(`[Continuity] passes complete r1=${r1.length} r2=${r2.length} r3=${r3.length}`);
 
     // Renumber sequentially across all three passes
     let counter = 1;
@@ -285,6 +297,7 @@ ${ISSUE_FORMAT.replace("[START_N]", "1")}`, "powerful", undefined, 4096);
 
     res.json({ result: combined });
   } catch (err: any) {
+    console.error("[Continuity] Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

@@ -416,11 +416,20 @@ export function ManuscriptEditorView({ initialChapters, onBack, backLabel = "Bac
   const runContinuityCheck = async () => {
     setAiLoading("continuity"); setIssues([], "continuity"); setAiPanel("issues"); setError(null); setImplementingId(null);
     try {
+      const totalWords = chapters.reduce((sum, ch) => sum + ch.content.split(/\s+/).filter(Boolean).length, 0);
+      console.log("[Full Check] Starting — chapters:", chapters.length, "words:", totalWords);
       const r = await fetch("/api/edit-book/continuity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapters }) });
+      console.log("[Full Check] Response status:", r.status);
       const data = await r.json();
-      if (!r.ok) throw new Error(data.error);
-      setIssues(parseContinuityOutput(data.result, chapters), "continuity");
-    } catch (err: any) { setError(err.message); }
+      console.log("[Full Check] Data keys:", Object.keys(data), "result length:", data.result?.length ?? 0);
+      if (!r.ok) throw new Error(data.error ?? `Server error ${r.status}`);
+      const parsed = parseContinuityOutput(data.result, chapters);
+      console.log("[Full Check] Parsed issues:", parsed.length);
+      setIssues(parsed, "continuity");
+    } catch (err: any) {
+      console.error("[Full Check] Error:", err.message, err);
+      setError("Full Check failed: " + err.message);
+    }
     finally { setAiLoading(null); }
   };
 
