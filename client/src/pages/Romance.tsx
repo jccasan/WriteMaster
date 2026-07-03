@@ -459,6 +459,27 @@ export default function Romance() {
     </Layout>
   );
 
+  // Manuscript editor needs full-screen — render before studio layout
+  if (view === "studio" && selectedProject && tab === "manuscript" && (editorChapters.length || selectedProject.manuscript?.length)) return (
+    <ManuscriptEditorView
+      initialChapters={editorChapters.length ? editorChapters : selectedProject.manuscript}
+      onBack={() => setTab("outline")}
+      backLabel={selectedProject.title}
+      persistedIssues={editorIssues}
+      persistedIssueSource={editorIssueSource}
+      onIssuesChange={(issues, src) => { setEditorIssues(issues); setEditorIssueSource(src ?? null); }}
+      onClearSession={async () => {
+        await fetch(`/api/romance/${selectedProject.id}/manuscript`, {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chapters: [] }),
+        });
+        setSelectedProject((p: any) => ({ ...p, manuscript: [] }));
+        setEditorChapters([]); setEditorIssues([]); setEditorIssueSource(null);
+        setTab("outline");
+      }}
+    />
+  );
+
   if (view === "studio" && selectedProject) return (
     <div className="h-screen flex flex-col bg-background">
       <div className="flex items-center justify-between px-6 h-12 border-b border-border/40 shrink-0">
@@ -689,49 +710,31 @@ export default function Romance() {
 
         {tab === "manuscript" && (
           <div className="max-w-3xl mx-auto">
-            {selectedProject.manuscript?.length ? (
-              <ManuscriptEditorView
-                initialChapters={editorChapters.length ? editorChapters : selectedProject.manuscript}
-                onBack={() => setTab("outline")}
-                backLabel=""
-                persistedIssues={editorIssues}
-                persistedIssueSource={editorIssueSource}
-                onIssuesChange={(issues, src) => { setEditorIssues(issues); setEditorIssueSource(src ?? null); }}
-                onClearSession={async () => {
-                  await fetch(`/api/romance/${selectedProject.id}/manuscript`, {
-                    method: "PUT", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ chapters: [] }),
-                  });
-                  setSelectedProject((p: any) => ({ ...p, manuscript: [] }));
-                  setEditorChapters([]); setEditorIssues([]); setEditorIssueSource(null);
-                }}
-              />
-            ) : (
-              <div
-                onDrop={e => { e.preventDefault(); e.dataTransfer.files[0] && uploadManuscript(e.dataTransfer.files[0]); }}
-                onDragOver={e => e.preventDefault()}
-                onClick={() => manuscriptFileRef.current?.click()}
-                className="border-2 border-dashed border-border/60 hover:border-rose-400/50 rounded-xl p-16 text-center cursor-pointer transition-all group"
-              >
-                {manuscriptUploading ? (
-                  <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                    <Loader2 className="w-8 h-8 animate-spin text-rose-400" />
-                    <p className="text-sm">Parsing chapters...</p>
+            {/* Upload only — loaded manuscript opens full-screen editor above */}
+            <div
+              onDrop={e => { e.preventDefault(); e.dataTransfer.files[0] && uploadManuscript(e.dataTransfer.files[0]); }}
+              onDragOver={e => e.preventDefault()}
+              onClick={() => manuscriptFileRef.current?.click()}
+              className="border-2 border-dashed border-border/60 hover:border-rose-400/50 rounded-xl p-16 text-center cursor-pointer transition-all group"
+            >
+              {manuscriptUploading ? (
+                <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                  <Loader2 className="w-8 h-8 animate-spin text-rose-400" />
+                  <p className="text-sm">Parsing chapters...</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3 text-muted-foreground group-hover:text-foreground transition-colors">
+                  <Upload className="w-8 h-8" />
+                  <div>
+                    <p className="font-medium">Upload your manuscript</p>
+                    <p className="text-sm mt-1">Saved to this project — persistent across sessions</p>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-3 text-muted-foreground group-hover:text-foreground transition-colors">
-                    <Upload className="w-8 h-8" />
-                    <div>
-                      <p className="font-medium">Upload your manuscript</p>
-                      <p className="text-sm mt-1">Saved to this project — persistent across sessions</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground/60 mt-2">.docx · .txt · .md · .pdf</p>
-                  </div>
-                )}
-                <input ref={manuscriptFileRef} type="file" accept=".txt,.md,.docx,.pdf" className="hidden"
-                  onChange={e => e.target.files?.[0] && uploadManuscript(e.target.files[0])} />
-              </div>
-            )}
+                  <p className="text-xs text-muted-foreground/60 mt-2">.docx · .txt · .md · .pdf</p>
+                </div>
+              )}
+              <input ref={manuscriptFileRef} type="file" accept=".txt,.md,.docx,.pdf" className="hidden"
+                onChange={e => e.target.files?.[0] && uploadManuscript(e.target.files[0])} />
+            </div>
             {error && <p className="text-sm text-destructive mt-4">{error}</p>}
           </div>
         )}
