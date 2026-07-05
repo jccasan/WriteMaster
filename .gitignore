@@ -19,6 +19,9 @@ data/universes/
 data/series/
 data/menageries/
 data/push-sessions/
+data/romance-projects/
+data/expand-sessions/
+data/outline-sessions/
 
 # SQLite database (runtime)
 prisma/forge.db
