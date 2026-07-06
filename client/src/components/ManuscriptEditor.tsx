@@ -75,20 +75,24 @@ function resolveChapterIdx(chapterTitle: string, chapters: EditorChapter[]): num
 
 export function parseContinuityOutput(text: string, chapters: EditorChapter[]): Issue[] {
   const issues: Issue[] = [];
-  const blocks = text.split(/\n(?=\[\d+\]\.)/);
+  // Strip section headers (=== CHARACTER & PLOT ===, etc.) before splitting
+  const cleaned = text.replace(/^===.+===\s*/gm, "").trim();
+  const blocks = cleaned.split(/\n(?=\[\d+\]\.)/);
+  let globalId = 0;
   for (const block of blocks) {
     const numMatch = block.match(/^\[(\d+)\]\./);
     if (!numMatch) continue;
-    const id = parseInt(numMatch[1]);
+    globalId++; // sequential across all sections — avoids id collisions from per-section numbering
     const category = block.match(/CATEGORY:\s*(.+)/i)?.[1]?.trim() ?? "Other";
     const chapter = block.match(/CHAPTER:\s*(.+)/i)?.[1]?.trim() ?? "";
     const problem = block.match(/PROBLEM:\s*([\s\S]+?)(?=\n\s+FIX:|$)/i)?.[1]?.trim() ?? "";
     const fix = block.match(/FIX:\s*([\s\S]+?)(?=\n\[|\n\n|$)/i)?.[1]?.trim() ?? "";
     const quoteMatch = problem.match(/"([^"]{10,})"/);
     if (problem || fix) {
-      issues.push({ id, category: parseCategory(category), chapter: stripMd(chapter), chapterIdx: resolveChapterIdx(chapter, chapters), problem: stripMd(problem), fix: stripMd(fix), quote: quoteMatch?.[1] ?? "", status: "open" });
+      issues.push({ id: globalId, category: parseCategory(category), chapter: stripMd(chapter), chapterIdx: resolveChapterIdx(chapter, chapters), problem: stripMd(problem), fix: stripMd(fix), quote: quoteMatch?.[1] ?? "", status: "open" });
     }
   }
+  console.log("[parseContinuityOutput] raw blocks:", blocks.length, "parsed issues:", issues.length);
   return issues;
 }
 
