@@ -20,6 +20,34 @@ export interface PipelineOptions {
   smeReviewers?: string[];       // explicit SME selection; empty = auto-route
   publishingReaders?: string[];  // publishing panel subset; empty = all four
   projectMeta?: { title: string; description: string };
+  shouldCancel?: () => boolean;  // checked at task boundaries; in-flight calls finish
+}
+
+function getConcurrency(): number {
+  const parsed = parseInt(process.env.FORGE_LLM_CONCURRENCY || "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 8;
+}
+
+/**
+ * Bounded concurrency: at most `max` wrapped tasks run at once; the rest
+ * queue in submission order.
+ */
+function createLimiter(max: number): (fn: () => Promise<void>) => Promise<void> {
+  let active = 0;
+  const waiters: (() => void)[] = [];
+  return async (fn: () => Promise<void>) => {
+    if (active >= max) {
+      await new Promise<void>(resolve => waiters.push(resolve));
+    }
+    active++;
+    try {
+      await fn();
+    } finally {
+      active--;
+      const next = waiters.shift();
+      if (next) next();
+    }
+  };
 }
 
 interface ChunkRecord {
@@ -86,12 +114,24 @@ export async function runAnalysisPipeline(
     }
   }
 
+  // The memory spine (editorial_assessment -> character_tracker) must stay
+  // serial across chunks. Everything else only needs the context snapshot
+  // taken right after its chunk's memory pass, so those tasks are handed to
+  // a global bounded pool and run while the spine advances through later
+  // chunks. Same calls, same tokens — the wall clock stops being
+  // "sum of every chunk's slowest module" and becomes "spine + pool drain".
+  const limit = createLimiter(getConcurrency());
+  const pooledTasks: Promise<void>[] = [];
+  const cancelled = () => options.shouldCancel?.() ?? false;
+
   for (const chunk of chunks) {
+    if (cancelled()) break;
     const chapterRange = `${chunk.startChapter}-${chunk.endChapter}`;
     const chapterNumbers: number[] = [];
     for (let i = chunk.startChapter; i <= chunk.endChapter; i++) chapterNumbers.push(i);
 
     for (const mod of memoryModules) {
+      if (cancelled()) break;
       const context = memory.getContextForChunk(chunk.startChapter);
       try {
         onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: Running ${mod}...`);
@@ -103,26 +143,57 @@ export async function runAnalysisPipeline(
 
     if (parallelModules.length > 0) {
       const context = memory.getContextForChunk(chunk.startChapter);
-      onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: Running ${parallelModules.length} modules in parallel...`);
-
-      const tasks = parallelModules.map(mod =>
-        runModule(mod, chunk, context, genre, supportFiles, revisionVersionId, chapterNumbers, totalChapters, chapterRange, betaReaderProfiles, memory, smeActive)
-          .then(() => ({ mod, ok: true as const }))
-          .catch((err: any) => ({ mod, ok: false as const, err: err.message }))
-      );
-
-      const results = await Promise.all(tasks);
-      for (const r of results) {
-        if (!r.ok) {
-          onProgress(`ERROR in ${r.mod} for chunk ${chunk.chunkIndex}: ${r.err}`);
+      for (const mod of parallelModules) {
+        // Fan the multi-persona modules out one pool slot per persona so the
+        // concurrency cap applies to actual LLM calls, not module wrappers.
+        if (mod === "beta_reader") {
+          const profiles = betaReaderProfiles.length > 0 ? betaReaderProfiles : getProfileKeys();
+          for (const profileKey of profiles) {
+            pooledTasks.push(limit(async () => {
+              if (cancelled()) return;
+              try {
+                await runBetaProfileUnit(chunk, context, genre, profileKey, revisionVersionId);
+                onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: beta_reader (${profileKey}) complete`);
+              } catch (err: any) {
+                onProgress(`ERROR in beta_reader (${profileKey}) for chunk ${chunk.chunkIndex}: ${err.message}`);
+              }
+            }));
+          }
+          continue;
         }
+        if (mod === "sme_reviewer") {
+          for (const reviewerKey of smeActive) {
+            pooledTasks.push(limit(async () => {
+              if (cancelled()) return;
+              try {
+                await runSmeDomainUnit(reviewerKey, chunk, context, genre, supportFiles, revisionVersionId, memory);
+                onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: sme_reviewer (${reviewerKey}) complete`);
+              } catch (err: any) {
+                onProgress(`ERROR in sme_reviewer (${reviewerKey}) for chunk ${chunk.chunkIndex}: ${err.message}`);
+              }
+            }));
+          }
+          continue;
+        }
+        pooledTasks.push(limit(async () => {
+          if (cancelled()) return;
+          try {
+            await runModule(mod, chunk, context, genre, supportFiles, revisionVersionId, chapterNumbers, totalChapters, chapterRange, betaReaderProfiles, memory, smeActive);
+            onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: ${mod} complete`);
+          } catch (err: any) {
+            onProgress(`ERROR in ${mod} for chunk ${chunk.chunkIndex}: ${err.message}`);
+          }
+        }));
       }
-      onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: Parallel batch complete`);
     }
   }
 
+  await Promise.all(pooledTasks);
+
   // Publishing-stage review runs once, after the chunk loop, so it can use
   // the accumulated story memory as a synopsis alongside the opening chapters.
+  if (cancelled()) return;
+
   if (modules.includes("publishing_review") && chunks.length > 0) {
     const requested = (options.publishingReaders || []).filter(k => PUBLISHING_READERS[k]);
     const readers = requested.length > 0 ? requested : getPublishingReaderKeys();
@@ -272,19 +343,9 @@ async function runModule(
 
     case "beta_reader": {
       const profiles = betaReaderProfiles.length > 0 ? betaReaderProfiles : getProfileKeys();
-      const profileTasks = profiles.map(async (profileKey) => {
-        const result = await runBetaReader(chunk.rawCombinedText, context, genre, profileKey);
-        const dbProfile = await prisma.betaReaderProfile.findFirst({ where: { name: result.profileName } });
-        if (dbProfile) {
-          await prisma.betaReaderResponse.create({
-            data: {
-              revisionVersionId, profileId: dbProfile.id,
-              responseJson: JSON.stringify(result),
-            },
-          });
-        }
-      });
-      await Promise.allSettled(profileTasks);
+      await Promise.allSettled(profiles.map(profileKey =>
+        runBetaProfileUnit(chunk, context, genre, profileKey, revisionVersionId)
+      ));
       break;
     }
 
@@ -376,37 +437,9 @@ async function runModule(
     }
 
     case "sme_reviewer": {
-      const reviewTasks = smeActive.map(async (reviewerKey) => {
-        const result = await runSmeReview(reviewerKey, chunk.rawCombinedText, context, genre, supportFiles);
-        const label = SME_REVIEWERS[reviewerKey]?.label || reviewerKey;
-        for (const issue of result.issues || []) {
-          await createIssue(revisionVersionId, chunk.id, {
-            ...issue,
-            title: `[${label}] ${issue.title}`,
-          }, chunk.startChapter, chunk.chunkIndex, memory);
-        }
-        for (const finding of result.domainFindings || []) {
-          await prisma.factCheckItem.create({
-            data: {
-              revisionVersionId, type: "external",
-              claim: finding.claim, finding: finding.assessment,
-              confidence: finding.confidence, status: finding.status,
-              notes: `SME: ${label}`,
-            },
-          });
-        }
-        for (const flag of result.researchFlags || []) {
-          await prisma.factCheckItem.create({
-            data: {
-              revisionVersionId, type: "external",
-              claim: flag, finding: "Needs real external research before publication.",
-              confidence: 0, status: "pending",
-              notes: `SME: ${label} — research required`,
-            },
-          });
-        }
-      });
-      await Promise.allSettled(reviewTasks);
+      await Promise.allSettled(smeActive.map(reviewerKey =>
+        runSmeDomainUnit(reviewerKey, chunk, context, genre, supportFiles, revisionVersionId, memory)
+      ));
       break;
     }
 
@@ -443,6 +476,64 @@ async function runModule(
       }
       break;
     }
+  }
+}
+
+async function runBetaProfileUnit(
+  chunk: ChunkRecord,
+  context: string,
+  genre: string,
+  profileKey: string,
+  revisionVersionId: string
+) {
+  const result = await runBetaReader(chunk.rawCombinedText, context, genre, profileKey);
+  const dbProfile = await prisma.betaReaderProfile.findFirst({ where: { name: result.profileName } });
+  if (dbProfile) {
+    await prisma.betaReaderResponse.create({
+      data: {
+        revisionVersionId, profileId: dbProfile.id,
+        responseJson: JSON.stringify(result),
+      },
+    });
+  }
+}
+
+async function runSmeDomainUnit(
+  reviewerKey: string,
+  chunk: ChunkRecord,
+  context: string,
+  genre: string,
+  supportFiles: string,
+  revisionVersionId: string,
+  memory: MemoryStore
+) {
+  const result = await runSmeReview(reviewerKey, chunk.rawCombinedText, context, genre, supportFiles);
+  const label = SME_REVIEWERS[reviewerKey]?.label || reviewerKey;
+  for (const issue of result.issues || []) {
+    await createIssue(revisionVersionId, chunk.id, {
+      ...issue,
+      title: `[${label}] ${issue.title}`,
+    }, chunk.startChapter, chunk.chunkIndex, memory);
+  }
+  for (const finding of result.domainFindings || []) {
+    await prisma.factCheckItem.create({
+      data: {
+        revisionVersionId, type: "external",
+        claim: finding.claim, finding: finding.assessment,
+        confidence: finding.confidence, status: finding.status,
+        notes: `SME: ${label}`,
+      },
+    });
+  }
+  for (const flag of result.researchFlags || []) {
+    await prisma.factCheckItem.create({
+      data: {
+        revisionVersionId, type: "external",
+        claim: flag, finding: "Needs real external research before publication.",
+        confidence: 0, status: "pending",
+        notes: `SME: ${label} — research required`,
+      },
+    });
   }
 }
 

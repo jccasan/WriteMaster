@@ -6,7 +6,7 @@ import { prisma } from "./db";
 import { extractText, countWords } from "./parsing/manuscript-parser";
 import { detectChapters, createSegments } from "./parsing/chapter-detector";
 import { createChunks } from "./parsing/chunker";
-import { startAnalysisJob, startVerificationJob, getJobStatus, getAllJobs } from "./analysis/job-runner";
+import { startAnalysisJob, startVerificationJob, getJobStatus, getAllJobs, requestJobCancel } from "./analysis/job-runner";
 import { seedDemoProject } from "./seed/seed-demo";
 import { runEditorialAssessment } from "./analysis/modules/editorial-assessment";
 import { runBetaReader, getLegacyProfileKeys, getProfileCatalog, ensureBetaReaderProfiles } from "./analysis/modules/beta-reader";
@@ -425,6 +425,15 @@ router.get("/jobs/:id", async (req: Request, res: Response) => {
       res.status(500).json({ error: err.message });
     }
   }
+});
+
+router.post("/jobs/:id/cancel", (req: Request, res: Response) => {
+  const ok = requestJobCancel(req.params.id as string);
+  if (!ok) {
+    res.status(404).json({ error: "Job not found or already finished" });
+    return;
+  }
+  res.json({ success: true });
 });
 
 router.get("/jobs", async (_req: Request, res: Response) => {

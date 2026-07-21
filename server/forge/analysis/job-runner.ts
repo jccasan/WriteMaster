@@ -5,13 +5,16 @@ import { runRevisionVerification } from "./revision-verifier";
 
 export interface JobStatus {
   id: string;
-  status: "queued" | "parsing" | "chunking" | "analyzing" | "synthesizing" | "rendering" | "complete" | "error";
+  status: "queued" | "parsing" | "chunking" | "analyzing" | "synthesizing" | "rendering" | "complete" | "error" | "cancelled";
   progress: number;
   logs: string[];
   error?: string;
+  revisionVersionId?: string;
+  analysisType?: string;
 }
 
 const activeJobs = new Map<string, JobStatus>();
+const cancelRequests = new Set<string>();
 
 export function getJobStatus(jobId: string): JobStatus | undefined {
   return activeJobs.get(jobId);
@@ -19,6 +22,23 @@ export function getJobStatus(jobId: string): JobStatus | undefined {
 
 export function getAllJobs(): JobStatus[] {
   return [...activeJobs.values()];
+}
+
+/**
+ * Ask a running job to stop. Takes effect at the next task boundary —
+ * LLM calls already in flight finish, but nothing new starts.
+ */
+export function requestJobCancel(jobId: string): boolean {
+  const job = activeJobs.get(jobId);
+  if (!job) return false;
+  if (job.status === "complete" || job.status === "error" || job.status === "cancelled") return false;
+  cancelRequests.add(jobId);
+  addLog(jobId, "Cancellation requested — stopping at the next task boundary...");
+  return true;
+}
+
+function isJobCancelled(jobId: string): boolean {
+  return cancelRequests.has(jobId);
 }
 
 function addLog(jobId: string, message: string) {
@@ -67,6 +87,8 @@ export async function startAnalysisJob(
     status: "queued",
     progress: 0,
     logs: [],
+    revisionVersionId,
+    analysisType: "full_analysis",
   };
   activeJobs.set(job.id, jobStatus);
 
@@ -91,7 +113,10 @@ export async function startVerificationJob(
     },
   });
 
-  const jobStatus: JobStatus = { id: job.id, status: "queued", progress: 0, logs: [] };
+  const jobStatus: JobStatus = {
+    id: job.id, status: "queued", progress: 0, logs: [],
+    revisionVersionId: newRevisionId, analysisType: "revision_verification",
+  };
   activeJobs.set(job.id, jobStatus);
 
   (async () => {
@@ -107,17 +132,25 @@ export async function startVerificationJob(
         jobStatus.progress = Math.min(95, 5 + steps * 8);
         addLog(job.id, msg);
         updateDbJob(job.id, { progress: jobStatus.progress });
-      });
+      }, () => isJobCancelled(job.id));
 
-      jobStatus.status = "complete";
-      jobStatus.progress = 100;
-      await updateDbJob(job.id, { status: "complete", progress: 100 });
-      addLog(job.id, "Revision verification complete!");
+      if (isJobCancelled(job.id)) {
+        jobStatus.status = "cancelled";
+        await updateDbJob(job.id, { status: "cancelled" });
+        addLog(job.id, "Revision verification cancelled.");
+      } else {
+        jobStatus.status = "complete";
+        jobStatus.progress = 100;
+        await updateDbJob(job.id, { status: "complete", progress: 100 });
+        addLog(job.id, "Revision verification complete!");
+      }
     } catch (err: any) {
       jobStatus.status = "error";
       jobStatus.error = err.message;
       addLog(job.id, `ERROR: ${err.message}`);
       await updateDbJob(job.id, { status: "error", errorMessage: err.message });
+    } finally {
+      cancelRequests.delete(job.id);
     }
   })().catch(err => console.error(`Verification job ${job.id} failed:`, err));
 
@@ -178,7 +211,17 @@ async function runJob(
 
     addLog(jobId, `Found ${chunks.length} chunks to analyze with modules: ${config.modules.join(", ")}`);
 
-    const totalSteps = chunks.length * config.modules.length + 1;
+    const betaCount = config.modules.includes("beta_reader")
+      ? (config.betaReaderProfiles && config.betaReaderProfiles.length > 0 ? config.betaReaderProfiles.length : 12)
+      : 0;
+    const smeCount = config.modules.includes("sme_reviewer")
+      ? (config.smeReviewers && config.smeReviewers.length > 0 ? config.smeReviewers.length : 3)
+      : 0;
+    const baseModules = config.modules.filter(m =>
+      m !== "beta_reader" && m !== "sme_reviewer" && m !== "publishing_review"
+    ).length;
+    const publishingSteps = config.modules.includes("publishing_review") ? 4 : 0;
+    const totalSteps = chunks.length * (baseModules + betaCount + smeCount) + publishingSteps + 1;
     let completedSteps = 0;
 
     await runAnalysisPipeline(
@@ -201,8 +244,16 @@ async function runJob(
         smeReviewers: config.smeReviewers || [],
         publishingReaders: config.publishingReaders || [],
         projectMeta: { title: revision.project.title, description: revision.project.description },
+        shouldCancel: () => isJobCancelled(jobId),
       }
     );
+
+    if (isJobCancelled(jobId)) {
+      job.status = "cancelled";
+      await updateDbJob(jobId, { status: "cancelled" });
+      addLog(jobId, "Analysis cancelled. Results gathered so far are kept; synthesis was skipped.");
+      return;
+    }
 
     job.status = "synthesizing";
     job.progress = 92;
@@ -221,5 +272,7 @@ async function runJob(
     job.error = err.message;
     addLog(jobId, `ERROR: ${err.message}`);
     await updateDbJob(jobId, { status: "error", errorMessage: err.message });
+  } finally {
+    cancelRequests.delete(jobId);
   }
 }

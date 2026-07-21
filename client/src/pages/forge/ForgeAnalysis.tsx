@@ -112,8 +112,37 @@ export default function ForgeAnalysis() {
     enabled: !!jobId,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      if (status === "complete" || status === "failed") return false;
+      if (status === "complete" || status === "error" || status === "cancelled") return false;
       return 2000;
+    },
+  });
+
+  // Re-attach to a job that is still running server-side after a page
+  // reload — jobs keep going in the background even if the tab closes.
+  const { data: revision } = useQuery<any>({
+    queryKey: ["/api/forge/projects", projectId, "revision"],
+    enabled: !!projectId && !jobId,
+  });
+  const { data: allJobs } = useQuery<any[]>({
+    queryKey: ["/api/forge/jobs"],
+    enabled: !!projectId && !jobId,
+    refetchInterval: 5000,
+  });
+
+  useEffect(() => {
+    if (jobId || !revision || !allJobs) return;
+    const running = allJobs.find(j =>
+      j.revisionVersionId === revision.id &&
+      j.analysisType === "full_analysis" &&
+      j.status !== "complete" && j.status !== "error" && j.status !== "cancelled"
+    );
+    if (running) setJobId(running.id);
+  }, [jobId, revision, allJobs]);
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/forge/jobs/${jobId}/cancel`, {});
+      return res.json();
     },
   });
 
@@ -123,9 +152,10 @@ export default function ForgeAnalysis() {
     }
   }, [jobStatus?.status, projectId]);
 
-  const isRunning = jobId && jobStatus && jobStatus.status !== "complete" && jobStatus.status !== "failed";
+  const isRunning = jobId && jobStatus && jobStatus.status !== "complete" && jobStatus.status !== "error" && jobStatus.status !== "cancelled";
   const isComplete = jobStatus?.status === "complete";
-  const isFailed = jobStatus?.status === "failed";
+  const isFailed = jobStatus?.status === "error";
+  const isCancelled = jobStatus?.status === "cancelled";
 
   return (
     <ForgeLayout projectId={projectId}>
@@ -272,7 +302,8 @@ export default function ForgeAnalysis() {
                 {isRunning && <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />}
                 {isComplete && <CheckCircle className="w-5 h-5 text-green-400" />}
                 {isFailed && <XCircle className="w-5 h-5 text-red-400" />}
-                Analysis {jobStatus.status === "running" ? "In Progress" : jobStatus.status === "complete" ? "Complete" : jobStatus.status === "failed" ? "Failed" : "Queued"}
+                {isCancelled && <XCircle className="w-5 h-5 text-gray-400" />}
+                Analysis {isComplete ? "Complete" : isFailed ? "Failed" : isCancelled ? "Cancelled" : "In Progress"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -298,7 +329,29 @@ export default function ForgeAnalysis() {
                 <p className="text-red-400 text-sm" data-testid="text-job-error">{jobStatus.error}</p>
               )}
 
-              {(isComplete || isFailed) && (
+              {isRunning && (
+                <Button
+                  variant="outline"
+                  className="border-red-900/40 text-red-400 hover:bg-red-950/30"
+                  onClick={() => cancelMutation.mutate()}
+                  disabled={cancelMutation.isPending || cancelMutation.isSuccess}
+                  data-testid="button-stop-analysis"
+                >
+                  {cancelMutation.isPending || cancelMutation.isSuccess ? (
+                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Stopping after current calls...</>
+                  ) : (
+                    <><XCircle className="w-4 h-4 mr-2" /> Stop Analysis</>
+                  )}
+                </Button>
+              )}
+
+              {isCancelled && (
+                <p className="text-gray-400 text-sm" data-testid="text-job-cancelled">
+                  Analysis stopped. Results gathered before cancelling are kept; the editorial letter was not generated.
+                </p>
+              )}
+
+              {(isComplete || isFailed || isCancelled) && (
                 <Button
                   variant="outline"
                   className="border-amber-900/30 text-amber-400"
