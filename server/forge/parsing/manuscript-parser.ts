@@ -26,7 +26,7 @@ export async function extractText(filePath: string, mimeType: string): Promise<s
     try {
       const mammoth = await import("mammoth");
       const buffer = await fs.readFile(filePath);
-      const result = await mammoth.default.convertToMarkdown({ buffer });
+      const result = await (mammoth.default as any).convertToMarkdown({ buffer });
       return cleanMammothMarkdown(result.value);
     } catch (err: any) {
       throw new Error(`Failed to parse DOCX: ${err.message}`);

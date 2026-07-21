@@ -65,7 +65,7 @@ function renderInline(text: string): React.ReactNode {
 
     if (boldMatch && boldMatch.index !== undefined) {
       const candidate = { index: boldMatch.index, length: boldMatch[0].length, node: <strong key={key++} className="text-gray-100 font-semibold">{boldMatch[1]}</strong> };
-      if (!firstMatch || candidate.index < firstMatch.index) firstMatch = candidate;
+      if (!firstMatch || candidate.index < (firstMatch as { index: number }).index) firstMatch = candidate;
     }
     if (italicMatch && italicMatch.index !== undefined) {
       const candidate = { index: italicMatch.index, length: italicMatch[0].length, node: <em key={key++} className="text-gray-300 italic">{italicMatch[1]}</em> };

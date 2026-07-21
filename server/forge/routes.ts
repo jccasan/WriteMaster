@@ -49,7 +49,7 @@ router.post("/projects", async (req: Request, res: Response) => {
 router.get("/projects/:id", async (req: Request, res: Response) => {
   try {
     const project = await prisma.project.findUnique({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       include: {
         revisions: {
           include: {
@@ -70,7 +70,7 @@ router.get("/projects/:id", async (req: Request, res: Response) => {
 
 router.delete("/projects/:id", async (req: Request, res: Response) => {
   try {
-    await prisma.project.delete({ where: { id: req.params.id } });
+    await prisma.project.delete({ where: { id: String(req.params.id) } });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -79,7 +79,7 @@ router.delete("/projects/:id", async (req: Request, res: Response) => {
 
 router.post("/projects/:id/upload", upload.single("manuscript"), async (req: Request, res: Response) => {
   try {
-    const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+    const project = await prisma.project.findUnique({ where: { id: String(req.params.id) } });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     let text = "";
@@ -175,7 +175,7 @@ router.post("/projects/:id/upload", upload.single("manuscript"), async (req: Req
 router.post("/projects/:id/reparse", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision?.manuscriptFileId) {
@@ -252,7 +252,7 @@ router.post("/projects/:id/reparse", async (req: Request, res: Response) => {
 router.get("/projects/:id/revision", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
       include: {
         chapters: { orderBy: { number: "asc" } },
@@ -270,7 +270,7 @@ router.get("/projects/:id/revision", async (req: Request, res: Response) => {
 router.post("/projects/:id/analyze", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision) return res.status(404).json({ error: "No revision found" });
@@ -303,7 +303,7 @@ router.post("/projects/:id/analyze", async (req: Request, res: Response) => {
  */
 router.post("/projects/:id/verify-revision", upload.single("manuscript"), async (req: Request, res: Response) => {
   try {
-    const project = await prisma.project.findUnique({ where: { id: req.params.id as string } });
+    const project = await prisma.project.findUnique({ where: { id: String(req.params.id) as string } });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     const prevRevision = await prisma.revisionVersion.findFirst({
@@ -404,12 +404,12 @@ router.post("/projects/:id/verify-revision", upload.single("manuscript"), async 
 });
 
 router.get("/jobs/:id", async (req: Request, res: Response) => {
-  const status = getJobStatus(req.params.id);
+  const status = getJobStatus(String(req.params.id));
   if (status) {
     res.json(status);
   } else {
     try {
-      const job = await prisma.analysisJob.findUnique({ where: { id: req.params.id } });
+      const job = await prisma.analysisJob.findUnique({ where: { id: String(req.params.id) } });
       if (job) {
         res.json({
           id: job.id,
@@ -428,7 +428,7 @@ router.get("/jobs/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/jobs/:id/cancel", (req: Request, res: Response) => {
-  const ok = requestJobCancel(req.params.id as string);
+  const ok = requestJobCancel(String(req.params.id) as string);
   if (!ok) {
     res.status(404).json({ error: "Job not found or already finished" });
     return;
@@ -443,7 +443,7 @@ router.get("/jobs", async (_req: Request, res: Response) => {
 router.get("/projects/:id/issues", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision) return res.status(404).json({ error: "No revision found" });
@@ -460,7 +460,7 @@ router.get("/projects/:id/issues", async (req: Request, res: Response) => {
 router.patch("/issues/:id", async (req: Request, res: Response) => {
   try {
     const { status } = req.body;
-    const issue = await prisma.issue.update({ where: { id: req.params.id }, data: { status } });
+    const issue = await prisma.issue.update({ where: { id: String(req.params.id) }, data: { status } });
     res.json(issue);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -470,7 +470,7 @@ router.patch("/issues/:id", async (req: Request, res: Response) => {
 router.get("/projects/:id/reports", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision) return res.status(404).json({ error: "No revision found" });
@@ -487,7 +487,7 @@ router.get("/projects/:id/reports", async (req: Request, res: Response) => {
 router.get("/reports/:id", async (req: Request, res: Response) => {
   try {
     const report = await prisma.editorialReport.findUnique({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       include: { issues: true },
     });
     if (!report) return res.status(404).json({ error: "Report not found" });
@@ -500,7 +500,7 @@ router.get("/reports/:id", async (req: Request, res: Response) => {
 router.get("/projects/:id/characters", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision) return res.status(404).json({ error: "No revision found" });
@@ -523,7 +523,7 @@ router.patch("/characters/:charId", async (req: Request, res: Response) => {
       if (!r.character || typeof r.character !== "string") return res.status(400).json({ error: "Each relationship must have a character name" });
     }
 
-    const char = await prisma.characterRecord.findUnique({ where: { id: req.params.charId } });
+    const char = await prisma.characterRecord.findUnique({ where: { id: String(req.params.charId) } });
     if (!char) return res.status(404).json({ error: "Character not found" });
 
     const revision = await prisma.revisionVersion.findUnique({ where: { id: char.revisionVersionId } });
@@ -532,7 +532,7 @@ router.patch("/characters/:charId", async (req: Request, res: Response) => {
     }
 
     const updated = await prisma.characterRecord.update({
-      where: { id: req.params.charId },
+      where: { id: String(req.params.charId) },
       data: { relationshipsJson: JSON.stringify(rels) },
     });
     res.json(updated);
@@ -544,7 +544,7 @@ router.patch("/characters/:charId", async (req: Request, res: Response) => {
 router.get("/projects/:id/structure", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision) return res.status(404).json({ error: "No revision found" });
@@ -561,7 +561,7 @@ router.get("/projects/:id/structure", async (req: Request, res: Response) => {
 router.get("/projects/:id/scenes", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision) return res.status(404).json({ error: "No revision found" });
@@ -578,7 +578,7 @@ router.get("/projects/:id/scenes", async (req: Request, res: Response) => {
 router.get("/projects/:id/fact-checks", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision) return res.status(404).json({ error: "No revision found" });
@@ -595,7 +595,7 @@ router.get("/projects/:id/fact-checks", async (req: Request, res: Response) => {
 router.get("/projects/:id/beta-readers", async (req: Request, res: Response) => {
   try {
     const revision = await prisma.revisionVersion.findFirst({
-      where: { projectId: req.params.id },
+      where: { projectId: String(req.params.id) },
       orderBy: { versionNumber: "desc" },
     });
     if (!revision) return res.status(404).json({ error: "No revision found" });
@@ -710,7 +710,7 @@ Use the passage and feedback as context. Give specific, actionable craft advice.
 
 router.post("/projects/:id/chat", async (req: Request, res: Response) => {
   try {
-    const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+    const project = await prisma.project.findUnique({ where: { id: String(req.params.id) } });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     const { messages } = req.body;

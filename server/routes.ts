@@ -475,7 +475,7 @@ Output the rewritten chapter text only, no preamble or commentary.`,
 
         if (name.endsWith(".docx")) {
           const mammoth = await import("mammoth");
-          const result = await mammoth.default.convertToMarkdown({ buffer });
+          const result = await (mammoth.default as any).convertToMarkdown({ buffer });
           content = result.value;
         } else {
           content = buffer.toString("utf-8");

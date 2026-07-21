@@ -791,7 +791,7 @@ export default function BookStudio() {
                     <div className="flex items-center justify-between">
                       <span className="truncate">{ch.title}</span>
                       <div className="flex items-center gap-1">
-                        {ch.summary && <BookOpen className="w-2.5 h-2.5 text-blue-400 shrink-0" title="Has memory" />}
+                        {ch.summary && <span title="Has memory"><BookOpen className="w-2.5 h-2.5 text-blue-400 shrink-0" /></span>}
                         {ch.status === "writing" && <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
                         {ch.status === "written" && <Check className="w-3 h-3 text-green-500 shrink-0" />}
                       </div>
