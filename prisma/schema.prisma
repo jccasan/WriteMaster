@@ -234,3 +234,16 @@ model AnalysisJob {
 
   revision          RevisionVersion @relation(fields: [revisionVersionId], references: [id], onDelete: Cascade)
 }
+
+// Generic JSON document store backing StoryDossier storage (books, dossier
+// projects, chapter sessions, pipeline states). Replaces the data/*.json
+// file folders so all persistence lives in one SQLite database.
+model Doc {
+  collection String
+  id         String
+  data       String
+  updatedAt  DateTime @updatedAt
+
+  @@id([collection, id])
+  @@index([collection])
+}
