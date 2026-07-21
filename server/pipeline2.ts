@@ -7,28 +7,16 @@
  * full working documents that the chapter writing pipeline (Pipeline 3) uses
  * as context. This is the missing bridge between dossier and draft.
  *
- * Steps:
- *   0  Init
- *   1  Character Sheet Draft  (powerful)
- *   2  Character Sheet Check — continuity + completeness  (cheap)
- *   3  Character Sheet Final  (cheap, implements check)
- *   4  World-Building Sheet Draft  (powerful)
- *   5  World-Building Sheet Check — internal consistency  (cheap)
- *   6  World-Building Sheet Final  (cheap, implements check)
- *   7  Chapter Outline Draft  (powerful)
- *   8  Outline Continuity Check — does outline match dossier beats?  (powerful)
- *   9  Chapter Outline Final  (cheap, implements check)
+ * Each document goes through draft → check → final (check-plan-rewrite).
  */
 
-import { callLLM } from "./llm";
 import {
-  AUTHOR_VOICE_CONTRACT,
   STORY_ARCHITECTURE_RULES,
-  NARRATIVE_SLIDER_RULES,
+  CONTEXT_RULES,
   DEFAULT_DECISION_RULE,
-  CONTEXT_ENGINEERING_RULES,
 } from "./writing-rules";
 import { getSkill } from "./skillLoader";
+import { definePipeline, runPipelineStep, stepNameOf, llm, preview } from "./pipelineEngine";
 
 export interface Pipeline2State {
   pipeline2_id: string;
@@ -48,23 +36,6 @@ export interface Pipeline2State {
   outline_check: string;
   outline_final: string;
   current_step: number;
-}
-
-const STEP_NAMES = [
-  "Initialization",
-  "Character Sheet — Draft",
-  "Character Sheet — Completeness Check",
-  "Character Sheet — Final",
-  "World-Building Sheet — Draft",
-  "World-Building Sheet — Consistency Check",
-  "World-Building Sheet — Final",
-  "Chapter Outline — Draft",
-  "Chapter Outline — Continuity Check",
-  "Chapter Outline — Final",
-];
-
-export function getP2StepName(step: number): string {
-  return STEP_NAMES[step] ?? "Unknown Step";
 }
 
 export function createEmptyP2State(
@@ -96,39 +67,56 @@ export function createEmptyP2State(
   };
 }
 
-export async function runP2Step(state: Pipeline2State): Promise<{
-  updatedState: Pipeline2State;
-  outputPreview: string;
-}> {
-  const step = state.current_step;
-  let outputPreview = "";
-  const narrativeSliders = getSkill("NARRATIVE_SLIDERS");
-  const logicCheck = getSkill("CHECKS_LOGIC_CHECK");
+const RULES_SYSTEM = [STORY_ARCHITECTURE_RULES, CONTEXT_RULES, DEFAULT_DECISION_RULE].join("\n\n");
 
-  switch (step) {
-    case 0: {
-      outputPreview = `Pipeline 2 initialized for book ${state.book_id}. Target: ${state.target_chapters} chapters.`;
-      state.current_step = 1;
-      break;
-    }
+/** Load trope + dimension prompt blocks for a book, non-blocking */
+async function bookContextBlocks(bookId: string, mode: "outline"): Promise<{ tropeBlock: string; dimBlock: string }> {
+  let tropeBlock = "";
+  let dimBlock = "";
+  if (bookId) {
+    try {
+      const { buildTropePromptBlock } = await import("./tropes/tropeSystem");
+      const { storage: bookStorage } = await import("./storage");
+      const book = await bookStorage.getBook(bookId);
+      const tropeSelection = (book as any)?.tropes;
+      if (tropeSelection?.primary) {
+        tropeBlock = buildTropePromptBlock(tropeSelection, mode);
+      }
+    } catch { /* non-blocking */ }
+    try {
+      const { buildDimensionPromptBlock } = await import("./dimensions/dimensionSystem");
+      const { storage: bookStorage } = await import("./storage");
+      const book = await bookStorage.getBook(bookId);
+      const dimSelections = (book as any)?.dimensions;
+      if (dimSelections && Object.keys(dimSelections).length > 0) {
+        dimBlock = buildDimensionPromptBlock(dimSelections, mode);
+      }
+    } catch { /* non-blocking */ }
+  }
+  return { tropeBlock, dimBlock };
+}
 
-    // ── CHARACTER SHEET ──────────────────────────────────────────────────────
+const p2Pipeline = definePipeline<Pipeline2State>("Pipeline 2", [
+  {
+    name: "Initialization",
+    run: (s) => `Pipeline 2 initialized for book ${s.book_id}. Target: ${s.target_chapters} chapters.`,
+  },
 
-    case 1: {
-      const result = await callLLM(
+  // ── CHARACTER SHEET ──────────────────────────────────────────────────────
+  {
+    name: "Character Sheet — Draft",
+    run: async (s) => {
+      const narrativeSliders = getSkill("NARRATIVE_SLIDERS");
+      s.character_sheet_v1 = await llm.powerful(
         `You are a master story architect creating a detailed Character Sheet to be used as reference during novel writing.
 
 STORY DOSSIER:
-${state.dossier}
+${s.dossier}
 
 AUTHOR BRAIN DUMP:
-${state.brain_dump}
-
-${STORY_ARCHITECTURE_RULES}
+${s.brain_dump}
 
 ${narrativeSliders}
-
-${AUTHOR_VOICE_CONTRACT}
 
 Create a comprehensive CHARACTER SHEET. This document will be injected into every chapter-writing prompt, so it must be:
 - Specific enough to constrain AI generation toward the author's vision
@@ -186,28 +174,23 @@ After all characters, include:
 A text diagram of key relationships: who trusts whom, who wants what from whom, where the alliances and tensions lie.
 
 ## CHARACTER KNOWLEDGE MAP
-For each major character: what they know at the START of the story that other characters don't know yet.
-
-${DEFAULT_DECISION_RULE}`,
-        "powerful",
-        undefined,
-        16384
+For each major character: what they know at the START of the story that other characters don't know yet.`,
+        { system: RULES_SYSTEM, maxTokens: 16384 }
       );
-      state.character_sheet_v1 = result;
-      state.current_step = 2;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 2: {
-      const result = await callLLM(
+      return preview(s.character_sheet_v1);
+    },
+  },
+  {
+    name: "Character Sheet — Completeness Check",
+    run: async (s) => {
+      s.character_sheet_check = await llm.cheap(
         `You are a continuity editor reviewing a Character Sheet for completeness and consistency with the story dossier.
 
 STORY DOSSIER:
-${state.dossier}
+${s.dossier}
 
 CHARACTER SHEET:
-${state.character_sheet_v1}
+${s.character_sheet_v1}
 
 Perform these checks:
 
@@ -227,24 +210,22 @@ Perform these checks:
 - Are there character arcs in the dossier that aren't reflected in the Arc Summary sections?
 
 Output as: CHARACTER SHEET IMPROVEMENT PLAN
-Number each issue. State the fix specifically.`,
-        "cheap"
+Number each issue. State the fix specifically.`
       );
-      state.character_sheet_check = result;
-      state.current_step = 3;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 3: {
-      const result = await callLLM(
+      return preview(s.character_sheet_check);
+    },
+  },
+  {
+    name: "Character Sheet — Final",
+    run: async (s) => {
+      s.character_sheet_final = await llm.cheap(
         `You are a precise editor. Implement the improvement plan into the Character Sheet without changing anything else.
 
 ORIGINAL CHARACTER SHEET:
-${state.character_sheet_v1}
+${s.character_sheet_v1}
 
 CHARACTER SHEET IMPROVEMENT PLAN:
-${state.character_sheet_check}
+${s.character_sheet_check}
 
 Instructions:
 - Implement ONLY the changes specified in the improvement plan
@@ -253,31 +234,24 @@ Instructions:
 - Maintain all formatting and section headers
 
 This is the FINAL Character Sheet.`,
-        "cheap",
-        undefined,
-        16384
+        { maxTokens: 16384 }
       );
-      state.character_sheet_final = result;
-      state.current_step = 4;
-      outputPreview = "Character Sheet finalized.";
-      break;
-    }
+      return "Character Sheet finalized.";
+    },
+  },
 
-    // ── WORLD-BUILDING SHEET ──────────────────────────────────────────────────
-
-    case 4: {
-      const result = await callLLM(
-        `You are a master world-builder creating a comprehensive World-Building Sheet for a ${state.genre} novel.
+  // ── WORLD-BUILDING SHEET ──────────────────────────────────────────────────
+  {
+    name: "World-Building Sheet — Draft",
+    run: async (s) => {
+      s.world_building_v1 = await llm.powerful(
+        `You are a master world-builder creating a comprehensive World-Building Sheet for a ${s.genre} novel.
 
 STORY DOSSIER:
-${state.dossier}
+${s.dossier}
 
 AUTHOR BRAIN DUMP:
-${state.brain_dump}
-
-${STORY_ARCHITECTURE_RULES}
-
-${CONTEXT_ENGINEERING_RULES}
+${s.brain_dump}
 
 Create a WORLD-BUILDING SHEET. This document will be used as reference during chapter writing. Follow the iceberg principle: provide complete detail so the writer knows the world, but note which elements should be revealed gradually vs. established early.
 
@@ -329,28 +303,23 @@ For each relevant historical event:
 
 ## WORLD SECRETS (reveal tracking)
 Things the world contains that are not known at story start — sorted by when they should be revealed.
-- [Secret]: [When/how it should emerge]
-
-${DEFAULT_DECISION_RULE}`,
-        "powerful",
-        undefined,
-        12288
+- [Secret]: [When/how it should emerge]`,
+        { system: RULES_SYSTEM, maxTokens: 12288 }
       );
-      state.world_building_v1 = result;
-      state.current_step = 5;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 5: {
-      const result = await callLLM(
+      return preview(s.world_building_v1);
+    },
+  },
+  {
+    name: "World-Building Sheet — Consistency Check",
+    run: async (s) => {
+      s.world_building_check = await llm.cheap(
         `You are an internal consistency editor reviewing a World-Building Sheet.
 
 STORY DOSSIER:
-${state.dossier}
+${s.dossier}
 
 WORLD-BUILDING SHEET:
-${state.world_building_v1}
+${s.world_building_v1}
 
 Check for:
 
@@ -370,24 +339,22 @@ Check for:
 - Is the reveal timing logical — nothing spoiled too early, nothing hidden when the reader needs it?
 
 Output as: WORLD-BUILDING IMPROVEMENT PLAN
-Number each issue. Be specific about what needs to change.`,
-        "cheap"
+Number each issue. Be specific about what needs to change.`
       );
-      state.world_building_check = result;
-      state.current_step = 6;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 6: {
-      const result = await callLLM(
+      return preview(s.world_building_check);
+    },
+  },
+  {
+    name: "World-Building Sheet — Final",
+    run: async (s) => {
+      s.world_building_final = await llm.cheap(
         `You are a precise editor. Implement the improvement plan into the World-Building Sheet without changing anything else.
 
 ORIGINAL WORLD-BUILDING SHEET:
-${state.world_building_v1}
+${s.world_building_v1}
 
 WORLD-BUILDING IMPROVEMENT PLAN:
-${state.world_building_check}
+${s.world_building_check}
 
 Instructions:
 - Implement ONLY the changes specified in the improvement plan
@@ -396,68 +363,37 @@ Instructions:
 - Maintain all formatting and section headers
 
 This is the FINAL World-Building Sheet.`,
-        "cheap",
-        undefined,
-        12288
+        { maxTokens: 12288 }
       );
-      state.world_building_final = result;
-      state.current_step = 7;
-      outputPreview = "World-Building Sheet finalized.";
-      break;
-    }
+      return "World-Building Sheet finalized.";
+    },
+  },
 
-    // ── CHAPTER OUTLINE ───────────────────────────────────────────────────────
+  // ── CHAPTER OUTLINE ───────────────────────────────────────────────────────
+  {
+    name: "Chapter Outline — Draft",
+    run: async (s) => {
+      const narrativeSliders = getSkill("NARRATIVE_SLIDERS");
+      const { tropeBlock, dimBlock } = await bookContextBlocks(s.book_id, "outline");
+      s.outline_v1 = await llm.powerful(
+        `You are a master story architect creating a complete Chapter-by-Chapter Outline for a ${s.genre} novel.
 
-    case 7: {
-      // Build trope context if book has tropes set
-      let tropeOutlineBlock = "";
-      if (state.book_id) {
-        try {
-          const { buildTropePromptBlock } = await import("./tropes/tropeSystem");
-          const { storage: bookStorage } = await import("./storage");
-          const book = await bookStorage.getBook(state.book_id);
-          const tropeSelection = (book as any)?.tropes;
-          if (tropeSelection?.primary) {
-            tropeOutlineBlock = buildTropePromptBlock(tropeSelection, "outline");
-          }
-        } catch { /* non-blocking */ }
-      }
-
-      // Build dimension context if book has dimensions set
-      let dimOutlineBlock = "";
-      if (state.book_id) {
-        try {
-          const { buildDimensionPromptBlock } = await import("./dimensions/dimensionSystem");
-          const { storage: bookStorage } = await import("./storage");
-          const book = await bookStorage.getBook(state.book_id);
-          const dimSelections = (book as any)?.dimensions;
-          if (dimSelections && Object.keys(dimSelections).length > 0) {
-            dimOutlineBlock = buildDimensionPromptBlock(dimSelections, "outline");
-          }
-        } catch { /* non-blocking */ }
-      }
-
-      const result = await callLLM(
-        `You are a master story architect creating a complete Chapter-by-Chapter Outline for a ${state.genre} novel.
-
-${tropeOutlineBlock ? `${tropeOutlineBlock}\n` : ""}${dimOutlineBlock ? `${dimOutlineBlock}\n` : ""}
+${tropeBlock ? `${tropeBlock}\n` : ""}${dimBlock ? `${dimBlock}\n` : ""}
 STORY DOSSIER:
-${state.dossier}
+${s.dossier}
 
 CHARACTER SHEET (final):
-${state.character_sheet_final}
+${s.character_sheet_final}
 
 WORLD-BUILDING SHEET (final):
-${state.world_building_final}
+${s.world_building_final}
 
 AUTHOR BRAIN DUMP:
-${state.brain_dump}
-
-${STORY_ARCHITECTURE_RULES}
+${s.brain_dump}
 
 ${narrativeSliders}
 
-Create a complete chapter outline for approximately ${state.target_chapters} chapters. For each chapter, provide ALL of the following. Use this exact format:
+Create a complete chapter outline for approximately ${s.target_chapters} chapters. For each chapter, provide ALL of the following. Use this exact format:
 
 ---
 ## Chapter [N]: [Title]
@@ -515,31 +451,26 @@ After all chapters, include:
 List every unresolved question the outline creates, and which chapter closes it.
 
 ## CHARACTER ARC CHECKPOINTS
-For each major character: chapter N (start state) → chapter N (midpoint shift) → chapter N (arc completion).
-
-${DEFAULT_DECISION_RULE}`,
-        "powerful",
-        undefined,
-        16384
+For each major character: chapter N (start state) → chapter N (midpoint shift) → chapter N (arc completion).`,
+        { system: RULES_SYSTEM, maxTokens: 16384 }
       );
-      state.outline_v1 = result;
-      state.current_step = 8;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 8: {
-      const result = await callLLM(
+      return preview(s.outline_v1);
+    },
+  },
+  {
+    name: "Chapter Outline — Continuity Check",
+    run: async (s) => {
+      s.outline_check = await llm.powerful(
         `You are a developmental editor auditing a Chapter Outline for consistency with the story dossier and internal coherence.
 
 STORY DOSSIER (the authority — outline must match this):
-${state.dossier}
+${s.dossier}
 
 CHARACTER SHEET:
-${state.character_sheet_final}
+${s.character_sheet_final}
 
 CHAPTER OUTLINE:
-${state.outline_v1}
+${s.outline_v1}
 
 Perform these checks:
 
@@ -565,24 +496,22 @@ Perform these checks:
 - Are there resolutions that happen without the corresponding setup?
 
 Output as: OUTLINE IMPROVEMENT PLAN
-Number each item. Be specific about which chapter and what changes.`,
-        "powerful"
+Number each item. Be specific about which chapter and what changes.`
       );
-      state.outline_check = result;
-      state.current_step = 9;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 9: {
-      const result = await callLLM(
+      return preview(s.outline_check);
+    },
+  },
+  {
+    name: "Chapter Outline — Final",
+    run: async (s) => {
+      s.outline_final = await llm.cheap(
         `You are a precise editor. Implement the improvement plan into the Chapter Outline without changing anything else.
 
 ORIGINAL CHAPTER OUTLINE:
-${state.outline_v1}
+${s.outline_v1}
 
 OUTLINE IMPROVEMENT PLAN:
-${state.outline_check}
+${s.outline_check}
 
 Instructions:
 - Implement ONLY the changes specified in the improvement plan
@@ -591,19 +520,20 @@ Instructions:
 - Maintain all formatting and section headers
 
 This is the FINAL Chapter Outline.`,
-        "cheap",
-        undefined,
-        16384
+        { maxTokens: 16384 }
       );
-      state.outline_final = result;
-      state.current_step = 10;
-      outputPreview = "Chapter Outline finalized. Pipeline 2 complete.";
-      break;
-    }
+      return "Chapter Outline finalized. Pipeline 2 complete.";
+    },
+  },
+]);
 
-    default:
-      throw new Error(`Pipeline 2 step ${step} is out of range. Pipeline is complete.`);
-  }
+export function getP2StepName(step: number): string {
+  return stepNameOf(p2Pipeline, step);
+}
 
-  return { updatedState: state, outputPreview };
+export async function runP2Step(state: Pipeline2State): Promise<{
+  updatedState: Pipeline2State;
+  outputPreview: string;
+}> {
+  return runPipelineStep(p2Pipeline, state);
 }
