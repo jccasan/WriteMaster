@@ -85,19 +85,35 @@ Four KDP publishing tools:
 
 ### Analysis Presets
 - **Quick**: 3 core modules (editorial_assessment, character_tracker, developmental_editor) — ~10-15 min for a full novel
-- **Full**: 8 modules (all except beta_reader by default) — ~15-25 min for a full novel
+- **Full**: core editorial modules incl. subject-matter experts (all except beta_reader and publishing_review) — ~15-25 min for a full novel
+- **Submission**: editorial_assessment + character_tracker + publishing_review (agent/acquisitions/positioning/package readers)
 - **Custom**: User picks any combination of modules
 
-### Analysis Modules (9)
+### Analysis Modules (12)
+Module prompts are built from Editorial Operating System skill definitions in `config/editorial-os/` (see below).
 - **Editorial Assessment** — High-level editorial evaluation (memory-updating, runs first)
 - **Character Tracker** — Character state changes, relationships, injuries, continuity (memory-updating, runs second)
-- **Developmental Editor** — Pacing, stakes, causality, character arcs, scene construction (parallel)
-- **Copy Editor** — Prose clarity, voice consistency, dialogue, clichés, show-don't-tell (parallel)
-- **Proofreader** — Grammar, punctuation, formatting (parallel)
-- **Fact Checker** — Internal consistency + external accuracy (parallel)
-- **Beta Reader** — 5 simulated reader profiles, all profiles run in parallel (parallel)
+- **Developmental Editor** — EOS developmental-editor skill: premise, causality, stakes, arcs, structure (parallel)
+- **Line Editor** (`copy_editor`) — EOS line-editor skill: prose precision, voice, dialogue, clichés (parallel)
+- **Copy Editor / Proofreader** (`proofreader`) — EOS novel-copy-editor skill: grammar, punctuation, consistency (parallel)
+- **Continuity & Fact Auditor** (`fact_checker`) — EOS continuity-logic-auditor skill + external fact flagging (parallel)
+- **Reader Panel** (`beta_reader`) — 12 reader profiles (5 legacy + 7 EOS personas), all run in parallel (parallel)
 - **Structure Analyzer** — Narrative structure beats (3-act, Save the Cat, etc.) (parallel)
 - **Scene Scanner** — Scene purpose, conflict, change, necessity rating (parallel)
+- **Addiction Loop Audit** — Per-chapter stakes/question/head-fake/re-hook scoring (parallel)
+- **Subject-Matter Experts** (`sme_reviewer`) — 7 EOS realism reviewers (federal procedure, intelligence tradecraft, legal, medical, military, forensics, cybersecurity). A router pass reads the manuscript first and activates only relevant domains unless the user picks explicitly (parallel)
+- **Publishing Review Panel** (`publishing_review`) — 4 EOS publishing-stage readers (literary agent, acquisitions editor, market positioning, submission package auditor); runs once after the chunk loop using accumulated memory as a synopsis, produces one report per reader
+
+### Editorial Operating System (config/editorial-os/)
+Skill package powering FORGE's editorial brains: 25 skill definitions under `skills/`, shared references (editorial constitution, review output standard, issue memory protocol, novel bible schema) under `shared/`, orchestration docs (RUNBOOK, PANEL_SELECTION_MATRIX, MASTER_ORCHESTRATOR_PROMPT), and volume guides. Loaded at runtime by `server/forge/editorial-os/eos-skills.ts` (frontmatter stripped, cached). The Oracle Veil project pack lives in `data/editorial-os/oracle-veil/`.
+
+Issue records now carry confidence (high/medium/low) and note type (objective/plausibility/genre/taste) appended to descriptions — a taste note is not a command.
+
+### Revision Verification
+`POST /api/forge/projects/:id/verify-revision` (file or pasted text) creates a new RevisionVersion, parses it, and runs the EOS revision-verifier against the previous draft's issue ledger. Each prior issue is classified fixed / partially_fixed / displaced / unchanged / worsened / intentionally_declined; unresolved issues carry forward to the new revision's ledger, fix side effects become new issues, and a Revision Verification Report is generated. UI lives on the Upload page ("Verify Revised Draft").
+
+### Editorial Director Synthesis
+Synthesis uses the EOS editorial-director skill + master orchestrator prompt: root-cause clusters with consensus strength (strong/moderate/weak/disputed), meaningful disagreements with tradeoffs, staged revision plan (structural → scene → prose → proofing), and defer/decline notes, all rendered into the Editorial Letter.
 
 ### Performance
 - Chunk size: 8 chapters/chunk (was 4); 58-chapter novel → 7 chunks (was 14)
@@ -182,7 +198,9 @@ Accumulates across chunks: outline, character profiles, plot threads, world rule
 - `DELETE /api/forge/projects/:id` — Delete project
 - `POST /api/forge/projects/:id/upload` — Upload manuscript/outline/story_bible
 - `GET /api/forge/projects/:id/revision` — Get latest revision
-- `POST /api/forge/projects/:id/analyze` — Start analysis job
+- `POST /api/forge/projects/:id/analyze` — Start analysis job (body: modules, betaReaderProfiles, smeReviewers, publishingReaders, genre)
+- `POST /api/forge/projects/:id/verify-revision` — Upload revised draft, verify against prior issue ledger (returns jobId + new revisionId)
+- `GET /api/forge/beta-reader-profile-catalog` — All 12 selectable reader profile keys/names
 - `GET /api/forge/jobs/:id` — Get job status
 - `GET /api/forge/jobs` — List all active jobs
 - `GET /api/forge/projects/:id/issues` — Get all issues

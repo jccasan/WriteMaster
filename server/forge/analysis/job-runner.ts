@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { runAnalysisPipeline } from "./analysis-runner";
 import { runSynthesis } from "./synthesis-runner";
+import { runRevisionVerification } from "./revision-verifier";
 
 export interface JobStatus {
   id: string;
@@ -39,13 +40,17 @@ async function updateDbJob(jobId: string, updates: { status?: string; progress?:
   }
 }
 
+export interface AnalysisJobConfig {
+  modules: string[];
+  betaReaderProfiles?: string[];
+  genre?: string;
+  smeReviewers?: string[];
+  publishingReaders?: string[];
+}
+
 export async function startAnalysisJob(
   revisionVersionId: string,
-  config: {
-    modules: string[];
-    betaReaderProfiles?: string[];
-    genre?: string;
-  }
+  config: AnalysisJobConfig
 ): Promise<string> {
   const job = await prisma.analysisJob.create({
     data: {
@@ -72,14 +77,57 @@ export async function startAnalysisJob(
   return job.id;
 }
 
+export async function startVerificationJob(
+  prevRevisionId: string,
+  newRevisionId: string
+): Promise<string> {
+  const job = await prisma.analysisJob.create({
+    data: {
+      revisionVersionId: newRevisionId,
+      analysisType: "revision_verification",
+      status: "queued",
+      progress: 0,
+      configJson: JSON.stringify({ prevRevisionId }),
+    },
+  });
+
+  const jobStatus: JobStatus = { id: job.id, status: "queued", progress: 0, logs: [] };
+  activeJobs.set(job.id, jobStatus);
+
+  (async () => {
+    try {
+      jobStatus.status = "analyzing";
+      jobStatus.progress = 5;
+      await updateDbJob(job.id, { status: "analyzing", progress: 5 });
+      addLog(job.id, "Starting revision verification...");
+
+      let steps = 0;
+      await runRevisionVerification(prevRevisionId, newRevisionId, (msg: string) => {
+        steps++;
+        jobStatus.progress = Math.min(95, 5 + steps * 8);
+        addLog(job.id, msg);
+        updateDbJob(job.id, { progress: jobStatus.progress });
+      });
+
+      jobStatus.status = "complete";
+      jobStatus.progress = 100;
+      await updateDbJob(job.id, { status: "complete", progress: 100 });
+      addLog(job.id, "Revision verification complete!");
+    } catch (err: any) {
+      jobStatus.status = "error";
+      jobStatus.error = err.message;
+      addLog(job.id, `ERROR: ${err.message}`);
+      await updateDbJob(job.id, { status: "error", errorMessage: err.message });
+    }
+  })().catch(err => console.error(`Verification job ${job.id} failed:`, err));
+
+  return job.id;
+}
+
 async function runJob(
   jobId: string,
   revisionVersionId: string,
-  config: {
-    modules: string[];
-    betaReaderProfiles?: string[];
-    genre?: string;
-  }
+  config: AnalysisJobConfig
 ) {
   const job = activeJobs.get(jobId)!;
 
@@ -148,6 +196,11 @@ async function runJob(
         job.status = "analyzing";
         addLog(jobId, step);
         updateDbJob(jobId, { status: "analyzing", progress });
+      },
+      {
+        smeReviewers: config.smeReviewers || [],
+        publishingReaders: config.publishingReaders || [],
+        projectMeta: { title: revision.project.title, description: revision.project.description },
       }
     );
 

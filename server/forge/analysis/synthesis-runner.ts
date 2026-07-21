@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { callLLM } from "../../llm";
 import { extractJSON } from "./parse-json";
 import { renderReport } from "../renderers/report-renderer";
+import { getEosSkill, getEosDoc, EOS_SHARED_RULES } from "../editorial-os/eos-skills";
 
 export async function runSynthesis(revisionVersionId: string, genre: string) {
   const issues = await prisma.issue.findMany({ where: { revisionVersionId } });
@@ -14,9 +15,22 @@ export async function runSynthesis(revisionVersionId: string, genre: string) {
 
   const issuesSummary = issues.map(i => `[${i.severity}] ${i.type}: ${i.title} - ${i.description}`).join("\n");
 
+  const betaSummary = betaResponses.map(r => {
+    try {
+      const resp = JSON.parse(r.responseJson);
+      return `${resp.profileName || r.profile?.name}: keep reading=${resp.wouldKeepReading}; ${resp.recommendation || ""}`;
+    } catch { return ""; }
+  }).filter(Boolean).join("\n");
+
   let synthesisResponse: any = {};
   try {
-    const synthesisPrompt = `You are synthesizing all analysis results for a ${genre} manuscript. Here are the findings:
+    const directorSystem = [
+      getEosSkill("editorial-director"),
+      getEosDoc("MASTER_ORCHESTRATOR_PROMPT.md"),
+      EOS_SHARED_RULES,
+    ].filter(Boolean).join("\n\n");
+
+    const synthesisPrompt = `You are synthesizing independent reviewer findings for a ${genre} manuscript. Here are the findings:
 
 TOTAL ISSUES: ${issues.length}
 CRITICAL: ${issues.filter(i => i.severity === "critical").length}
@@ -27,32 +41,39 @@ MINOR: ${issues.filter(i => i.severity === "minor").length}
 ALL ISSUES:
 ${issuesSummary}
 
+READER PANEL REACTIONS:
+${betaSummary || "None."}
+
 CHARACTERS TRACKED: ${characters.length}
 STRUCTURE BEATS: ${beats.length}
 SCENES ANALYZED: ${scenes.length}
 FACT CHECKS: ${factChecks.length}
-BETA READER RESPONSES: ${betaResponses.length}
 
-Provide a synthesis that:
-1. Identifies the top 5 most impactful issues to address first
-2. Groups related issues that might share a root cause
-3. Notes any issues that seem to contradict each other
-4. Provides an overall manuscript health assessment
-5. Suggests a revision priority order
+Act as Editorial Director:
+1. Cluster issues that share one root cause — do not count duplicated symptoms as separate problems.
+2. Record consensus strength (strong / moderate / weak / disputed) per cluster. Do not invent consensus.
+3. Preserve meaningful disagreements between reviewers rather than blending them away.
+4. Separate objective defects from plausibility, genre-expectation, and taste notes — a taste note is not a command.
+5. Rank by revision value: reader impact × confidence × recurrence, adjusted for revision cost.
+6. Produce a staged revision plan: structural, scene-level, prose-level, proofing.
+7. Identify what is already working and must not be damaged.
 
 Return JSON:
 {
-  "overallAssessment": "2-3 paragraph assessment",
+  "overallAssessment": "2-3 paragraph executive diagnosis",
   "manuscriptHealth": "strong|adequate|needs_work|significant_revision_needed",
-  "topPriorityIssues": ["issue titles in priority order"],
+  "topPriorityIssues": ["issue titles in priority order, max 5"],
+  "rootCauseClusters": [{"rootCause": "underlying problem", "issueTitles": ["issues sharing this cause"], "consensus": "strong|moderate|weak|disputed", "classification": "objective|continuity|plausibility|genre_expectation|reader_reaction|taste"}],
+  "meaningfulDisagreements": [{"topic": "what reviewers disagree about", "positions": ["position A", "position B"], "tradeoff": "what the author decision hinges on"}],
   "relatedIssueGroups": [{"theme": "group name", "issueIndices": [0,1,2]}],
   "contradictions": ["any contradictory findings"],
-  "revisionPriority": ["ordered list of what to fix first"],
-  "strengths": ["top strengths to preserve"],
+  "revisionPriority": ["staged revision order: structural first, then scene-level, prose-level, proofing"],
+  "deferredNotes": ["low-value or taste-based notes the author can safely defer or decline"],
+  "strengths": ["strengths to protect during revision"],
   "encouragement": "honest but encouraging closing note"
 }`;
 
-    const result = await callLLM(synthesisPrompt, "powerful", "You are a senior fiction editor synthesizing multiple analysis passes into a coherent revision plan.", 8192);
+    const result = await callLLM(synthesisPrompt, "powerful", directorSystem, 8192);
     synthesisResponse = extractJSON(result, null);
     if (!synthesisResponse) throw new Error("Parse failed");
   } catch (err) {

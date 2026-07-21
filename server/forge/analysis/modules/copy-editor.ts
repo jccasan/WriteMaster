@@ -1,5 +1,6 @@
 import { callLLM } from "../../../llm";
 import { extractJSON } from "../parse-json";
+import { buildReviewerSystem } from "../../editorial-os/eos-skills";
 
 export interface CopyEditResult {
   proseQuality: { rating: string; notes: string };
@@ -7,10 +8,11 @@ export interface CopyEditResult {
   dialogueNotes: string[];
   cliches: string[];
   showDontTell: string[];
-  issues: { type: string; severity: string; title: string; description: string; evidence: string[]; suggestion: string }[];
+  issues: { type: string; severity: string; title: string; description: string; evidence: string[]; suggestion: string; confidence?: string; noteType?: string }[];
 }
 
-const SYSTEM = `You are a meticulous copy editor for fiction. Focus on prose clarity, voice consistency, dialogue authenticity, cliché detection, and show-don't-tell violations. Preserve the author's voice—flag problems without rewriting the entire style. Be specific with evidence.`;
+const SYSTEM = buildReviewerSystem("line-editor",
+  `You are reviewing one chunk of a longer manuscript. Preserve the author's voice — flag problems with quoted evidence rather than rewriting the style wholesale.`);
 
 export async function runCopyEdit(
   chunkText: string,
@@ -34,7 +36,7 @@ Return JSON:
   "dialogueNotes": ["observations about dialogue quality"],
   "cliches": ["identified clichés with quotes"],
   "showDontTell": ["tell-don't-show instances with quotes"],
-  "issues": [{"type": "prose_clarity|inconsistent_voice", "severity": "minor|moderate|major", "title": "", "description": "", "evidence": ["quoted text"], "suggestion": ""}]
+  "issues": [{"type": "prose_clarity|inconsistent_voice|dialogue|cliche|show_dont_tell", "severity": "minor|moderate|major", "title": "", "description": "", "evidence": ["quoted text"], "suggestion": "smallest effective revision", "confidence": "high|medium|low", "noteType": "objective|plausibility|genre|taste"}]
 }
 
 Return ONLY valid JSON.`;
