@@ -9,25 +9,53 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Zap, CheckCircle, XCircle, Clock, Gauge } from "lucide-react";
+import { Loader2, Zap, CheckCircle, XCircle, Clock, Gauge, Send } from "lucide-react";
 
 const MODULES = [
   { key: "editorial_assessment", label: "Editorial Assessment" },
   { key: "developmental_editor", label: "Developmental Editor" },
-  { key: "copy_editor", label: "Copy Editor" },
-  { key: "proofreader", label: "Proofreader" },
-  { key: "fact_checker", label: "Fact Checker" },
-  { key: "beta_reader", label: "Beta Reader" },
+  { key: "copy_editor", label: "Line Editor" },
+  { key: "proofreader", label: "Copy Editor / Proofreader" },
+  { key: "fact_checker", label: "Continuity & Fact Auditor" },
+  { key: "beta_reader", label: "Reader Panel" },
   { key: "structure_analyzer", label: "Structure Analyzer" },
   { key: "character_tracker", label: "Character Tracker" },
   { key: "scene_scanner", label: "Scene Scanner" },
   { key: "addiction_loop", label: "Addiction Loop Audit" },
+  { key: "sme_reviewer", label: "Subject-Matter Experts" },
+  { key: "publishing_review", label: "Publishing Review Panel" },
+];
+
+const SME_DOMAINS = [
+  { key: "federal_procedure", label: "Federal Procedure" },
+  { key: "intelligence_tradecraft", label: "Intelligence Tradecraft" },
+  { key: "legal_realism", label: "Legal Realism" },
+  { key: "medical_realism", label: "Medical Realism" },
+  { key: "military_operations", label: "Military Operations" },
+  { key: "forensics_evidence", label: "Forensics & Evidence" },
+  { key: "cybersecurity_technology", label: "Cybersecurity & Technology" },
+];
+
+const BETA_PROFILES = [
+  { key: "genre_enthusiast", label: "Genre Enthusiast" },
+  { key: "casual_commercial", label: "Casual Commercial" },
+  { key: "emotion_first", label: "Emotion-First" },
+  { key: "pacing_sensitive", label: "Pacing-Sensitive" },
+  { key: "critical_craft", label: "Critical Craft" },
+  { key: "commercial_thriller", label: "Commercial Thriller Reader" },
+  { key: "pacing_suspense", label: "Pacing & Suspense Reader" },
+  { key: "character_arc", label: "Character Arc Reader" },
+  { key: "dialogue_voice", label: "Dialogue & Voice Reader" },
+  { key: "emotional_impact", label: "Emotional Impact Reader" },
+  { key: "skeptical_mainstream", label: "Skeptical Mainstream Reader" },
+  { key: "series_ending", label: "Series & Ending Reader" },
 ];
 
 const QUICK_MODULES = ["editorial_assessment", "character_tracker", "developmental_editor"];
-const FULL_MODULES = MODULES.filter(m => m.key !== "beta_reader").map(m => m.key);
+const FULL_MODULES = MODULES.filter(m => m.key !== "beta_reader" && m.key !== "publishing_review").map(m => m.key);
+const SUBMISSION_MODULES = ["editorial_assessment", "character_tracker", "publishing_review"];
 
-type Preset = "quick" | "full" | "custom";
+type Preset = "quick" | "full" | "submission" | "custom";
 
 export default function ForgeAnalysis() {
   const [, params] = useRoute("/forge/project/:id/analyze");
@@ -35,12 +63,15 @@ export default function ForgeAnalysis() {
 
   const [preset, setPreset] = useState<Preset>("full");
   const [selectedModules, setSelectedModules] = useState<string[]>(FULL_MODULES);
+  const [selectedSmeDomains, setSelectedSmeDomains] = useState<string[]>([]);
+  const [selectedBetaProfiles, setSelectedBetaProfiles] = useState<string[]>(BETA_PROFILES.map(p => p.key));
   const [jobId, setJobId] = useState<string | null>(null);
 
   const applyPreset = (p: Preset) => {
     setPreset(p);
     if (p === "quick") setSelectedModules([...QUICK_MODULES]);
     else if (p === "full") setSelectedModules([...FULL_MODULES]);
+    else if (p === "submission") setSelectedModules([...SUBMISSION_MODULES]);
   };
 
   const toggleModule = (key: string) => {
@@ -50,10 +81,24 @@ export default function ForgeAnalysis() {
     );
   };
 
+  const toggleSmeDomain = (key: string) => {
+    setSelectedSmeDomains(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const toggleBetaProfile = (key: string) => {
+    setSelectedBetaProfiles(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
   const analyzeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/forge/projects/${projectId}/analyze`, {
         modules: selectedModules,
+        smeReviewers: selectedModules.includes("sme_reviewer") ? selectedSmeDomains : [],
+        betaReaderProfiles: selectedModules.includes("beta_reader") ? selectedBetaProfiles : [],
       });
       return res.json();
     },
@@ -89,7 +134,7 @@ export default function ForgeAnalysis() {
 
         {!jobId && (
           <>
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-3 mb-4">
               <button
                 onClick={() => applyPreset("quick")}
                 className={`p-4 rounded-lg border text-left transition-colors ${
@@ -118,7 +163,22 @@ export default function ForgeAnalysis() {
                   <Clock className="w-4 h-4 text-amber-400" />
                   <span className="font-semibold text-gray-100">Full</span>
                 </div>
-                <p className="text-xs text-gray-400">8 modules in parallel. ~15-25 min for a full novel.</p>
+                <p className="text-xs text-gray-400">Core editorial modules in parallel. ~15-25 min for a full novel.</p>
+              </button>
+              <button
+                onClick={() => applyPreset("submission")}
+                className={`p-4 rounded-lg border text-left transition-colors ${
+                  preset === "submission"
+                    ? "border-amber-500 bg-amber-600/15"
+                    : "border-gray-700 bg-gray-900 hover:border-gray-600"
+                }`}
+                data-testid="button-preset-submission"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Send className="w-4 h-4 text-amber-400" />
+                  <span className="font-semibold text-gray-100">Submission</span>
+                </div>
+                <p className="text-xs text-gray-400">Agent, acquisitions, positioning, and package readers.</p>
               </button>
             </div>
 
@@ -131,15 +191,57 @@ export default function ForgeAnalysis() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {MODULES.map((mod) => (
-                  <div key={mod.key} className="flex items-center gap-3">
-                    <Checkbox
-                      id={mod.key}
-                      checked={selectedModules.includes(mod.key)}
-                      onCheckedChange={() => toggleModule(mod.key)}
-                      className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
-                      data-testid={`checkbox-module-${mod.key}`}
-                    />
-                    <Label htmlFor={mod.key} className="text-gray-300 cursor-pointer">{mod.label}</Label>
+                  <div key={mod.key}>
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id={mod.key}
+                        checked={selectedModules.includes(mod.key)}
+                        onCheckedChange={() => toggleModule(mod.key)}
+                        className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+                        data-testid={`checkbox-module-${mod.key}`}
+                      />
+                      <Label htmlFor={mod.key} className="text-gray-300 cursor-pointer">{mod.label}</Label>
+                    </div>
+
+                    {mod.key === "sme_reviewer" && selectedModules.includes("sme_reviewer") && (
+                      <div className="ml-7 mt-2 space-y-2 border-l border-gray-800 pl-4">
+                        <p className="text-xs text-gray-500">
+                          Leave all unchecked to auto-route: a router pass reads the manuscript and activates only the relevant experts.
+                        </p>
+                        {SME_DOMAINS.map((domain) => (
+                          <div key={domain.key} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`sme-${domain.key}`}
+                              checked={selectedSmeDomains.includes(domain.key)}
+                              onCheckedChange={() => toggleSmeDomain(domain.key)}
+                              className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 h-3.5 w-3.5"
+                              data-testid={`checkbox-sme-${domain.key}`}
+                            />
+                            <Label htmlFor={`sme-${domain.key}`} className="text-gray-400 text-sm cursor-pointer">{domain.label}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {mod.key === "beta_reader" && selectedModules.includes("beta_reader") && (
+                      <div className="ml-7 mt-2 space-y-2 border-l border-gray-800 pl-4">
+                        <p className="text-xs text-gray-500">
+                          Each selected reader reviews every section independently.
+                        </p>
+                        {BETA_PROFILES.map((profile) => (
+                          <div key={profile.key} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`beta-${profile.key}`}
+                              checked={selectedBetaProfiles.includes(profile.key)}
+                              onCheckedChange={() => toggleBetaProfile(profile.key)}
+                              className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 h-3.5 w-3.5"
+                              data-testid={`checkbox-beta-${profile.key}`}
+                            />
+                            <Label htmlFor={`beta-${profile.key}`} className="text-gray-400 text-sm cursor-pointer">{profile.label}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
 

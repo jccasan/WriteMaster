@@ -34,11 +34,41 @@ function renderEditorialLetter(data: any): string {
     });
   }
 
+  if (synthesis.rootCauseClusters?.length > 0) {
+    parts.push("\n## Root-Cause Clusters\n");
+    for (const cluster of synthesis.rootCauseClusters) {
+      parts.push(`### ${cluster.rootCause}`);
+      if (cluster.consensus) parts.push(`**Consensus**: ${cluster.consensus} · **Classification**: ${cluster.classification || "unclassified"}`);
+      if (cluster.issueTitles?.length > 0) {
+        for (const t of cluster.issueTitles) parts.push(`- ${t}`);
+      }
+      parts.push("");
+    }
+  }
+
+  if (synthesis.meaningfulDisagreements?.length > 0) {
+    parts.push("\n## Meaningful Disagreements\n");
+    for (const d of synthesis.meaningfulDisagreements) {
+      parts.push(`### ${d.topic}`);
+      if (d.positions?.length > 0) {
+        for (const p of d.positions) parts.push(`- ${p}`);
+      }
+      if (d.tradeoff) parts.push(`\n*The decision hinges on: ${d.tradeoff}*`);
+      parts.push("");
+    }
+  }
+
   if (synthesis.revisionPriority?.length > 0) {
     parts.push("\n## Suggested Revision Order\n");
     synthesis.revisionPriority.forEach((item: string, i: number) => {
       parts.push(`${i + 1}. ${item}`);
     });
+  }
+
+  if (synthesis.deferredNotes?.length > 0) {
+    parts.push("\n## Safe to Defer or Decline\n");
+    parts.push("*These notes are taste-based or low-leverage — the author may defer or decline them. A taste note is not a command.*\n");
+    for (const n of synthesis.deferredNotes) parts.push(`- ${n}`);
   }
 
   parts.push("\n## Issue Summary\n");

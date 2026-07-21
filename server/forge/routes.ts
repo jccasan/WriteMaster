@@ -6,10 +6,10 @@ import { prisma } from "./db";
 import { extractText, countWords } from "./parsing/manuscript-parser";
 import { detectChapters, createSegments } from "./parsing/chapter-detector";
 import { createChunks } from "./parsing/chunker";
-import { startAnalysisJob, getJobStatus, getAllJobs } from "./analysis/job-runner";
+import { startAnalysisJob, startVerificationJob, getJobStatus, getAllJobs } from "./analysis/job-runner";
 import { seedDemoProject } from "./seed/seed-demo";
 import { runEditorialAssessment } from "./analysis/modules/editorial-assessment";
-import { runBetaReader, getProfileKeys } from "./analysis/modules/beta-reader";
+import { runBetaReader, getLegacyProfileKeys, getProfileCatalog, ensureBetaReaderProfiles } from "./analysis/modules/beta-reader";
 
 const router = Router();
 
@@ -278,16 +278,126 @@ router.post("/projects/:id/analyze", async (req: Request, res: Response) => {
     const chunks = await prisma.chunk.findMany({ where: { revisionVersionId: revision.id } });
     if (chunks.length === 0) return res.status(400).json({ error: "No chunks. Upload and parse a manuscript first." });
 
-    const { modules, betaReaderProfiles, genre } = req.body;
+    const { modules, betaReaderProfiles, genre, smeReviewers, publishingReaders } = req.body;
     const defaultModules = ["editorial_assessment", "developmental_editor", "character_tracker", "structure_analyzer", "scene_scanner", "copy_editor", "fact_checker"];
 
     const jobId = await startAnalysisJob(revision.id, {
       modules: modules || defaultModules,
       betaReaderProfiles: betaReaderProfiles || [],
       genre: genre || "",
+      smeReviewers: smeReviewers || [],
+      publishingReaders: publishingReaders || [],
     });
 
     res.json({ jobId, status: "queued" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Verify a revised draft against the previous draft's issue ledger.
+ * Creates a new RevisionVersion, parses the new manuscript, then runs the
+ * EOS revision-verifier: each prior issue is classified fixed / partially
+ * fixed / displaced / unchanged / worsened / intentionally declined.
+ */
+router.post("/projects/:id/verify-revision", upload.single("manuscript"), async (req: Request, res: Response) => {
+  try {
+    const project = await prisma.project.findUnique({ where: { id: req.params.id as string } });
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const prevRevision = await prisma.revisionVersion.findFirst({
+      where: { projectId: project.id },
+      orderBy: { versionNumber: "desc" },
+      include: { _count: { select: { issues: true } } },
+    });
+    if (!prevRevision) return res.status(400).json({ error: "No previous revision found" });
+    if (prevRevision._count.issues === 0) {
+      return res.status(400).json({ error: "The current draft has no logged issues to verify against. Run an analysis first." });
+    }
+
+    let text = "";
+    let fileName = "revised-draft.txt";
+    if (req.file) {
+      fileName = req.file.originalname;
+      text = await extractText(req.file.path, req.file.mimetype);
+    } else if (req.body.text) {
+      text = req.body.text;
+      fileName = req.body.fileName || "revised-draft.txt";
+    } else {
+      return res.status(400).json({ error: "No file or text provided" });
+    }
+    if (!text || text.trim().length < 100) {
+      return res.status(400).json({ error: "Revised manuscript is empty or too short." });
+    }
+
+    const newRevision = await prisma.revisionVersion.create({
+      data: {
+        projectId: project.id,
+        label: req.body.label || `Draft ${prevRevision.versionNumber + 1}`,
+        versionNumber: prevRevision.versionNumber + 1,
+        status: "draft",
+      },
+    });
+
+    const asset = await prisma.fileAsset.create({
+      data: {
+        projectId: project.id,
+        revisionVersionId: newRevision.id,
+        type: "manuscript",
+        fileName,
+        mimeType: req.file?.mimetype || "text/plain",
+        storagePath: req.file?.path || "",
+        extractedText: text,
+      },
+    });
+
+    let detectedChapters = detectChapters(text);
+    if (detectedChapters.length === 0) {
+      detectedChapters = createSegments(text, 6);
+    }
+    for (const ch of detectedChapters) {
+      await prisma.chapter.create({
+        data: {
+          revisionVersionId: newRevision.id,
+          number: ch.number,
+          title: ch.title,
+          rawText: ch.rawText,
+          wordCount: ch.wordCount,
+          detectedStartOffset: ch.startOffset,
+          detectedEndOffset: ch.endOffset,
+        },
+      });
+    }
+    const chunkDefs = createChunks(detectedChapters.length);
+    for (const cd of chunkDefs) {
+      const chunkChapters = detectedChapters.filter(ch => ch.number >= cd.startChapter && ch.number <= cd.endChapter);
+      await prisma.chunk.create({
+        data: {
+          revisionVersionId: newRevision.id,
+          chunkIndex: cd.chunkIndex,
+          startChapter: cd.startChapter,
+          endChapter: cd.endChapter,
+          rawCombinedText: chunkChapters.map(ch => ch.rawText).join("\n\n---\n\n"),
+        },
+      });
+    }
+    await prisma.revisionVersion.update({
+      where: { id: newRevision.id },
+      data: { manuscriptFileId: asset.id },
+    });
+
+    const jobId = await startVerificationJob(prevRevision.id, newRevision.id);
+
+    res.json({
+      jobId,
+      revisionId: newRevision.id,
+      versionNumber: newRevision.versionNumber,
+      chaptersDetected: detectedChapters.length,
+      chunksCreated: chunkDefs.length,
+      totalWords: countWords(text),
+      issuesToVerify: prevRevision._count.issues,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -492,11 +602,16 @@ router.get("/projects/:id/beta-readers", async (req: Request, res: Response) => 
 
 router.get("/beta-reader-profiles", async (_req: Request, res: Response) => {
   try {
+    await ensureBetaReaderProfiles();
     const profiles = await prisma.betaReaderProfile.findMany();
     res.json(profiles);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+});
+
+router.get("/beta-reader-profile-catalog", (_req: Request, res: Response) => {
+  res.json(getProfileCatalog());
 });
 
 router.post("/quick-feedback", async (req: Request, res: Response) => {
@@ -507,7 +622,7 @@ router.post("/quick-feedback", async (req: Request, res: Response) => {
       return;
     }
     const g = genre || "general fiction";
-    const profiles: string[] = (betaProfiles && betaProfiles.length > 0) ? betaProfiles : getProfileKeys();
+    const profiles: string[] = (betaProfiles && betaProfiles.length > 0) ? betaProfiles : getLegacyProfileKeys();
 
     const [editorial, ...betaResults] = await Promise.all([
       runEditorialAssessment(text, "", g, ""),

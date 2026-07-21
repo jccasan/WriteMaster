@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import ForgeLayout from "@/components/forge/ForgeLayout";
@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Loader2, CheckCircle, FileText } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Upload, Loader2, CheckCircle, FileText, GitCompare, XCircle } from "lucide-react";
 
 export default function ForgeUpload() {
   const [, params] = useRoute("/forge/project/:id/upload");
@@ -47,6 +48,51 @@ export default function ForgeUpload() {
   });
 
   const result = uploadMutation.data;
+
+  const [verifyFile, setVerifyFile] = useState<File | null>(null);
+  const [verifyText, setVerifyText] = useState("");
+  const [verifyJobId, setVerifyJobId] = useState<string | null>(null);
+  const verifyFileInputRef = useRef<HTMLInputElement>(null);
+
+  const verifyMutation = useMutation({
+    mutationFn: async () => {
+      const formData = new FormData();
+      if (verifyFile) {
+        formData.append("manuscript", verifyFile);
+      } else if (verifyText.trim()) {
+        formData.append("text", verifyText);
+      } else {
+        throw new Error("Provide a revised draft file or paste text");
+      }
+      const res = await fetch(`/api/forge/projects/${projectId}/verify-revision`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || (await res.text()));
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setVerifyJobId(data.jobId);
+      queryClient.invalidateQueries({ queryKey: ["/api/forge/projects", projectId] });
+    },
+  });
+
+  const { data: verifyJobStatus } = useQuery<any>({
+    queryKey: ["/api/forge/jobs", verifyJobId],
+    enabled: !!verifyJobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "complete" || status === "error") return false;
+      return 2000;
+    },
+  });
+
+  const verifyRunning = verifyJobId && verifyJobStatus && verifyJobStatus.status !== "complete" && verifyJobStatus.status !== "error";
+  const verifyComplete = verifyJobStatus?.status === "complete";
+  const verifyFailed = verifyJobStatus?.status === "error";
 
   return (
     <ForgeLayout projectId={projectId}>
@@ -160,6 +206,109 @@ export default function ForgeUpload() {
             </CardContent>
           </Card>
         )}
+
+        <Card className="bg-gray-900 border-amber-900/20 mt-6" data-testid="card-verify-revision">
+          <CardHeader>
+            <CardTitle className="text-gray-100 text-lg flex items-center gap-2">
+              <GitCompare className="w-5 h-5 text-amber-500" />
+              Verify Revised Draft
+            </CardTitle>
+            <p className="text-xs text-gray-400">
+              Upload a new draft to check it against the current draft's issue ledger.
+              Each prior issue is classified as fixed, partially fixed, displaced, unchanged,
+              worsened, or intentionally declined — and unresolved issues carry forward.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!verifyJobId && (
+              <>
+                <input
+                  ref={verifyFileInputRef}
+                  type="file"
+                  accept=".txt,.docx"
+                  className="hidden"
+                  onChange={(e) => setVerifyFile(e.target.files?.[0] || null)}
+                  data-testid="input-verify-file"
+                />
+                <Button
+                  variant="outline"
+                  className="w-full border-dashed border-amber-900/40 text-gray-300 hover:bg-gray-800 h-16"
+                  onClick={() => verifyFileInputRef.current?.click()}
+                  data-testid="button-choose-verify-file"
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <Upload className="w-4 h-4 text-amber-500" />
+                    {verifyFile ? (
+                      <span className="text-amber-400 text-sm">{verifyFile.name}</span>
+                    ) : (
+                      <span className="text-sm">Choose revised draft (.txt, .docx)</span>
+                    )}
+                  </div>
+                </Button>
+
+                <Textarea
+                  value={verifyText}
+                  onChange={(e) => setVerifyText(e.target.value)}
+                  placeholder="...or paste the revised manuscript text here"
+                  className="bg-gray-800 border-gray-700 text-gray-100 focus:border-amber-500 min-h-[120px] font-mono text-sm"
+                  data-testid="textarea-verify-paste"
+                />
+
+                <Button
+                  onClick={() => verifyMutation.mutate()}
+                  disabled={verifyMutation.isPending || (!verifyFile && !verifyText.trim())}
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold"
+                  data-testid="button-verify-revision"
+                >
+                  {verifyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <GitCompare className="w-4 h-4 mr-2" />}
+                  Verify Against Issue Ledger
+                </Button>
+
+                {verifyMutation.isError && (
+                  <p className="text-red-400 text-sm" data-testid="text-verify-error">
+                    {(verifyMutation.error as Error).message}
+                  </p>
+                )}
+              </>
+            )}
+
+            {verifyJobId && verifyJobStatus && (
+              <div className="space-y-3" data-testid="verify-job-status">
+                <div className="flex items-center gap-2 text-gray-100">
+                  {verifyRunning && <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />}
+                  {verifyComplete && <CheckCircle className="w-4 h-4 text-green-400" />}
+                  {verifyFailed && <XCircle className="w-4 h-4 text-red-400" />}
+                  <span className="text-sm">
+                    {verifyRunning && "Verification in progress..."}
+                    {verifyComplete && "Verification complete — see the Revision Verification Report in Reports."}
+                    {verifyFailed && "Verification failed."}
+                  </span>
+                </div>
+                <Progress value={verifyJobStatus.progress || 0} className="bg-gray-800 [&>div]:bg-amber-600" />
+                {verifyJobStatus.logs && verifyJobStatus.logs.length > 0 && (
+                  <div className="bg-gray-950 rounded-lg p-3 max-h-40 overflow-y-auto font-mono text-xs">
+                    {verifyJobStatus.logs.map((log: string, i: number) => (
+                      <div key={i} className="text-gray-400 py-0.5">{log}</div>
+                    ))}
+                  </div>
+                )}
+                {verifyJobStatus.error && (
+                  <p className="text-red-400 text-sm">{verifyJobStatus.error}</p>
+                )}
+                {(verifyComplete || verifyFailed) && (
+                  <Button
+                    variant="outline"
+                    className="border-amber-900/30 text-amber-400"
+                    onClick={() => { setVerifyJobId(null); setVerifyFile(null); setVerifyText(""); }}
+                    data-testid="button-new-verification"
+                  >
+                    Verify Another Draft
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </ForgeLayout>
   );

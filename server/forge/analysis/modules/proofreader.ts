@@ -1,5 +1,6 @@
 import { callLLM } from "../../../llm";
 import { extractJSON } from "../parse-json";
+import { buildReviewerSystem } from "../../editorial-os/eos-skills";
 
 export interface ProofreadResult {
   grammarIssues: { text: string; issue: string; suggestion: string }[];
@@ -8,7 +9,8 @@ export interface ProofreadResult {
   issues: { type: string; severity: string; title: string; description: string; evidence: string[]; suggestion: string }[];
 }
 
-const SYSTEM = `You are a fiction proofreader. Find grammar errors, punctuation issues, and formatting inconsistencies. Be precise—quote exact text and provide corrections. Do not suggest style changes; focus only on correctness.`;
+const SYSTEM = buildReviewerSystem("novel-copy-editor",
+  `You are proofreading one chunk of a longer manuscript. Quote exact text and provide corrections. Do not suggest style changes; focus on mechanical correctness and consistency.`);
 
 export async function runProofread(chunkText: string): Promise<ProofreadResult> {
   const prompt = `Proofread this manuscript chunk for grammar, punctuation, and formatting errors.

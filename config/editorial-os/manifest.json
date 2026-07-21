@@ -1,0 +1,35 @@
+{
+  "name": "Editorial Operating System",
+  "version": "1.0.0",
+  "volumes": 5,
+  "skills": [
+    "acquisitions-editor-reader",
+    "character-arc-reader",
+    "commercial-thriller-reader",
+    "continuity-logic-auditor",
+    "cybersecurity-technology-reviewer",
+    "developmental-editor",
+    "dialogue-voice-reader",
+    "editorial-director",
+    "emotional-impact-reader",
+    "federal-procedure-reviewer",
+    "forensics-evidence-reviewer",
+    "intelligence-tradecraft-reviewer",
+    "legal-realism-reviewer",
+    "line-editor",
+    "literary-agent-reader",
+    "market-positioning-reader",
+    "medical-realism-reviewer",
+    "military-operations-reviewer",
+    "novel-copy-editor",
+    "pacing-suspense-reader",
+    "revision-verifier",
+    "series-ending-reader",
+    "skeptical-mainstream-reader",
+    "subject-matter-review-router",
+    "submission-package-auditor"
+  ],
+  "project_packs": [
+    "oracle-veil"
+  ]
+}

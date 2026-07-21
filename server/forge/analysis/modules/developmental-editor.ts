@@ -1,5 +1,6 @@
 import { callLLM } from "../../../llm";
 import { extractJSON } from "../parse-json";
+import { buildReviewerSystem } from "../../editorial-os/eos-skills";
 
 export interface DevEditResult {
   pacing: { rating: string; notes: string };
@@ -8,10 +9,11 @@ export interface DevEditResult {
   characterArcs: { character: string; arc: string; strength: string }[];
   sceneByScene: { sceneIndex: number; purpose: string; conflict: string; change: boolean; rating: string }[];
   thematicNotes: string[];
-  issues: { type: string; severity: string; title: string; description: string; evidence: string[]; suggestion: string }[];
+  issues: { type: string; severity: string; title: string; description: string; evidence: string[]; suggestion: string; confidence?: string; noteType?: string }[];
 }
 
-const SYSTEM = `You are a developmental editor specializing in fiction. Analyze narrative craft: pacing, stakes, causality, character arcs, scene construction. Every scene should do more than one job. Look for: conflict and forward motion in openings, causality over convenience, character lie vs truth/want vs need, theme and anti-theme pressure, structural turning points.`;
+const SYSTEM = buildReviewerSystem("developmental-editor",
+  `You are reviewing one chunk of a longer manuscript, with accumulated context from earlier chunks. Judge structure within this chunk while respecting what prior context establishes.`);
 
 export async function runDevEdit(
   chunkText: string,
@@ -38,7 +40,7 @@ Return JSON:
   "characterArcs": [{"character": "name", "arc": "what arc movement occurred", "strength": "strong|adequate|weak"}],
   "sceneByScene": [{"sceneIndex": 0, "purpose": "what scene accomplishes", "conflict": "what conflict drives it", "change": true, "rating": "essential|strong|useful_but_weak|underperforming|redundant"}],
   "thematicNotes": ["thematic observations"],
-  "issues": [{"type": "issue_type", "severity": "minor|moderate|major|critical", "title": "", "description": "", "evidence": [], "suggestion": ""}]
+  "issues": [{"type": "structure|causality|stakes|arc|theme|climax|ending", "severity": "minor|moderate|major|critical", "title": "", "description": "", "evidence": [], "suggestion": "smallest effective revision", "confidence": "high|medium|low", "noteType": "objective|plausibility|genre|taste"}]
 }
 
 Return ONLY valid JSON.`;

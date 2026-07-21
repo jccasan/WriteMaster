@@ -6,13 +6,21 @@ import { runAddictionLoopAnalysis } from "./modules/addiction-loop-analyzer";
 import { runCopyEdit } from "./modules/copy-editor";
 import { runProofread } from "./modules/proofreader";
 import { runFactCheck } from "./modules/fact-checker";
-import { runBetaReader, getProfileKeys } from "./modules/beta-reader";
+import { runBetaReader, getProfileKeys, ensureBetaReaderProfiles } from "./modules/beta-reader";
 import { runStructureAnalysis } from "./modules/structure-analyzer";
 import { runCharacterTrack } from "./modules/character-tracker";
 import { runSceneScan } from "./modules/scene-scanner";
+import { routeSmeReviewers, runSmeReview, SME_REVIEWERS } from "./modules/sme-reviewer";
+import { runPublishingReader, savePublishingReport, getPublishingReaderKeys, PUBLISHING_READERS } from "./modules/publishing-reader";
 import { v4 as uuid } from "uuid";
 
 type ProgressCallback = (step: string) => void;
+
+export interface PipelineOptions {
+  smeReviewers?: string[];       // explicit SME selection; empty = auto-route
+  publishingReaders?: string[];  // publishing panel subset; empty = all four
+  projectMeta?: { title: string; description: string };
+}
 
 interface ChunkRecord {
   id: string;
@@ -26,7 +34,7 @@ const MEMORY_MODULES = ["editorial_assessment", "character_tracker"];
 const PARALLEL_MODULES = [
   "developmental_editor", "copy_editor", "proofreader",
   "fact_checker", "structure_analyzer", "scene_scanner", "beta_reader",
-  "addiction_loop",
+  "addiction_loop", "sme_reviewer",
 ];
 
 export async function runAnalysisPipeline(
@@ -37,7 +45,8 @@ export async function runAnalysisPipeline(
   genre: string,
   supportFiles: string,
   betaReaderProfiles: string[],
-  onProgress: ProgressCallback
+  onProgress: ProgressCallback,
+  options: PipelineOptions = {}
 ) {
   const memory = new MemoryStore();
   const totalChapters = chunks.length > 0
@@ -45,7 +54,37 @@ export async function runAnalysisPipeline(
     : 0;
 
   const memoryModules = modules.filter(m => MEMORY_MODULES.includes(m));
-  const parallelModules = modules.filter(m => PARALLEL_MODULES.includes(m));
+  let parallelModules = modules.filter(m => PARALLEL_MODULES.includes(m));
+
+  if (modules.includes("beta_reader")) {
+    await ensureBetaReaderProfiles();
+  }
+
+  // Route subject-matter reviewers once, up front, so irrelevant experts
+  // don't run against every chunk.
+  let smeActive: string[] = [];
+  if (modules.includes("sme_reviewer")) {
+    const explicit = (options.smeReviewers || []).filter(k => SME_REVIEWERS[k]);
+    if (explicit.length > 0) {
+      smeActive = explicit;
+      onProgress(`SME reviewers (user-selected): ${smeActive.join(", ")}`);
+    } else {
+      onProgress("Routing subject-matter reviewers...");
+      try {
+        const routing = await routeSmeReviewers(chunks[0]?.rawCombinedText || "", genre, supportFiles);
+        smeActive = routing.activeReviewers;
+        onProgress(`SME routing complete. Active: ${smeActive.length > 0 ? smeActive.join(", ") : "none"}`);
+        for (const task of routing.researchTasks || []) {
+          onProgress(`SME research flag: ${task}`);
+        }
+      } catch (err: any) {
+        onProgress(`SME routing failed (${err.message}) — skipping subject-matter review`);
+      }
+    }
+    if (smeActive.length === 0) {
+      parallelModules = parallelModules.filter(m => m !== "sme_reviewer");
+    }
+  }
 
   for (const chunk of chunks) {
     const chapterRange = `${chunk.startChapter}-${chunk.endChapter}`;
@@ -56,7 +95,7 @@ export async function runAnalysisPipeline(
       const context = memory.getContextForChunk(chunk.startChapter);
       try {
         onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: Running ${mod}...`);
-        await runModule(mod, chunk, context, genre, supportFiles, revisionVersionId, chapterNumbers, totalChapters, chapterRange, betaReaderProfiles, memory);
+        await runModule(mod, chunk, context, genre, supportFiles, revisionVersionId, chapterNumbers, totalChapters, chapterRange, betaReaderProfiles, memory, smeActive);
       } catch (err: any) {
         onProgress(`ERROR in ${mod} for chunk ${chunk.chunkIndex}: ${err.message}`);
       }
@@ -67,7 +106,7 @@ export async function runAnalysisPipeline(
       onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: Running ${parallelModules.length} modules in parallel...`);
 
       const tasks = parallelModules.map(mod =>
-        runModule(mod, chunk, context, genre, supportFiles, revisionVersionId, chapterNumbers, totalChapters, chapterRange, betaReaderProfiles, memory)
+        runModule(mod, chunk, context, genre, supportFiles, revisionVersionId, chapterNumbers, totalChapters, chapterRange, betaReaderProfiles, memory, smeActive)
           .then(() => ({ mod, ok: true as const }))
           .catch((err: any) => ({ mod, ok: false as const, err: err.message }))
       );
@@ -80,6 +119,34 @@ export async function runAnalysisPipeline(
       }
       onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: Parallel batch complete`);
     }
+  }
+
+  // Publishing-stage review runs once, after the chunk loop, so it can use
+  // the accumulated story memory as a synopsis alongside the opening chapters.
+  if (modules.includes("publishing_review") && chunks.length > 0) {
+    const requested = (options.publishingReaders || []).filter(k => PUBLISHING_READERS[k]);
+    const readers = requested.length > 0 ? requested : getPublishingReaderKeys();
+    const openingText = chunks[0].rawCombinedText;
+    const storyContext = memory.getContextForChunk(totalChapters + 1);
+    const projectMeta = options.projectMeta || { title: "", description: "" };
+
+    onProgress(`Running publishing review panel: ${readers.join(", ")}...`);
+    const tasks = readers.map(readerKey =>
+      runPublishingReader(readerKey, openingText, storyContext, genre, projectMeta)
+        .then(async result => {
+          await savePublishingReport(revisionVersionId, readerKey, result);
+          for (const issue of result.issues || []) {
+            await createIssue(revisionVersionId, chunks[0].id, issue, chunks[0].startChapter, chunks[0].chunkIndex, memory);
+          }
+          return { readerKey, ok: true as const };
+        })
+        .catch((err: any) => ({ readerKey, ok: false as const, err: err.message }))
+    );
+    const results = await Promise.all(tasks);
+    for (const r of results) {
+      if (!r.ok) onProgress(`ERROR in publishing reader ${r.readerKey}: ${r.err}`);
+    }
+    onProgress("Publishing review panel complete");
   }
 }
 
@@ -94,7 +161,8 @@ async function runModule(
   totalChapters: number,
   chapterRange: string,
   betaReaderProfiles: string[],
-  memory: MemoryStore
+  memory: MemoryStore,
+  smeActive: string[] = []
 ) {
   switch (mod) {
     case "editorial_assessment": {
@@ -307,6 +375,41 @@ async function runModule(
       break;
     }
 
+    case "sme_reviewer": {
+      const reviewTasks = smeActive.map(async (reviewerKey) => {
+        const result = await runSmeReview(reviewerKey, chunk.rawCombinedText, context, genre, supportFiles);
+        const label = SME_REVIEWERS[reviewerKey]?.label || reviewerKey;
+        for (const issue of result.issues || []) {
+          await createIssue(revisionVersionId, chunk.id, {
+            ...issue,
+            title: `[${label}] ${issue.title}`,
+          }, chunk.startChapter, chunk.chunkIndex, memory);
+        }
+        for (const finding of result.domainFindings || []) {
+          await prisma.factCheckItem.create({
+            data: {
+              revisionVersionId, type: "external",
+              claim: finding.claim, finding: finding.assessment,
+              confidence: finding.confidence, status: finding.status,
+              notes: `SME: ${label}`,
+            },
+          });
+        }
+        for (const flag of result.researchFlags || []) {
+          await prisma.factCheckItem.create({
+            data: {
+              revisionVersionId, type: "external",
+              claim: flag, finding: "Needs real external research before publication.",
+              confidence: 0, status: "pending",
+              notes: `SME: ${label} — research required`,
+            },
+          });
+        }
+      });
+      await Promise.allSettled(reviewTasks);
+      break;
+    }
+
     case "addiction_loop": {
       // Run per-chapter scoring on the chapters in this chunk
       const chapterTexts = chapterNumbers.map(num => {
@@ -343,15 +446,31 @@ async function runModule(
   }
 }
 
+export interface ModuleIssue {
+  type: string;
+  severity: string;
+  title: string;
+  description: string;
+  evidence: string[];
+  suggestion: string;
+  confidence?: string;
+  noteType?: string;
+}
+
 async function createIssue(
   revisionVersionId: string,
   chunkId: string,
-  issue: { type: string; severity: string; title: string; description: string; evidence: string[]; suggestion: string },
+  issue: ModuleIssue,
   startChapter: number,
   chunkIndex: number,
   memory: MemoryStore
 ) {
   const issueId = uuid();
+  let description = issue.description || "";
+  const qualifiers: string[] = [];
+  if (issue.confidence) qualifiers.push(`Confidence: ${issue.confidence}`);
+  if (issue.noteType) qualifiers.push(`Note type: ${issue.noteType}`);
+  if (qualifiers.length > 0) description = `${description}\n\n_${qualifiers.join(" · ")}_`.trim();
   memory.addIssue({
     id: issueId, type: issue.type, severity: issue.severity,
     title: issue.title, description: issue.description,
@@ -362,7 +481,7 @@ async function createIssue(
     data: {
       id: issueId, revisionVersionId, chunkId,
       type: issue.type, severity: issue.severity, title: issue.title,
-      description: issue.description || "", evidenceJson: JSON.stringify(issue.evidence || []),
+      description, evidenceJson: JSON.stringify(issue.evidence || []),
       suggestion: issue.suggestion || "", status: "active", introducedAtChapter: startChapter,
     },
   });
