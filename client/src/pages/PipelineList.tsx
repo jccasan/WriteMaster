@@ -57,12 +57,11 @@ export default function PipelineList() {
     <Layout>
       <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
-            <Sparkles className="w-6 h-6 text-primary" />
-          </div>
-          <h2 className="text-4xl font-serif font-bold text-foreground mb-4" data-testid="text-pipeline-list-heading">
-            Story Pipeline
+          <p className="catalog-label text-xs mb-3">Wing I — Plan</p>
+          <h2 className="text-4xl font-serif font-bold text-foreground mb-3" data-testid="text-pipeline-list-heading">
+            The Map Room
           </h2>
+          <div className="library-rule max-w-xs mx-auto mb-4" />
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
             Transform raw ideas into structured Story Dossiers through an 11-step AI pipeline.
           </p>

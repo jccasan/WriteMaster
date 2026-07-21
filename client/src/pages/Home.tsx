@@ -3,8 +3,10 @@ import { useLocation } from "wouter";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, BookOpen, Globe, ArrowRight, Clock, ChevronRight, Sparkles, Library, ChevronDown, Plus, Heart } from "lucide-react";
+import {
+  Loader2, BookOpen, Globe, ArrowRight, Clock, ChevronRight, Sparkles,
+  ChevronDown, Plus, Map, Feather, Scissors, Stamp,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function formatDate(iso: string) {
@@ -19,6 +21,38 @@ function formatDate(iso: string) {
 }
 
 type FirstTimeStep = "root" | "write" | "write-title";
+
+// The four wings of the library, in the order a book gets made.
+const WINGS = [
+  {
+    label: "Plan",
+    icon: <Map className="w-5 h-5" />,
+    title: "The Map Room",
+    desc: "Turn a brain dump into a story dossier. Build universes and series bibles.",
+    route: "/pipeline",
+  },
+  {
+    label: "Write",
+    icon: <Feather className="w-5 h-5" />,
+    title: "The Writing Desk",
+    desc: "Draft books chapter by chapter, with autopilot and narrative sliders.",
+    route: "/books",
+  },
+  {
+    label: "Edit",
+    icon: <Scissors className="w-5 h-5" />,
+    title: "The Editor's Office",
+    desc: "Full manuscript analysis, beta readers, line edits, and quick feedback.",
+    route: "/forge",
+  },
+  {
+    label: "Publish",
+    icon: <Stamp className="w-5 h-5" />,
+    title: "The Publishing House",
+    desc: "Trope research, blurbs, titles, and keywords tuned for KDP.",
+    route: "/publishing",
+  },
+];
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -120,13 +154,13 @@ export default function Home() {
         </Button>
 
         {showNewBookMenu && (
-          <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-background shadow-lg animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="absolute right-0 top-full mt-1 z-50 w-56 bookplate rounded-sm animate-in fade-in slide-in-from-top-1 duration-150">
             <div className="p-1">
               <button
                 onClick={() => { setShowNewBookMenu(false); navigate("/pipeline/new"); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm hover:bg-muted/60 transition-colors text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-sm hover:bg-accent/60 transition-colors text-left"
               >
-                <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+                <BookOpen className="w-4 h-4 text-brass shrink-0" />
                 <div>
                   <p className="font-medium">Standalone book</p>
                   <p className="text-xs text-muted-foreground">Not part of a universe</p>
@@ -135,17 +169,17 @@ export default function Home() {
 
               {universes.length > 0 && (
                 <>
-                  <div className="h-px bg-border/60 my-1 mx-1" />
-                  <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <div className="library-rule my-1 mx-1" />
+                  <p className="px-3 py-1 catalog-label text-[11px]">
                     In a universe
                   </p>
                   {universes.map(u => (
                     <button
                       key={u.id}
                       onClick={() => { setShowNewBookMenu(false); navigate(`/universe/${u.id}/new-book`); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm hover:bg-muted/60 transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-sm hover:bg-accent/60 transition-colors text-left"
                     >
-                      <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <Globe className="w-4 h-4 text-brass shrink-0" />
                       <div className="min-w-0">
                         <p className="font-medium truncate">{u.name}</p>
                         <p className="text-xs text-muted-foreground">{u.book_count ?? 0} books</p>
@@ -154,7 +188,7 @@ export default function Home() {
                   ))}
                   <button
                     onClick={() => { setShowNewBookMenu(false); navigate("/universe"); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm hover:bg-muted/60 transition-colors text-left text-muted-foreground"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-sm hover:bg-accent/60 transition-colors text-left text-muted-foreground"
                   >
                     <Plus className="w-4 h-4 shrink-0" />
                     New universe first
@@ -164,10 +198,10 @@ export default function Home() {
 
               {universes.length === 0 && (
                 <>
-                  <div className="h-px bg-border/60 my-1 mx-1" />
+                  <div className="library-rule my-1 mx-1" />
                   <button
                     onClick={() => { setShowNewBookMenu(false); navigate("/universe"); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm hover:bg-muted/60 transition-colors text-left text-muted-foreground"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-sm hover:bg-accent/60 transition-colors text-left text-muted-foreground"
                   >
                     <Globe className="w-4 h-4 shrink-0" />
                     <div>
@@ -203,15 +237,16 @@ export default function Home() {
           {firstTimeStep === "root" && (
             <div className="text-center space-y-8">
               <div>
+                <p className="catalog-label text-xs mb-3">Welcome to the library</p>
                 <h1 className="text-4xl font-serif font-bold mb-3">What do you want to write?</h1>
                 <p className="text-muted-foreground">We'll help you get there.</p>
               </div>
               <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => setFirstTimeStep("write")}
-                  className="p-6 rounded-xl border border-border/60 hover:border-primary/50 text-left transition-all group"
+                  className="bookplate p-6 rounded-sm text-left transition-all group hover:shadow-md"
                 >
-                  <BookOpen className="w-7 h-7 text-muted-foreground group-hover:text-primary mb-3 transition-colors" />
+                  <BookOpen className="w-7 h-7 text-brass mb-3" />
                   <h2 className="text-xl font-serif font-semibold mb-2">A book</h2>
                   <p className="text-sm text-muted-foreground">Fiction, nonfiction, whatever's in your head.</p>
                   <div className="flex items-center gap-1 text-primary text-sm font-medium mt-4">
@@ -220,9 +255,9 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => navigate("/universe")}
-                  className="p-6 rounded-xl border border-border/60 hover:border-primary/50 text-left transition-all group"
+                  className="bookplate p-6 rounded-sm text-left transition-all group hover:shadow-md"
                 >
-                  <Globe className="w-7 h-7 text-muted-foreground group-hover:text-primary mb-3 transition-colors" />
+                  <Globe className="w-7 h-7 text-brass mb-3" />
                   <h2 className="text-xl font-serif font-semibold mb-2">A universe</h2>
                   <p className="text-sm text-muted-foreground">Create a universe, write a story bible, organize your series.</p>
                   <div className="flex items-center gap-1 text-primary text-sm font-medium mt-4">
@@ -245,9 +280,9 @@ export default function Home() {
               <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => setFirstTimeStep("write-title")}
-                  className="p-5 rounded-xl border border-border/60 hover:border-primary/50 text-left transition-all group"
+                  className="bookplate p-5 rounded-sm text-left transition-all group hover:shadow-md"
                 >
-                  <h3 className="font-semibold mb-1">Jump in and write</h3>
+                  <h3 className="font-semibold mb-1 font-serif">Jump in and write</h3>
                   <p className="text-sm text-muted-foreground">Start with a blank page. AI will help as you go.</p>
                   <div className="flex items-center gap-1 text-primary text-sm font-medium mt-3">
                     Start writing <ArrowRight className="w-4 h-4" />
@@ -255,9 +290,9 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => navigate("/pipeline/new")}
-                  className="p-5 rounded-xl border border-border/60 hover:border-primary/50 text-left transition-all group"
+                  className="bookplate p-5 rounded-sm text-left transition-all group hover:shadow-md"
                 >
-                  <h3 className="font-semibold mb-1">Write an outline</h3>
+                  <h3 className="font-semibold mb-1 font-serif">Write an outline</h3>
                   <p className="text-sm text-muted-foreground">Plan your story with AI before you write the first word.</p>
                   <div className="flex items-center gap-1 text-primary text-sm font-medium mt-3">
                     Start outlining <ArrowRight className="w-4 h-4" />
@@ -306,37 +341,36 @@ export default function Home() {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto animate-in fade-in duration-300">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-serif font-bold">Welcome back</h1>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate("/my-work")} className="gap-2">
-              <Library className="w-4 h-4" /> All Work
-            </Button>
-            <NewBookDropdown iconSize="sm" />
+        <div className="flex items-end justify-between mb-2">
+          <div>
+            <p className="catalog-label text-xs mb-1.5">The library is open</p>
+            <h1 className="text-3xl font-serif font-bold">Welcome back</h1>
           </div>
+          <NewBookDropdown iconSize="sm" />
         </div>
+        <div className="library-rule mb-8" />
 
         {recentWork.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p>No recent work yet.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Pick up where you left off</p>
+          <div className="space-y-2 mb-10">
+            <p className="catalog-label text-xs mb-3">On your desk — pick up where you left off</p>
             {recentWork.map(item => (
-              <Card
+              <div
                 key={`${item.type}-${item.id}`}
-                className="border-border/60 hover:border-primary/30 transition-all cursor-pointer group"
+                className="bookplate rounded-sm hover:shadow-md transition-all cursor-pointer group"
                 onClick={() => navigate(item.route)}
               >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 bg-muted rounded-md group-hover:bg-primary/10 transition-colors shrink-0">
+                <div className="p-4 flex items-center gap-3">
+                  <div className="p-2 bg-secondary rounded-sm shrink-0">
                     {item.type === "book"
-                      ? <BookOpen className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
-                      : <Globe className="w-4 h-4 text-muted-foreground group-hover:text-primary" />}
+                      ? <BookOpen className="w-4 h-4 text-brass" />
+                      : <Globe className="w-4 h-4 text-brass" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{item.title}</p>
+                    <p className="font-medium text-sm truncate font-serif text-base">{item.title}</p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-xs text-muted-foreground capitalize">{item.type}</span>
                       <span className="text-xs text-muted-foreground/50">·</span>
@@ -366,54 +400,29 @@ export default function Home() {
                     )}
                     <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-foreground transition-colors" />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
 
-        {recentWork.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <div className="p-4 rounded-lg border border-border/60 hover:border-primary/30 transition-all group relative">
-              <BookOpen className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
-              <p className="text-sm font-medium">New Book</p>
-              <p className="text-xs text-muted-foreground mt-0.5 mb-3">Standalone or in a universe</p>
-              <NewBookDropdown />
-            </div>
+        <p className="catalog-label text-xs mb-3">The four wings</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {WINGS.map((wing, i) => (
             <button
-              onClick={() => navigate("/universe")}
-              className="p-4 rounded-lg border border-border/60 hover:border-primary/30 text-left transition-all group"
+              key={wing.label}
+              onClick={() => navigate(wing.route)}
+              className="bookplate p-5 rounded-sm text-left transition-all group hover:shadow-md"
             >
-              <Globe className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
-              <p className="text-sm font-medium">New Universe</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Build a world or series</p>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-brass">{wing.icon}</span>
+                <span className="catalog-label text-[11px]">{`${i + 1}. ${wing.label}`}</span>
+              </div>
+              <p className="font-serif font-semibold text-lg">{wing.title}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{wing.desc}</p>
             </button>
-            <button
-              onClick={() => navigate("/expand")}
-              className="p-4 rounded-lg border border-border/60 hover:border-primary/30 text-left transition-all group"
-            >
-              <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
-              <p className="text-sm font-medium">Expand a Chapter</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Upload a book, expand with AI</p>
-            </button>
-            <button
-              onClick={() => navigate("/romance")}
-              className="p-4 rounded-lg border border-border/60 hover:border-rose-400/30 text-left transition-all group"
-            >
-              <Heart className="w-5 h-5 text-muted-foreground group-hover:text-rose-400 mb-2 transition-colors" />
-              <p className="text-sm font-medium">Romance Studio</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Billionaire · ETL · KU-optimized</p>
-            </button>
-            <button
-              onClick={() => navigate("/style-extractor")}
-              className="p-4 rounded-lg border border-border/60 hover:border-primary/30 text-left transition-all group"
-            >
-              <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-2 transition-colors" />
-              <p className="text-sm font-medium">Style Extractor</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Build your voice guide from samples</p>
-            </button>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
     </Layout>
   );

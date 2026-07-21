@@ -44,8 +44,8 @@ export default function ForgeLayout({ children, projectId }: ForgeLayoutProps) {
   const isExactActive = (item: NavItem) => location === item.path;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <header className="border-b border-amber-900/30 bg-gray-950/95 backdrop-blur sticky top-0 z-50" data-testid="forge-nav-header">
+    <div className="min-h-screen bg-[#171210] text-[#e8dcc8]">
+      <header className="border-b border-amber-900/30 bg-[#171210]/95 backdrop-blur sticky top-0 z-50" data-testid="forge-nav-header">
         <div className="px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div
@@ -58,7 +58,7 @@ export default function ForgeLayout({ children, projectId }: ForgeLayoutProps) {
               <div className="w-8 h-8 bg-amber-600 rounded flex items-center justify-center">
                 <Anvil className="w-5 h-5 text-gray-950" />
               </div>
-              <span className="font-bold text-lg tracking-tight text-amber-500 hidden sm:inline">STORY FORGE</span>
+              <span className="font-serif font-bold text-lg tracking-wide text-amber-500 hidden sm:inline">Story Forge</span>
             </div>
 
             {projectId && (
@@ -90,14 +90,14 @@ export default function ForgeLayout({ children, projectId }: ForgeLayoutProps) {
             data-testid="forge-nav-home"
           >
             <Home className="w-4 h-4" />
-            <span className="hidden sm:inline">StoryDossier</span>
+            <span className="hidden sm:inline">The Library</span>
           </button>
         </div>
       </header>
 
       <div className="flex">
         {projectId && (
-          <aside className="w-56 border-r border-amber-900/20 bg-gray-950 min-h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto" data-testid="forge-sidebar">
+          <aside className="w-56 border-r border-amber-900/20 bg-[#171210] min-h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto" data-testid="forge-sidebar">
             <nav className="p-3 space-y-1">
               {projectNav.map((item) => {
                 const active = item.label === "Overview" ? isExactActive(item) : isActive(item);

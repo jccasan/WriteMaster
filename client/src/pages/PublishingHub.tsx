@@ -37,9 +37,11 @@ export default function PublishingHub() {
     <Layout>
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-10">
+          <p className="catalog-label text-xs mb-3">Wing IV — Publish</p>
           <h1 className="text-4xl font-serif font-bold text-foreground mb-3" data-testid="text-page-title">
-            Publishing Tools
+            The Publishing House
           </h1>
+          <div className="library-rule max-w-xs mx-auto mb-4" />
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Everything you need to turn a finished book into a KDP listing. Trope research for series planning, title generation, blurbs, and Amazon keyword strategy.
           </p>
