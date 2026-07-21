@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { queryClient } from "@/lib/queryClient";
@@ -85,14 +85,44 @@ export default function ForgeUpload() {
     enabled: !!verifyJobId,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      if (status === "complete" || status === "error") return false;
+      if (status === "complete" || status === "error" || status === "cancelled") return false;
       return 2000;
     },
   });
 
-  const verifyRunning = verifyJobId && verifyJobStatus && verifyJobStatus.status !== "complete" && verifyJobStatus.status !== "error";
+  // Re-attach to a verification job still running server-side after reload.
+  const { data: latestRevision } = useQuery<any>({
+    queryKey: ["/api/forge/projects", projectId, "revision"],
+    enabled: !!projectId && !verifyJobId,
+  });
+  const { data: allJobs } = useQuery<any[]>({
+    queryKey: ["/api/forge/jobs"],
+    enabled: !!projectId && !verifyJobId,
+    refetchInterval: 5000,
+  });
+
+  useEffect(() => {
+    if (verifyJobId || !latestRevision || !allJobs) return;
+    const running = allJobs.find(j =>
+      j.revisionVersionId === latestRevision.id &&
+      j.analysisType === "revision_verification" &&
+      j.status !== "complete" && j.status !== "error" && j.status !== "cancelled"
+    );
+    if (running) setVerifyJobId(running.id);
+  }, [verifyJobId, latestRevision, allJobs]);
+
+  const cancelVerifyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/forge/jobs/${verifyJobId}/cancel`, { method: "POST" });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+
+  const verifyRunning = verifyJobId && verifyJobStatus && verifyJobStatus.status !== "complete" && verifyJobStatus.status !== "error" && verifyJobStatus.status !== "cancelled";
   const verifyComplete = verifyJobStatus?.status === "complete";
   const verifyFailed = verifyJobStatus?.status === "error";
+  const verifyCancelled = verifyJobStatus?.status === "cancelled";
 
   return (
     <ForgeLayout projectId={projectId}>
@@ -278,10 +308,12 @@ export default function ForgeUpload() {
                   {verifyRunning && <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />}
                   {verifyComplete && <CheckCircle className="w-4 h-4 text-green-400" />}
                   {verifyFailed && <XCircle className="w-4 h-4 text-red-400" />}
+                  {verifyCancelled && <XCircle className="w-4 h-4 text-gray-400" />}
                   <span className="text-sm">
                     {verifyRunning && "Verification in progress..."}
                     {verifyComplete && "Verification complete — see the Revision Verification Report in Reports."}
                     {verifyFailed && "Verification failed."}
+                    {verifyCancelled && "Verification cancelled — no ledger changes were applied."}
                   </span>
                 </div>
                 <Progress value={verifyJobStatus.progress || 0} className="bg-gray-800 [&>div]:bg-amber-600" />
@@ -295,7 +327,22 @@ export default function ForgeUpload() {
                 {verifyJobStatus.error && (
                   <p className="text-red-400 text-sm">{verifyJobStatus.error}</p>
                 )}
-                {(verifyComplete || verifyFailed) && (
+                {verifyRunning && (
+                  <Button
+                    variant="outline"
+                    className="border-red-900/40 text-red-400 hover:bg-red-950/30"
+                    onClick={() => cancelVerifyMutation.mutate()}
+                    disabled={cancelVerifyMutation.isPending || cancelVerifyMutation.isSuccess}
+                    data-testid="button-stop-verification"
+                  >
+                    {cancelVerifyMutation.isPending || cancelVerifyMutation.isSuccess ? (
+                      <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Stopping...</>
+                    ) : (
+                      <><XCircle className="w-4 h-4 mr-2" /> Stop Verification</>
+                    )}
+                  </Button>
+                )}
+                {(verifyComplete || verifyFailed || verifyCancelled) && (
                   <Button
                     variant="outline"
                     className="border-amber-900/30 text-amber-400"

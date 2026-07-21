@@ -41,7 +41,8 @@ interface IssueRecord {
 export async function runRevisionVerification(
   prevRevisionId: string,
   newRevisionId: string,
-  onProgress: (msg: string) => void
+  onProgress: (msg: string) => void,
+  shouldCancel?: () => boolean
 ): Promise<void> {
   const prevIssues: IssueRecord[] = await prisma.issue.findMany({
     where: { revisionVersionId: prevRevisionId, NOT: { status: "dismissed" } },
@@ -80,6 +81,10 @@ export async function runRevisionVerification(
   let processed = 0;
 
   for (const [chunkId, issues] of Array.from(groups.entries())) {
+    if (shouldCancel?.()) {
+      onProgress("Verification cancelled before completion — no ledger changes were applied.");
+      return;
+    }
     const chunk = newChunks.find(c => c.id === chunkId)!;
     processed++;
     onProgress(`Verifying section ${processed}/${groups.size} (chapters ${chunk.startChapter}-${chunk.endChapter}, ${issues.length} issues)...`);

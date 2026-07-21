@@ -20,6 +20,7 @@ export interface PipelineOptions {
   smeReviewers?: string[];       // explicit SME selection; empty = auto-route
   publishingReaders?: string[];  // publishing panel subset; empty = all four
   projectMeta?: { title: string; description: string };
+  shouldCancel?: () => boolean;  // checked at task boundaries; in-flight calls finish
 }
 
 function getConcurrency(): number {
@@ -121,13 +122,16 @@ export async function runAnalysisPipeline(
   // "sum of every chunk's slowest module" and becomes "spine + pool drain".
   const limit = createLimiter(getConcurrency());
   const pooledTasks: Promise<void>[] = [];
+  const cancelled = () => options.shouldCancel?.() ?? false;
 
   for (const chunk of chunks) {
+    if (cancelled()) break;
     const chapterRange = `${chunk.startChapter}-${chunk.endChapter}`;
     const chapterNumbers: number[] = [];
     for (let i = chunk.startChapter; i <= chunk.endChapter; i++) chapterNumbers.push(i);
 
     for (const mod of memoryModules) {
+      if (cancelled()) break;
       const context = memory.getContextForChunk(chunk.startChapter);
       try {
         onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: Running ${mod}...`);
@@ -146,6 +150,7 @@ export async function runAnalysisPipeline(
           const profiles = betaReaderProfiles.length > 0 ? betaReaderProfiles : getProfileKeys();
           for (const profileKey of profiles) {
             pooledTasks.push(limit(async () => {
+              if (cancelled()) return;
               try {
                 await runBetaProfileUnit(chunk, context, genre, profileKey, revisionVersionId);
                 onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: beta_reader (${profileKey}) complete`);
@@ -159,6 +164,7 @@ export async function runAnalysisPipeline(
         if (mod === "sme_reviewer") {
           for (const reviewerKey of smeActive) {
             pooledTasks.push(limit(async () => {
+              if (cancelled()) return;
               try {
                 await runSmeDomainUnit(reviewerKey, chunk, context, genre, supportFiles, revisionVersionId, memory);
                 onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: sme_reviewer (${reviewerKey}) complete`);
@@ -170,6 +176,7 @@ export async function runAnalysisPipeline(
           continue;
         }
         pooledTasks.push(limit(async () => {
+          if (cancelled()) return;
           try {
             await runModule(mod, chunk, context, genre, supportFiles, revisionVersionId, chapterNumbers, totalChapters, chapterRange, betaReaderProfiles, memory, smeActive);
             onProgress(`Chunk ${chunk.chunkIndex + 1}/${chunks.length}: ${mod} complete`);
@@ -185,6 +192,8 @@ export async function runAnalysisPipeline(
 
   // Publishing-stage review runs once, after the chunk loop, so it can use
   // the accumulated story memory as a synopsis alongside the opening chapters.
+  if (cancelled()) return;
+
   if (modules.includes("publishing_review") && chunks.length > 0) {
     const requested = (options.publishingReaders || []).filter(k => PUBLISHING_READERS[k]);
     const readers = requested.length > 0 ? requested : getPublishingReaderKeys();
