@@ -178,7 +178,17 @@ async function runJob(
 
     addLog(jobId, `Found ${chunks.length} chunks to analyze with modules: ${config.modules.join(", ")}`);
 
-    const totalSteps = chunks.length * config.modules.length + 1;
+    const betaCount = config.modules.includes("beta_reader")
+      ? (config.betaReaderProfiles && config.betaReaderProfiles.length > 0 ? config.betaReaderProfiles.length : 12)
+      : 0;
+    const smeCount = config.modules.includes("sme_reviewer")
+      ? (config.smeReviewers && config.smeReviewers.length > 0 ? config.smeReviewers.length : 3)
+      : 0;
+    const baseModules = config.modules.filter(m =>
+      m !== "beta_reader" && m !== "sme_reviewer" && m !== "publishing_review"
+    ).length;
+    const publishingSteps = config.modules.includes("publishing_review") ? 4 : 0;
+    const totalSteps = chunks.length * (baseModules + betaCount + smeCount) + publishingSteps + 1;
     let completedSteps = 0;
 
     await runAnalysisPipeline(
