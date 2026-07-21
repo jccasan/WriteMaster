@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 export interface JobStatus<TResult = unknown> {
@@ -18,7 +19,11 @@ export interface JobStatus<TResult = unknown> {
  */
 export function useJob<TResult = unknown>(
   jobId: string | null | undefined,
-  opts?: { intervalMs?: number; onDone?: (job: JobStatus<TResult>) => void }
+  opts?: {
+    intervalMs?: number;
+    /** Called once when the job reaches a terminal state (done or error) */
+    onSettled?: (job: JobStatus<TResult>) => void;
+  }
 ) {
   const query = useQuery<JobStatus<TResult>>({
     queryKey: ["job", jobId],
@@ -37,6 +42,17 @@ export function useJob<TResult = unknown>(
 
   const job = query.data ?? null;
   const isRunning = !!job && (job.status === "queued" || job.status === "running");
+
+  const settledRef = useRef<string | null>(null);
+  const onSettled = opts?.onSettled;
+  useEffect(() => {
+    if (!job || !onSettled) return;
+    const terminal = job.status === "done" || job.status === "error";
+    if (terminal && settledRef.current !== job.id) {
+      settledRef.current = job.id;
+      onSettled(job);
+    }
+  }, [job, onSettled]);
 
   return {
     job,

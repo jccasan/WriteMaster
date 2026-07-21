@@ -16,6 +16,7 @@ import {
   READER_VALUE_TEST, RAW_MATERIAL_MINDSET
 } from "../writing-rules";
 import { buildPreviousSummariesContext, formatSlidersBlock, VARIANT_LENSES } from "./helpers";
+import { startJob, getJob, requestPause } from "../jobs";
 
 const router = express.Router();
 
@@ -1253,14 +1254,9 @@ Output ONLY the chapter prose.`;
 
   // ── PANTSER: Autopilot (sequential fast writes) ───────────────────────────
 
-  // In-memory autopilot jobs
-  const autopilotJobs = new Map<string, {
-    status: "running" | "paused" | "done" | "error";
-    book_id: string;
-    current_chapter: number;
-    total_chapters: number;
-    error?: string;
-  }>();
+  // Autopilot runs on the generic job registry (server/jobs.ts). The legacy
+  // /api/autopilot/* endpoints are kept as thin adapters over it so existing
+  // clients keep working; /api/jobs/:id serves the uniform shape.
 
   router.post("/api/books/:id/autopilot/start", async (req, res) => {
     try {
@@ -1268,7 +1264,6 @@ Output ONLY the chapter prose.`;
       if (!book) return res.status(404).json({ error: "Book not found" });
 
       const { premise = "", tense = "past", chapter_count = 30, start_chapter = 1 } = req.body;
-      const jobId = randomUUID();
 
       // Ensure chapters exist up to chapter_count
       const existingCount = book.chapters.length;
@@ -1292,37 +1287,27 @@ Output ONLY the chapter prose.`;
         .sort((a, b) => a.chapter_number - b.chapter_number)[0]?.chapter_number
         ?? start_chapter;
 
-      autopilotJobs.set(jobId, {
-        status: "running",
-        book_id: book.id,
-        current_chapter: firstUnwritten,
-        total_chapters: chapter_count,
-      });
-
-      res.json({ job_id: jobId, starting_chapter: firstUnwritten });
-
-      // Run autopilot in background
-      (async () => {
+      const job = startJob("autopilot", { book_id: book.id }, async (handle) => {
         for (let cn = firstUnwritten; cn <= chapter_count; cn++) {
-          const job = autopilotJobs.get(jobId);
-          if (!job || job.status === "paused" || job.status === "error") break;
+          if (handle.isPauseRequested()) {
+            handle.markPaused();
+            return;
+          }
+          handle.setProgress(cn, chapter_count, `Chapter ${cn}`);
 
-          autopilotJobs.set(jobId, { ...job, current_chapter: cn, status: "running" });
+          const freshBook = await storage.getBook(book.id);
+          if (!freshBook) break;
+          const chapter = freshBook.chapters.find(c => c.chapter_number === cn);
+          if (!chapter || chapter.content) continue; // skip already written
 
-          try {
-            const freshBook = await storage.getBook(book.id);
-            if (!freshBook) break;
-            const chapter = freshBook.chapters.find(c => c.chapter_number === cn);
-            if (!chapter || chapter.content) continue; // skip already written
+          const prevText = freshBook.chapters
+            .filter(c => c.chapter_number < cn && c.content)
+            .sort((a, b) => a.chapter_number - b.chapter_number)
+            .map(c => c.content ?? "").join("\n\n");
+          const recentContext = prevText.split(/\s+/).slice(-3000).join(" ");
 
-            const prevText = freshBook.chapters
-              .filter(c => c.chapter_number < cn && c.content)
-              .sort((a, b) => a.chapter_number - b.chapter_number)
-              .map(c => c.content ?? "").join("\n\n");
-            const recentContext = prevText.split(/\s+/).slice(-3000).join(" ");
-
-            const result = await callLLM(
-              `You are a skilled fiction author writing "${freshBook.title}" chapter by chapter.
+          const result = await callLLM(
+            `You are a skilled fiction author writing "${freshBook.title}" chapter by chapter.
 
 ${recentContext ? `RECENT STORY (last 3000 words):\n${recentContext}\n` : ""}
 ${premise ? `STORY PREMISE:\n${premise}\n` : ""}
@@ -1331,41 +1316,40 @@ ${chapter.outline ? `CHAPTER OUTLINE:\n${chapter.outline}\n` : ""}
 Write Chapter ${cn} in ${tense} tense. 2000-3000 words. Match the established voice.
 Begin with the chapter title as a heading. End on a compelling moment.
 Output ONLY the chapter prose.`,
-              "powerful", undefined, 8192
-            );
+            "powerful", undefined, 8192
+          );
 
-            chapter.content = result;
-            chapter.status = "written";
-            await storage.saveBook(freshBook);
-            extractWorldInBackground(freshBook.id, cn, result).catch(console.error);
-
-          } catch (err: any) {
-            autopilotJobs.set(jobId, { ...autopilotJobs.get(jobId)!, status: "error", error: err.message });
-            return;
-          }
+          chapter.content = result;
+          chapter.status = "written";
+          await storage.saveBook(freshBook);
+          extractWorldInBackground(freshBook.id, cn, result).catch(console.error);
         }
-        const job = autopilotJobs.get(jobId);
-        if (job && job.status === "running") {
-          autopilotJobs.set(jobId, { ...job, status: "done" });
-        }
-      })();
+      });
 
+      res.json({ job_id: job.id, starting_chapter: firstUnwritten });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
+  // Legacy adapters over the generic job registry
   router.post("/api/autopilot/:jobId/pause", async (req, res) => {
-    const job = autopilotJobs.get(req.params.jobId);
-    if (!job) return res.status(404).json({ error: "Job not found" });
-    autopilotJobs.set(req.params.jobId, { ...job, status: "paused" });
+    const ok = requestPause(String(req.params.jobId));
+    if (!ok) return res.status(404).json({ error: "Job not found" });
     res.json({ success: true });
   });
 
   router.get("/api/autopilot/:jobId/status", async (req, res) => {
-    const job = autopilotJobs.get(req.params.jobId);
+    const job = getJob(String(req.params.jobId));
     if (!job) return res.status(404).json({ error: "Job not found" });
-    res.json(job);
+    // Legacy status shape expected by older clients
+    res.json({
+      status: job.status === "queued" ? "running" : job.status,
+      book_id: job.meta.book_id,
+      current_chapter: job.progress?.current ?? 0,
+      total_chapters: job.progress?.total ?? 0,
+      ...(job.error ? { error: job.error } : {}),
+    });
   });
 
   // ── PANTSER: Background world extraction ──────────────────────────────────

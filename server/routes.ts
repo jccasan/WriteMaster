@@ -7,6 +7,7 @@ import editorRouter from "./routes/editor";
 import publishingRouter from "./routes/publishing";
 import pipelinesRouter from "./routes/pipelines";
 import toolsRouter from "./routes/tools";
+import { registerJobRoutes } from "./jobs";
 
 // Domain routers keep their full "/api/..." paths internally, so mounting at
 // root preserves every client-visible URL. Mount order mirrors the original
@@ -23,6 +24,7 @@ export async function registerRoutes(
   app.use(publishingRouter);
   app.use(pipelinesRouter);
   app.use(toolsRouter);
+  registerJobRoutes(app);
 
   return httpServer;
 }
