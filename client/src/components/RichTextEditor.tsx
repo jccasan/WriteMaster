@@ -34,8 +34,15 @@ function plainTextToHtml(text: string): string {
   if (!text) return "";
   if (text.trim().startsWith("<")) return text;
 
-  return text
-    .split(/\n\n+/)
+  // Normalize whitespace from docx/Google Docs imports: CRLF, vertical tabs
+  // (Word/Docs soft returns), form feeds, unicode line separators.
+  const normalized = text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\v\f\u2028\u2029]/g, "\n");
+  // Every line break starts a new paragraph — imported prose often separates
+  // paragraphs with single newlines (or soft returns normalized above).
+  return normalized
+    .split(/\n+/)
     .map((block) => {
       const trimmed = block.trim();
       if (!trimmed) return "";

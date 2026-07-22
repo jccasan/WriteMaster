@@ -44,19 +44,20 @@ interface NodePosition {
   vy: number;
 }
 
+// Darker hues so edge lines and labels stay readable on the parchment background.
 const TYPE_COLORS: Record<string, string> = {
-  ally: "#22c55e",
-  friend: "#22c55e",
-  lover: "#ec4899",
-  romantic: "#ec4899",
-  love_interest: "#ec4899",
-  family: "#3b82f6",
-  mentor: "#8b5cf6",
-  antagonist: "#ef4444",
-  enemy: "#ef4444",
-  rival: "#f97316",
-  colleague: "#06b6d4",
-  neutral: "#6b7280",
+  ally: "#15803d",
+  friend: "#15803d",
+  lover: "#be185d",
+  romantic: "#be185d",
+  love_interest: "#be185d",
+  family: "#1d4ed8",
+  mentor: "#6d28d9",
+  antagonist: "#b91c1c",
+  enemy: "#b91c1c",
+  rival: "#c2410c",
+  colleague: "#0e7490",
+  neutral: "#57534e",
 };
 
 function getEdgeColor(type: string): string {
@@ -64,7 +65,7 @@ function getEdgeColor(type: string): string {
   for (const [key, color] of Object.entries(TYPE_COLORS)) {
     if (lower.includes(key)) return color;
   }
-  return "#d97706";
+  return "#92400e";
 }
 
 function parseJson(val: any): any[] {
@@ -264,14 +265,14 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
     <div ref={containerRef} className="w-full" data-testid="relationship-web">
       <div className="flex flex-wrap gap-3 mb-3">
         {uniqueTypes.map((t) => (
-          <div key={t} className="flex items-center gap-1.5 text-xs text-gray-400">
+          <div key={t} className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="w-3 h-0.5 rounded" style={{ backgroundColor: getEdgeColor(t) }} />
             <span className="capitalize">{t}</span>
           </div>
         ))}
       </div>
 
-      <Card className="bg-gray-900 border-amber-900/20 overflow-hidden">
+      <Card className="bg-card border border-border rounded-sm overflow-hidden">
         <CardContent className="p-0">
           <svg
             ref={svgRef}
@@ -285,23 +286,6 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
             onClick={() => { setSelectedChar(null); setSelectedEdge(null); }}
             data-testid="relationship-web-svg"
           >
-            <defs>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-              <filter id="glow-selected">
-                <feGaussianBlur stdDeviation="5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
             {edges.map((edge, i) => {
               const fromPos = positions[edge.from];
               const toPos = positions[edge.to];
@@ -321,7 +305,7 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                     x2={toPos.x} y2={toPos.y}
                     stroke={color}
                     strokeWidth={isSelected || isConnectedToSelected ? 3 : 1.5}
-                    strokeOpacity={isSelected || isConnectedToSelected ? 1 : selectedChar ? 0.15 : 0.5}
+                    strokeOpacity={isSelected || isConnectedToSelected ? 1 : selectedChar ? 0.15 : 0.55}
                     className="cursor-pointer"
                     onClick={(e) => { e.stopPropagation(); setSelectedEdge(isSelected ? null : { from: edge.from, to: edge.to }); setSelectedChar(null); }}
                   />
@@ -331,7 +315,7 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                     fill={color}
                     fontSize={10}
                     fontWeight={isSelected || isConnectedToSelected ? 600 : 400}
-                    opacity={isSelected || isConnectedToSelected ? 1 : selectedChar ? 0.15 : 0.7}
+                    opacity={isSelected || isConnectedToSelected ? 1 : selectedChar ? 0.15 : 0.8}
                     className="pointer-events-none select-none"
                   >
                     {edge.type}
@@ -362,16 +346,15 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                   <circle
                     cx={pos.x} cy={pos.y}
                     r={nodeRadius}
-                    fill={isSelected ? "#292524" : "#1f2937"}
-                    stroke={isSelected ? "#f59e0b" : "#d97706"}
+                    fill={isSelected ? "hsl(var(--primary) / 0.12)" : "hsl(var(--background))"}
+                    stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--brass))"}
                     strokeWidth={isSelected ? 3 : 1.5}
-                    filter={isSelected ? "url(#glow-selected)" : "url(#glow)"}
                   />
                   <text
                     x={pos.x} y={pos.y + 1}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#fbbf24"
+                    fill="hsl(var(--foreground))"
                     fontSize={hasEdges ? 11 : 10}
                     fontWeight={600}
                     className="pointer-events-none select-none"
@@ -381,7 +364,7 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                   <text
                     x={pos.x} y={pos.y + (hasEdges ? 34 : 28)}
                     textAnchor="middle"
-                    fill="#9ca3af"
+                    fill="hsl(var(--muted-foreground))"
                     fontSize={9}
                     className="pointer-events-none select-none"
                   >
@@ -394,16 +377,16 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
         </CardContent>
       </Card>
 
-      <p className="text-xs text-gray-600 mt-2">Click a character to view details. Double-click to edit relationships. Drag to rearrange.</p>
+      <p className="text-xs text-muted-foreground mt-2">Click a character to view details. Double-click to edit relationships. Drag to rearrange.</p>
 
       {selectedNode && !editingChar && (
-        <Card className="bg-gray-900 border-amber-900/20 mt-3 animate-in fade-in slide-in-from-top-2 duration-200" data-testid="character-detail-panel">
+        <Card className="bookplate rounded-sm mt-3 animate-in fade-in slide-in-from-top-2 duration-200" data-testid="character-detail-panel">
           <CardContent className="p-5">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="text-amber-400 font-bold text-lg" data-testid="detail-character-name">{selectedNode.name}</h3>
+                <h3 className="text-primary font-serif font-bold text-lg" data-testid="detail-character-name">{selectedNode.name}</h3>
                 {selectedNode.aliases.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-0.5">aka {selectedNode.aliases.join(", ")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">aka {selectedNode.aliases.join(", ")}</p>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -411,28 +394,28 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                   variant="ghost"
                   size="sm"
                   onClick={() => openEditor(selectedNode.id)}
-                  className="text-amber-400 hover:bg-amber-600/20 h-7 gap-1 text-xs"
+                  className="text-primary hover:bg-primary/10 h-7 gap-1 text-xs"
                   data-testid="button-edit-from-detail"
                 >
                   <Edit2 className="w-3 h-3" /> Edit
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedChar(null)} className="text-gray-400 h-7 w-7 p-0">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedChar(null)} className="text-muted-foreground h-7 w-7 p-0">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
             </div>
 
             {selectedNode.description && (
-              <p className="text-sm text-gray-300 mb-4 leading-relaxed" data-testid="detail-description">{selectedNode.description}</p>
+              <p className="text-sm text-foreground/80 mb-4 leading-relaxed" data-testid="detail-description">{selectedNode.description}</p>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {selectedNode.traits.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Traits</p>
+                  <p className="catalog-label text-[11px] mb-1.5 font-medium">Traits</p>
                   <div className="flex flex-wrap gap-1">
                     {selectedNode.traits.map((t, i) => (
-                      <Badge key={i} variant="outline" className="border-amber-900/30 text-amber-300/80 text-xs">{t}</Badge>
+                      <Badge key={i} variant="outline" className="border-border text-foreground/70 text-xs">{t}</Badge>
                     ))}
                   </div>
                 </div>
@@ -440,11 +423,11 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
 
               {selectedNode.goals.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Goals</p>
+                  <p className="catalog-label text-[11px] mb-1.5 font-medium">Goals</p>
                   <div className="space-y-1">
                     {selectedNode.goals.map((g, i) => (
-                      <div key={i} className="flex items-start gap-1.5 text-sm text-gray-300">
-                        <ChevronRight className="w-3 h-3 text-amber-600 mt-1 shrink-0" />
+                      <div key={i} className="flex items-start gap-1.5 text-sm text-foreground/80">
+                        <ChevronRight className="w-3 h-3 text-brass mt-1 shrink-0" />
                         <span>{g}</span>
                       </div>
                     ))}
@@ -454,11 +437,11 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
 
               {selectedNode.motives.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Motives</p>
+                  <p className="catalog-label text-[11px] mb-1.5 font-medium">Motives</p>
                   <div className="space-y-1">
                     {selectedNode.motives.map((m, i) => (
-                      <div key={i} className="flex items-start gap-1.5 text-sm text-gray-300">
-                        <ChevronRight className="w-3 h-3 text-orange-600 mt-1 shrink-0" />
+                      <div key={i} className="flex items-start gap-1.5 text-sm text-foreground/80">
+                        <ChevronRight className="w-3 h-3 text-primary mt-1 shrink-0" />
                         <span>{m}</span>
                       </div>
                     ))}
@@ -468,14 +451,14 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
 
               {selectedNode.relationships.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Relationships</p>
+                  <p className="catalog-label text-[11px] mb-1.5 font-medium">Relationships</p>
                   <div className="space-y-1.5">
                     {selectedNode.relationships.map((rel, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm">
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getEdgeColor(rel.type) }} />
-                        <span className="text-gray-200 font-medium">{rel.character}</span>
-                        <span className="text-gray-500 text-xs capitalize">({rel.type})</span>
-                        {rel.notes && <span className="text-gray-400 text-xs">— {rel.notes}</span>}
+                        <span className="text-foreground font-medium">{rel.character}</span>
+                        <span className="text-muted-foreground text-xs capitalize">({rel.type})</span>
+                        {rel.notes && <span className="text-muted-foreground text-xs">— {rel.notes}</span>}
                       </div>
                     ))}
                   </div>
@@ -484,13 +467,13 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
 
               {selectedNode.injuries.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Injuries</p>
+                  <p className="catalog-label text-[11px] mb-1.5 font-medium">Injuries</p>
                   <div className="space-y-1">
                     {selectedNode.injuries.map((inj, i) => {
                       const desc = typeof inj === "string" ? inj : inj.description || JSON.stringify(inj);
                       const resolved = typeof inj === "object" && inj.resolved;
                       return (
-                        <div key={i} className={`text-sm ${resolved ? "text-gray-500 line-through" : "text-red-300"}`}>
+                        <div key={i} className={`text-sm ${resolved ? "text-muted-foreground line-through" : "text-red-700"}`}>
                           {desc}
                         </div>
                       );
@@ -501,10 +484,10 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
 
               {selectedNode.voiceNotes.length > 0 && (
                 <div className="md:col-span-2">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Voice &amp; Dialogue Notes</p>
+                  <p className="catalog-label text-[11px] mb-1.5 font-medium">Voice &amp; Dialogue Notes</p>
                   <div className="space-y-1">
                     {selectedNode.voiceNotes.map((v, i) => (
-                      <p key={i} className="text-sm text-gray-300 italic">"{v}"</p>
+                      <p key={i} className="text-sm text-foreground/80 italic">"{v}"</p>
                     ))}
                   </div>
                 </div>
@@ -512,10 +495,10 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
 
               {selectedNode.continuityNotes.length > 0 && (
                 <div className="md:col-span-2">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1.5 font-medium">Continuity Notes</p>
+                  <p className="catalog-label text-[11px] mb-1.5 font-medium">Continuity Notes</p>
                   <div className="space-y-1">
                     {selectedNode.continuityNotes.map((n, i) => (
-                      <p key={i} className="text-sm text-gray-400">{n}</p>
+                      <p key={i} className="text-sm text-muted-foreground">{n}</p>
                     ))}
                   </div>
                 </div>
@@ -523,7 +506,7 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
             </div>
 
             {(selectedNode.firstAppearanceChapter || selectedNode.appearanceCount > 1) && (
-              <div className="mt-4 pt-3 border-t border-gray-800 flex items-center gap-4 text-xs text-gray-500">
+              <div className="mt-4 pt-3 border-t border-border flex items-center gap-4 text-xs text-muted-foreground">
                 {selectedNode.firstAppearanceChapter && (
                   <span>First seen: Ch. {selectedNode.firstAppearanceChapter}</span>
                 )}
@@ -544,30 +527,30 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
         );
         if (!edge) return null;
         return (
-          <Card className="bg-gray-900 border-amber-900/20 mt-3" data-testid="edge-detail">
+          <Card className="bookplate rounded-sm mt-3" data-testid="edge-detail">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-amber-400 font-medium">{edge.fromName}</span>
-                <span className="text-gray-500">→</span>
-                <span className="text-amber-400 font-medium">{edge.toName}</span>
-                <span className="ml-auto text-xs px-2 py-0.5 rounded" style={{ backgroundColor: getEdgeColor(edge.type) + "30", color: getEdgeColor(edge.type) }}>
+                <span className="text-primary font-medium">{edge.fromName}</span>
+                <span className="text-muted-foreground">→</span>
+                <span className="text-primary font-medium">{edge.toName}</span>
+                <span className="ml-auto text-xs px-2 py-0.5 rounded" style={{ backgroundColor: getEdgeColor(edge.type) + "22", color: getEdgeColor(edge.type) }}>
                   {edge.type}
                 </span>
               </div>
-              {edge.notes && <p className="text-sm text-gray-300">{edge.notes}</p>}
+              {edge.notes && <p className="text-sm text-foreground/80">{edge.notes}</p>}
             </CardContent>
           </Card>
         );
       })()}
 
       {editingChar && (
-        <Card className="bg-gray-900 border-amber-600/40 mt-3" data-testid="relationship-editor">
+        <Card className="bg-card border border-primary/40 rounded-sm mt-3" data-testid="relationship-editor">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-amber-400 font-semibold">
+              <h3 className="text-primary font-serif font-semibold">
                 Edit Relationships — {nodes.find((n) => n.id === editingChar)?.name}
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => setEditingChar(null)} className="text-gray-400 h-7 w-7 p-0">
+              <Button variant="ghost" size="sm" onClick={() => setEditingChar(null)} className="text-muted-foreground h-7 w-7 p-0">
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -579,13 +562,13 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                     value={rel.character}
                     onChange={(e) => updateRel(i, "character", e.target.value)}
                     placeholder="Character name"
-                    className="bg-gray-800 border-gray-700 text-gray-200 h-8 text-sm flex-[2]"
+                    className="bg-background h-8 text-sm flex-[2]"
                     data-testid={`input-rel-character-${i}`}
                   />
                   <select
                     value={rel.type}
                     onChange={(e) => updateRel(i, "type", e.target.value)}
-                    className="bg-gray-800 border border-gray-700 text-gray-200 rounded-md h-8 text-sm px-2 flex-1"
+                    className="bg-background border border-input text-foreground rounded-md h-8 text-sm px-2 flex-1"
                     data-testid={`select-rel-type-${i}`}
                   >
                     {["ally", "friend", "lover", "love_interest", "family", "mentor", "colleague", "rival", "antagonist", "enemy", "neutral"].map((t) => (
@@ -596,10 +579,10 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
                     value={rel.notes}
                     onChange={(e) => updateRel(i, "notes", e.target.value)}
                     placeholder="Notes"
-                    className="bg-gray-800 border-gray-700 text-gray-200 h-8 text-sm flex-[3]"
+                    className="bg-background h-8 text-sm flex-[3]"
                     data-testid={`input-rel-notes-${i}`}
                   />
-                  <Button variant="ghost" size="sm" onClick={() => removeRel(i)} className="text-red-400 h-8 w-8 p-0 shrink-0">
+                  <Button variant="ghost" size="sm" onClick={() => removeRel(i)} className="text-destructive h-8 w-8 p-0 shrink-0">
                     <X className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -607,10 +590,10 @@ export default function RelationshipWeb({ characters, onSave }: RelationshipWebP
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={addRel} className="border-amber-900/30 text-amber-400 hover:bg-amber-600/20 h-8 gap-1" data-testid="button-add-relationship">
+              <Button variant="outline" size="sm" onClick={addRel} className="border-border text-primary hover:bg-primary/10 h-8 gap-1" data-testid="button-add-relationship">
                 <Plus className="w-3.5 h-3.5" /> Add Relationship
               </Button>
-              <Button size="sm" onClick={handleSaveRels} disabled={saving} className="bg-amber-600 hover:bg-amber-700 text-gray-950 h-8 gap-1 ml-auto" data-testid="button-save-relationships">
+              <Button size="sm" onClick={handleSaveRels} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 gap-1 ml-auto" data-testid="button-save-relationships">
                 <Save className="w-3.5 h-3.5" /> {saving ? "Saving..." : "Save"}
               </Button>
             </div>

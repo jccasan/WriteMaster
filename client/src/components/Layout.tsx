@@ -134,9 +134,11 @@ function NavDropdown({ section, location }: { section: NavSection; location: str
 interface LayoutProps {
   children: React.ReactNode;
   fullScreen?: boolean;
+  /** Render children edge-to-edge (no centered container) — used by Forge pages with their own sidebar */
+  fullBleed?: boolean;
 }
 
-export default function Layout({ children, fullScreen = false }: LayoutProps) {
+export default function Layout({ children, fullScreen = false, fullBleed = false }: LayoutProps) {
   const [location] = useLocation();
 
   const isDesk = location.startsWith("/my-work");
@@ -176,6 +178,8 @@ export default function Layout({ children, fullScreen = false }: LayoutProps) {
 
       {fullScreen ? (
         <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
+      ) : fullBleed ? (
+        <>{children}</>
       ) : (
         <main className="container max-w-5xl mx-auto px-4 py-8 md:py-12">
           {children}

@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Loader2, CheckCircle, FileText, GitCompare, XCircle } from "lucide-react";
+import { Upload, Loader2, CheckCircle, GitCompare, XCircle } from "lucide-react";
 
 export default function ForgeUpload() {
   const [, params] = useRoute("/forge/project/:id/upload");
@@ -127,26 +126,26 @@ export default function ForgeUpload() {
   return (
     <ForgeLayout projectId={projectId}>
       <div className="max-w-2xl animate-in fade-in duration-300">
-        <h1 className="text-2xl font-bold text-amber-400 mb-6" data-testid="text-upload-heading">Upload Manuscript</h1>
+        <h1 className="text-2xl font-serif font-semibold text-foreground mb-6" data-testid="text-upload-heading">Upload Manuscript</h1>
 
-        <Card className="bg-gray-900 border-amber-900/20 mb-6">
+        <Card className="bookplate rounded-sm mb-6">
           <CardContent className="p-6 space-y-5">
             <div>
-              <Label className="text-gray-300 mb-2 block">File Type</Label>
+              <Label className="text-foreground/80 mb-2 block">File Type</Label>
               <Select value={fileType} onValueChange={setFileType}>
-                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100" data-testid="select-file-type">
+                <SelectTrigger className="bg-background" data-testid="select-file-type">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
-                  <SelectItem value="manuscript" className="text-gray-100">Manuscript</SelectItem>
-                  <SelectItem value="outline" className="text-gray-100">Outline</SelectItem>
-                  <SelectItem value="story_bible" className="text-gray-100">Story Bible</SelectItem>
+                <SelectContent>
+                  <SelectItem value="manuscript">Manuscript</SelectItem>
+                  <SelectItem value="outline">Outline</SelectItem>
+                  <SelectItem value="story_bible">Story Bible</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label className="text-gray-300 mb-2 block">Upload File (.txt, .docx)</Label>
+              <Label className="text-foreground/80 mb-2 block">Upload File (.txt, .docx)</Label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -157,14 +156,14 @@ export default function ForgeUpload() {
               />
               <Button
                 variant="outline"
-                className="w-full border-dashed border-amber-900/40 text-gray-300 hover:bg-gray-800 h-20"
+                className="w-full border-dashed border-border text-foreground/80 hover:bg-accent h-20"
                 onClick={() => fileInputRef.current?.click()}
                 data-testid="button-choose-file"
               >
                 <div className="flex flex-col items-center gap-1">
-                  <Upload className="w-5 h-5 text-amber-500" />
+                  <Upload className="w-5 h-5 text-brass" />
                   {selectedFile ? (
-                    <span className="text-amber-400 text-sm">{selectedFile.name}</span>
+                    <span className="text-primary text-sm">{selectedFile.name}</span>
                   ) : (
                     <span className="text-sm">Click to choose a file</span>
                   )}
@@ -174,15 +173,15 @@ export default function ForgeUpload() {
 
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
-                <div className="flex-1 border-t border-gray-700" />
-                <span className="text-xs text-gray-500">OR paste text</span>
-                <div className="flex-1 border-t border-gray-700" />
+                <div className="flex-1 border-t border-border" />
+                <span className="text-xs text-muted-foreground">OR paste text</span>
+                <div className="flex-1 border-t border-border" />
               </div>
               <Textarea
                 value={pastedText}
                 onChange={(e) => setPastedText(e.target.value)}
                 placeholder="Paste your manuscript text here..."
-                className="bg-gray-800 border-gray-700 text-gray-100 focus:border-amber-500 min-h-[200px] font-mono text-sm"
+                className="bg-background min-h-[200px] font-mono text-sm"
                 data-testid="textarea-paste"
               />
             </div>
@@ -190,7 +189,7 @@ export default function ForgeUpload() {
             <Button
               onClick={() => uploadMutation.mutate()}
               disabled={uploadMutation.isPending || (!selectedFile && !pastedText.trim())}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               data-testid="button-upload"
             >
               {uploadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
@@ -198,7 +197,7 @@ export default function ForgeUpload() {
             </Button>
 
             {uploadMutation.isError && (
-              <p className="text-red-400 text-sm" data-testid="text-upload-error">
+              <p className="text-destructive text-sm" data-testid="text-upload-error">
                 {(uploadMutation.error as Error).message}
               </p>
             )}
@@ -206,9 +205,9 @@ export default function ForgeUpload() {
         </Card>
 
         {result && (
-          <Card className="bg-gray-900 border-green-900/30" data-testid="card-upload-result">
+          <Card className="bg-card border border-green-700/40 rounded-sm" data-testid="card-upload-result">
             <CardHeader className="pb-2">
-              <CardTitle className="text-green-400 flex items-center gap-2 text-lg">
+              <CardTitle className="text-green-700 flex items-center gap-2 text-lg">
                 <CheckCircle className="w-5 h-5" /> Upload Successful
               </CardTitle>
             </CardHeader>
@@ -216,20 +215,20 @@ export default function ForgeUpload() {
               <div className="grid grid-cols-3 gap-4">
                 {result.chaptersDetected !== undefined && (
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-100" data-testid="stat-chapters-detected">{result.chaptersDetected}</p>
-                    <p className="text-xs text-gray-400">Chapters Detected</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="stat-chapters-detected">{result.chaptersDetected}</p>
+                    <p className="text-xs text-muted-foreground">Chapters Detected</p>
                   </div>
                 )}
                 {result.chunksCreated !== undefined && (
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-100" data-testid="stat-chunks-created">{result.chunksCreated}</p>
-                    <p className="text-xs text-gray-400">Chunks Created</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="stat-chunks-created">{result.chunksCreated}</p>
+                    <p className="text-xs text-muted-foreground">Chunks Created</p>
                   </div>
                 )}
                 {result.totalWords !== undefined && (
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-100" data-testid="stat-word-count">{result.totalWords.toLocaleString()}</p>
-                    <p className="text-xs text-gray-400">Total Words</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="stat-word-count">{result.totalWords.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Total Words</p>
                   </div>
                 )}
               </div>
@@ -237,13 +236,13 @@ export default function ForgeUpload() {
           </Card>
         )}
 
-        <Card className="bg-gray-900 border-amber-900/20 mt-6" data-testid="card-verify-revision">
+        <Card className="bookplate rounded-sm mt-6" data-testid="card-verify-revision">
           <CardHeader>
-            <CardTitle className="text-gray-100 text-lg flex items-center gap-2">
-              <GitCompare className="w-5 h-5 text-amber-500" />
+            <CardTitle className="text-foreground text-lg flex items-center gap-2">
+              <GitCompare className="w-5 h-5 text-brass" />
               Verify Revised Draft
             </CardTitle>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Upload a new draft to check it against the current draft's issue ledger.
               Each prior issue is classified as fixed, partially fixed, displaced, unchanged,
               worsened, or intentionally declined — and unresolved issues carry forward.
@@ -262,14 +261,14 @@ export default function ForgeUpload() {
                 />
                 <Button
                   variant="outline"
-                  className="w-full border-dashed border-amber-900/40 text-gray-300 hover:bg-gray-800 h-16"
+                  className="w-full border-dashed border-border text-foreground/80 hover:bg-accent h-16"
                   onClick={() => verifyFileInputRef.current?.click()}
                   data-testid="button-choose-verify-file"
                 >
                   <div className="flex flex-col items-center gap-1">
-                    <Upload className="w-4 h-4 text-amber-500" />
+                    <Upload className="w-4 h-4 text-brass" />
                     {verifyFile ? (
-                      <span className="text-amber-400 text-sm">{verifyFile.name}</span>
+                      <span className="text-primary text-sm">{verifyFile.name}</span>
                     ) : (
                       <span className="text-sm">Choose revised draft (.txt, .docx)</span>
                     )}
@@ -280,14 +279,14 @@ export default function ForgeUpload() {
                   value={verifyText}
                   onChange={(e) => setVerifyText(e.target.value)}
                   placeholder="...or paste the revised manuscript text here"
-                  className="bg-gray-800 border-gray-700 text-gray-100 focus:border-amber-500 min-h-[120px] font-mono text-sm"
+                  className="bg-background min-h-[120px] font-mono text-sm"
                   data-testid="textarea-verify-paste"
                 />
 
                 <Button
                   onClick={() => verifyMutation.mutate()}
                   disabled={verifyMutation.isPending || (!verifyFile && !verifyText.trim())}
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                   data-testid="button-verify-revision"
                 >
                   {verifyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <GitCompare className="w-4 h-4 mr-2" />}
@@ -295,7 +294,7 @@ export default function ForgeUpload() {
                 </Button>
 
                 {verifyMutation.isError && (
-                  <p className="text-red-400 text-sm" data-testid="text-verify-error">
+                  <p className="text-destructive text-sm" data-testid="text-verify-error">
                     {(verifyMutation.error as Error).message}
                   </p>
                 )}
@@ -304,11 +303,11 @@ export default function ForgeUpload() {
 
             {verifyJobId && verifyJobStatus && (
               <div className="space-y-3" data-testid="verify-job-status">
-                <div className="flex items-center gap-2 text-gray-100">
-                  {verifyRunning && <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />}
-                  {verifyComplete && <CheckCircle className="w-4 h-4 text-green-400" />}
-                  {verifyFailed && <XCircle className="w-4 h-4 text-red-400" />}
-                  {verifyCancelled && <XCircle className="w-4 h-4 text-gray-400" />}
+                <div className="flex items-center gap-2 text-foreground">
+                  {verifyRunning && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
+                  {verifyComplete && <CheckCircle className="w-4 h-4 text-green-700" />}
+                  {verifyFailed && <XCircle className="w-4 h-4 text-destructive" />}
+                  {verifyCancelled && <XCircle className="w-4 h-4 text-muted-foreground" />}
                   <span className="text-sm">
                     {verifyRunning && "Verification in progress..."}
                     {verifyComplete && "Verification complete — see the Revision Verification Report in Reports."}
@@ -316,21 +315,21 @@ export default function ForgeUpload() {
                     {verifyCancelled && "Verification cancelled — no ledger changes were applied."}
                   </span>
                 </div>
-                <Progress value={verifyJobStatus.progress || 0} className="bg-gray-800 [&>div]:bg-amber-600" />
+                <Progress value={verifyJobStatus.progress || 0} className="bg-secondary [&>div]:bg-primary" />
                 {verifyJobStatus.logs && verifyJobStatus.logs.length > 0 && (
-                  <div className="bg-gray-950 rounded-lg p-3 max-h-40 overflow-y-auto font-mono text-xs">
+                  <div className="bg-muted border border-border rounded-sm p-3 max-h-40 overflow-y-auto font-mono text-xs">
                     {verifyJobStatus.logs.map((log: string, i: number) => (
-                      <div key={i} className="text-gray-400 py-0.5">{log}</div>
+                      <div key={i} className="text-muted-foreground py-0.5">{log}</div>
                     ))}
                   </div>
                 )}
                 {verifyJobStatus.error && (
-                  <p className="text-red-400 text-sm">{verifyJobStatus.error}</p>
+                  <p className="text-destructive text-sm">{verifyJobStatus.error}</p>
                 )}
                 {verifyRunning && (
                   <Button
                     variant="outline"
-                    className="border-red-900/40 text-red-400 hover:bg-red-950/30"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
                     onClick={() => cancelVerifyMutation.mutate()}
                     disabled={cancelVerifyMutation.isPending || cancelVerifyMutation.isSuccess}
                     data-testid="button-stop-verification"
@@ -345,7 +344,7 @@ export default function ForgeUpload() {
                 {(verifyComplete || verifyFailed || verifyCancelled) && (
                   <Button
                     variant="outline"
-                    className="border-amber-900/30 text-amber-400"
+                    className="border-border text-primary hover:bg-primary/10"
                     onClick={() => { setVerifyJobId(null); setVerifyFile(null); setVerifyText(""); }}
                     data-testid="button-new-verification"
                   >

@@ -1,8 +1,9 @@
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import Layout from "@/components/Layout";
 import {
-  Anvil, LayoutDashboard, Upload, Zap, FileText, AlertTriangle,
-  Users, GitBranch, Film, Search, BookOpen, ArrowLeft, MessageSquare, Home, Bot
+  LayoutDashboard, Upload, Zap, FileText, AlertTriangle,
+  Users, GitBranch, Film, Search, BookOpen, ArrowLeft, MessageSquare, Bot
 } from "lucide-react";
 
 interface NavItem {
@@ -44,61 +45,26 @@ export default function ForgeLayout({ children, projectId }: ForgeLayoutProps) {
   const isExactActive = (item: NavItem) => location === item.path;
 
   return (
-    <div className="min-h-screen bg-[#171210] text-[#e8dcc8]">
-      <header className="border-b border-amber-900/30 bg-[#171210]/95 backdrop-blur sticky top-0 z-50" data-testid="forge-nav-header">
-        <div className="px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => navigate("/forge")}
-              role="button"
-              tabIndex={0}
-              data-testid="forge-nav-home"
-            >
-              <div className="w-8 h-8 bg-amber-600 rounded flex items-center justify-center">
-                <Anvil className="w-5 h-5 text-gray-950" />
-              </div>
-              <span className="font-serif font-bold text-lg tracking-wide text-amber-500 hidden sm:inline">Story Forge</span>
-            </div>
-
-            {projectId && (
+    <Layout fullBleed>
+      <div className="flex">
+        {projectId && (
+          <aside
+            className="w-56 shrink-0 border-r border-border bg-card/60 min-h-[calc(100vh-3.5rem)] sticky top-14 self-start overflow-y-auto max-h-[calc(100vh-3.5rem)]"
+            data-testid="forge-sidebar"
+          >
+            <div className="px-3 pt-3">
               <button
                 onClick={() => navigate("/forge")}
-                className="flex items-center gap-1 text-sm text-gray-400 hover:text-amber-400 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-sm text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
                 data-testid="forge-back-dashboard"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Dashboard
+                All Projects
               </button>
-            )}
-            <button
-              onClick={() => navigate("/forge/quick-feedback")}
-              className={`flex items-center gap-1.5 text-sm transition-colors ${
-                location === "/forge/quick-feedback"
-                  ? "text-amber-400"
-                  : "text-gray-400 hover:text-amber-400"
-              }`}
-              data-testid="forge-nav-quick-feedback"
-            >
-              <MessageSquare className="w-4 h-4" />
-              Quick Feedback
-            </button>
-          </div>
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-amber-400 transition-colors"
-            data-testid="forge-nav-home"
-          >
-            <Home className="w-4 h-4" />
-            <span className="hidden sm:inline">The Library</span>
-          </button>
-        </div>
-      </header>
-
-      <div className="flex">
-        {projectId && (
-          <aside className="w-56 border-r border-amber-900/20 bg-[#171210] min-h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto" data-testid="forge-sidebar">
-            <nav className="p-3 space-y-1">
+              <div className="library-rule mx-3 my-2" />
+            </div>
+            <nav className="p-3 pt-1 space-y-1">
+              <p className="catalog-label text-[11px] px-3 pb-1">This Manuscript</p>
               {projectNav.map((item) => {
                 const active = item.label === "Overview" ? isExactActive(item) : isActive(item);
                 return (
@@ -106,10 +72,10 @@ export default function ForgeLayout({ children, projectId }: ForgeLayoutProps) {
                     key={item.path}
                     onClick={() => navigate(item.path)}
                     className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      "w-full flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-medium transition-colors",
                       active
-                        ? "bg-amber-600/20 text-amber-400"
-                        : "text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     )}
                     data-testid={`forge-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
                   >
@@ -119,13 +85,29 @@ export default function ForgeLayout({ children, projectId }: ForgeLayoutProps) {
                 );
               })}
             </nav>
+            <div className="px-3 pb-4">
+              <div className="library-rule mx-3 mb-2" />
+              <button
+                onClick={() => navigate("/forge/quick-feedback")}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2 rounded-sm text-sm transition-colors",
+                  location === "/forge/quick-feedback"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+                data-testid="forge-nav-quick-feedback"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Quick Feedback
+              </button>
+            </div>
           </aside>
         )}
 
-        <main className={cn("flex-1 p-6 md:p-8", projectId ? "max-w-6xl" : "max-w-7xl mx-auto")}>
+        <main className={cn("flex-1 min-w-0 p-6 md:p-8", projectId ? "max-w-6xl" : "max-w-7xl mx-auto w-full")}>
           {children}
         </main>
       </div>
-    </div>
+    </Layout>
   );
 }

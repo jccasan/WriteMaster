@@ -46,45 +46,45 @@ export default function NewProjectDialog({ onCreated }: NewProjectDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold" data-testid="button-new-project">
+        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" data-testid="button-new-project">
           <Plus className="w-4 h-4 mr-2" />
           New Project
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-gray-900 border-amber-900/30 text-gray-100">
+      <DialogContent className="bookplate rounded-sm">
         <DialogHeader>
-          <DialogTitle className="text-amber-400">Create New Project</DialogTitle>
+          <DialogTitle className="font-serif text-foreground">Create New Project</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div>
-            <Label className="text-gray-300">Title *</Label>
+            <Label className="text-foreground/80">Title *</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="My Novel"
-              className="bg-gray-800 border-gray-700 text-gray-100 focus:border-amber-500"
+              className="bg-background"
               data-testid="input-project-title"
             />
           </div>
           <div>
-            <Label className="text-gray-300">Author Name</Label>
+            <Label className="text-foreground/80">Author Name</Label>
             <Input
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
               placeholder="Author name"
-              className="bg-gray-800 border-gray-700 text-gray-100 focus:border-amber-500"
+              className="bg-background"
               data-testid="input-project-author"
             />
           </div>
           <div>
-            <Label className="text-gray-300">Genre</Label>
+            <Label className="text-foreground/80">Genre</Label>
             <Select value={genre} onValueChange={setGenre}>
-              <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100" data-testid="select-project-genre">
+              <SelectTrigger className="bg-background" data-testid="select-project-genre">
                 <SelectValue placeholder="Select genre" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700">
+              <SelectContent>
                 {GENRES.map((g) => (
-                  <SelectItem key={g} value={g} className="text-gray-100 focus:bg-amber-600/20">
+                  <SelectItem key={g} value={g}>
                     {g}
                   </SelectItem>
                 ))}
@@ -92,12 +92,12 @@ export default function NewProjectDialog({ onCreated }: NewProjectDialogProps) {
             </Select>
           </div>
           <div>
-            <Label className="text-gray-300">Description</Label>
+            <Label className="text-foreground/80">Description</Label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of your project..."
-              className="bg-gray-800 border-gray-700 text-gray-100 focus:border-amber-500"
+              className="bg-background"
               rows={3}
               data-testid="input-project-description"
             />
@@ -105,14 +105,14 @@ export default function NewProjectDialog({ onCreated }: NewProjectDialogProps) {
           <Button
             onClick={() => mutation.mutate()}
             disabled={!title.trim() || mutation.isPending}
-            className="w-full bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
             data-testid="button-create-project"
           >
             {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Create Project
           </Button>
           {mutation.isError && (
-            <p className="text-red-400 text-sm" data-testid="text-create-error">
+            <p className="text-destructive text-sm" data-testid="text-create-error">
               {(mutation.error as Error).message}
             </p>
           )}

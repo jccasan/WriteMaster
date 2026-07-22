@@ -20,8 +20,15 @@ import { Button } from "@/components/ui/button";
 function plainTextToHtml(text: string): string {
   if (!text) return "";
   if (text.trim().startsWith("<")) return text;
-  return text
-    .split(/\n\n+/)
+  // Normalize whitespace from docx/Google Docs imports: CRLF, vertical tabs
+  // (Word/Docs soft returns), form feeds, unicode line separators.
+  const normalized = text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\v\f\u2028\u2029]/g, "\n");
+  // Every line break starts a new paragraph — imported prose often separates
+  // paragraphs with single newlines (or soft returns normalized above).
+  return normalized
+    .split(/\n+/)
     .map(block => {
       const trimmed = block.trim();
       if (!trimmed) return "";
@@ -145,6 +152,12 @@ export default function ProseEditor({
     ],
     content: plainTextToHtml(content),
     editable: !readOnly,
+    onCreate: ({ editor }) => {
+      // Baseline is the round-tripped document, not the raw prop: spurious
+      // transactions on open (parser normalization etc.) then compare equal
+      // and never autosave. Only genuine edits differ from this baseline.
+      lastSavedContent.current = htmlToPlainText(editor.getHTML());
+    },
     onUpdate: ({ editor }) => {
       if (!onSave) return;
       const html = editor.getHTML();
@@ -174,9 +187,13 @@ export default function ProseEditor({
   useEffect(() => {
     if (!editor) return;
     if (isInternalUpdate.current) { isInternalUpdate.current = false; return; }
-    if (content !== lastSavedContent.current) {
-      lastSavedContent.current = content;
+    // Compare round-tripped forms so an equivalent refetch (same text, other
+    // whitespace conventions) doesn't reset the document and cursor.
+    const incoming = htmlToPlainText(plainTextToHtml(content));
+    if (incoming !== lastSavedContent.current) {
       editor.commands.setContent(plainTextToHtml(content));
+      // Same round-tripped baseline as onCreate, for the same reason.
+      lastSavedContent.current = htmlToPlainText(editor.getHTML());
       initialWordCount.current = wordCount(content);
     }
   }, [content, editor]);

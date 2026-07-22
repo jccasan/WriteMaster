@@ -44,8 +44,9 @@ export default function MyWork() {
       fetch("/api/books").then(r => r.json()).catch(() => []),
       fetch("/api/universe").then(r => r.json()).catch(() => []),
     ]);
-    setBooks(b);
-    setUniverses(u);
+    // Guard against error payloads ({error: ...}) so a failing API can't blank the page
+    setBooks(Array.isArray(b) ? b : []);
+    setUniverses(Array.isArray(u) ? u : []);
     setLoading(false);
   };
 
