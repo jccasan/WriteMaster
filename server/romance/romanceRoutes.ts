@@ -134,7 +134,7 @@ router.delete("/:id", async (req, res) => {
 // Parse an uploaded file and store chapters in the project.
 
 router.post("/:id/upload", upload.single("file"), async (req, res) => {
-  const project = await loadProject(req.params.id);
+  const project = await loadProject(String(req.params.id));
   if (!project) return res.status(404).json({ error: "Project not found" });
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 

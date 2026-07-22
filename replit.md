@@ -1,15 +1,16 @@
-# StoryDossier & STORY FORGE
+# WriteMaster — The Library
 
-Two parallel apps in one repo: **StoryDossier** (AI writing studio) and **STORY FORGE** (manuscript analysis studio).
+One writing studio organized like the making of a book: **Plan → Write → Edit → Publish**. The Plan/Write/Publish wings are the StoryDossier toolset; the Edit wing is STORY FORGE (manuscript analysis studio). The UI carries an old-library motif: aged paper, sepia ink, oxblood leather, antique brass; EB Garamond + Lora type (see `client/src/index.css` for the design tokens and utilities: `bookplate`, `catalog-label`, `library-rule`, `gilded`, `leather-panel`).
 
 ## Architecture
 
 - **Frontend**: React + TypeScript + Tailwind CSS + shadcn/ui, served via Vite
-- **Backend**: Express.js (TypeScript)
-- **StoryDossier Storage**: File-based JSON (data/templates/, data/projects/, data/chapters/, data/books/)
-- **STORY FORGE Storage**: Prisma ORM + SQLite (prisma/forge.db)
-- **AI**: Replit AI Integrations (Anthropic) — Claude Sonnet 4.6 for complex tasks, Claude Haiku 4.5 for fast tasks
-- **Navigation**: Shared `Layout` component with persistent top nav bar; `wouter` for routing
+- **Backend**: Express.js (TypeScript); routes split by domain under `server/routes/` (dossier, chapters, books, editor, publishing, pipelines, tools) with a thin `server/routes.ts` aggregator
+- **Storage**: One SQLite database (prisma/forge.db). Forge uses typed Prisma models; StoryDossier uses a generic `Doc` document store via `server/docStore.ts` (legacy data/*.json files auto-import on first run). Genre trope packs stay as seed files in data/templates/
+- **Pipelines**: All multi-step AI pipelines are declarative definitions run by `server/pipelineEngine.ts`
+- **Background jobs**: `server/jobs.ts` registry + `/api/jobs/:id`; client polls via the `useJob` hook (`client/src/hooks/useJob.ts`)
+- **AI**: Replit AI Integrations (Anthropic) — Claude Sonnet 4.6 for complex tasks, Claude Haiku 4.5 for fast tasks. `server/llm.ts` adds retries, token logging, and prompt caching of static rule blocks
+- **Navigation**: Shared `Layout` component — The Desk (my work) plus Plan / Write / Edit / Publish dropdowns; `wouter` for routing
 
 ## StoryDossier Routes
 
@@ -142,10 +143,14 @@ Accumulates across chunks: outline, character profiles, plot threads, world rule
 ## Key Files
 
 ### StoryDossier Backend
-- `server/routes.ts` — StoryDossier API endpoints
-- `server/pipeline.ts` — 11-step AI pipeline logic
-- `server/llm.ts` — Anthropic Claude wrapper (cheap/powerful mode)
-- `server/storage.ts` — File-based storage
+- `server/routes.ts` — thin aggregator mounting `server/routes/*` domain routers
+- `server/routes/` — dossier, chapters, books, editor, publishing, pipelines, tools, helpers
+- `server/pipelineEngine.ts` — declarative pipeline engine (step sequencing, previews)
+- `server/pipeline.ts` / `pipeline2.ts` / `pipeline3.ts` / `pipeline4.ts` — pipeline definitions (dossier, story docs, chapter writing, line edit)
+- `server/jobs.ts` — background job registry (`/api/jobs`)
+- `server/llm.ts` — Anthropic Claude wrapper (cheap/powerful, retries, prompt caching, token logging)
+- `server/storage.ts` — storage API (SQLite document store)
+- `server/docStore.ts` — generic Doc collection helpers + legacy JSON import
 - `server/writing-rules.ts` — AI writing rules system
 
 ### STORY FORGE Backend

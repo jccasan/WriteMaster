@@ -1,6 +1,11 @@
-import { callLLM } from "./llm";
-import { AUTHOR_VOICE_CONTRACT, AI_WRITING_RULES, STORY_ARCHITECTURE_RULES, ANTI_SLOP_FILTER, DEFAULT_DECISION_RULE, CONTEXT_ENGINEERING_RULES } from "./writing-rules";
+import {
+  PROSE_RULES,
+  STORY_ARCHITECTURE_RULES,
+  CONTEXT_RULES,
+  DEFAULT_DECISION_RULE,
+} from "./writing-rules";
 import { getSkill } from "./skillLoader";
+import { definePipeline, runPipelineStep, stepNameOf, llm, preview } from "./pipelineEngine";
 
 export interface TropePack {
   genre: string;
@@ -57,24 +62,6 @@ export function createEmptyProject(
   };
 }
 
-const STEP_NAMES = [
-  "Project Initialization",
-  "Subgenre Detection",
-  "Pitch Generation",
-  "Best Pitch Selection",
-  "Pitch Extraction",
-  "Story Dossier Draft",
-  "Emotional & Theme Check",
-  "Character Name Check",
-  "Dossier Revision I",
-  "Logic & Plausibility Check",
-  "Final Polish",
-];
-
-export function getStepName(step: number): string {
-  return STEP_NAMES[step] || "Unknown Step";
-}
-
 function tropePackToString(tp: TropePack): string {
   return `Genre: ${tp.display_name}
 Major Tropes:
@@ -89,116 +76,96 @@ World-Building Notes: ${tp.world_building_notes}
 Emotional Core: ${tp.emotional_core}`;
 }
 
-export async function runStep(state: ProjectState): Promise<{
-  updatedState: ProjectState;
-  outputPreview: string;
-}> {
-  const step = state.current_step;
-  const tp = tropePackToString(state.trope_pack!);
-  let outputPreview = "";
+// Static craft rules shared by the writing/editing steps. Passed as a system
+// prompt so Anthropic prompt caching reuses them across steps and runs.
+const RULES_SYSTEM = [PROSE_RULES, STORY_ARCHITECTURE_RULES, CONTEXT_RULES, DEFAULT_DECISION_RULE].join("\n\n");
 
-  switch (step) {
-    case 0: {
-      outputPreview = `Project initialized for genre: ${state.trope_pack!.display_name}`;
-      state.current_step = 1;
-      break;
-    }
-
-    case 1: {
-      const result = await callLLM(
-        `You are a literary genre expert. Below are genre tropes and a plot template.\nIdentify the specific subgenre these templates belong to.\nOutput ONLY the subgenre name, nothing else.\nTROPES: ${tp}`,
-        "cheap"
+const dossierPipeline = definePipeline<ProjectState>("Story Dossier Pipeline", [
+  {
+    name: "Project Initialization",
+    run: (s) => `Project initialized for genre: ${s.trope_pack!.display_name}`,
+  },
+  {
+    name: "Subgenre Detection",
+    run: async (s) => {
+      const result = await llm.cheap(
+        `You are a literary genre expert. Below are genre tropes and a plot template.\nIdentify the specific subgenre these templates belong to.\nOutput ONLY the subgenre name, nothing else.\nTROPES: ${tropePackToString(s.trope_pack!)}`
       );
-      state.subgenre_label = result.trim();
-      state.current_step = 2;
-      outputPreview = `Detected subgenre: ${state.subgenre_label}`;
-      break;
-    }
-
-    case 2: {
+      s.subgenre_label = result.trim();
+      return `Detected subgenre: ${s.subgenre_label}`;
+    },
+  },
+  {
+    name: "Pitch Generation",
+    run: async (s) => {
       const hookRubric = getSkill("HOOK_RUBRIC");
-      const result = await callLLM(
-        `You are a bestselling author's creative collaborator. Your task is to brainstorm 5 compelling story pitches for a new ${state.subgenre_label} book.
+      s.pitches = await llm.powerful(
+        `You are a bestselling author's creative collaborator. Your task is to brainstorm 5 compelling story pitches for a new ${s.subgenre_label} book.
 
 ${hookRubric}
 
-${AUTHOR_VOICE_CONTRACT}
-
-${AI_WRITING_RULES}
-
 GENRE TROPES AND PLOT TEMPLATE:
-${tp}
+${tropePackToString(s.trope_pack!)}
 
 AUTHOR BRAIN DUMP:
-${state.brain_dump}
+${s.brain_dump}
 
 Format each pitch in Markdown exactly as:
 ### Pitch [N]
 **Logline:** [one sentence]
 **Full Pitch:** [150-200 words]
-**Why it works:** [2-3 sentences explaining the hook]
-
-${ANTI_SLOP_FILTER}
-
-${DEFAULT_DECISION_RULE}`,
-        "powerful"
+**Why it works:** [2-3 sentences explaining the hook]`,
+        { system: RULES_SYSTEM }
       );
-      state.pitches = result;
-      state.current_step = 3;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 3: {
-      const result = await callLLM(
-        `You are a senior literary agent. Review these 5 story pitches and identify which single pitch is most commercially viable and emotionally compelling for the ${state.subgenre_label} genre.
+      return preview(s.pitches);
+    },
+  },
+  {
+    name: "Best Pitch Selection",
+    run: async (s) => {
+      const result = await llm.powerful(
+        `You are a senior literary agent. Review these 5 story pitches and identify which single pitch is most commercially viable and emotionally compelling for the ${s.subgenre_label} genre.
 
 PITCHES:
-${state.pitches}
+${s.pitches}
 
 Explain in detail why your chosen pitch is strongest. Consider: hook strength, originality, emotional resonance, genre fit, and marketability.
 End your response with a line that reads exactly:
 BEST PITCH: [N]
-where N is the pitch number.`,
-        "powerful"
+where N is the pitch number.`
       );
-      state.pitch_selection_reasoning = result;
+      s.pitch_selection_reasoning = result;
       const match = result.match(/BEST PITCH:\s*(\d)/);
       const bestIndex = match ? match[1] : "1";
-      state.current_step = 4;
-      outputPreview = `Selected Pitch ${bestIndex} as strongest. ${result.substring(0, 200)}...`;
-      break;
-    }
-
-    case 4: {
-      const match =
-        state.pitch_selection_reasoning.match(/BEST PITCH:\s*(\d)/);
+      return `Selected Pitch ${bestIndex} as strongest. ${result.substring(0, 200)}...`;
+    },
+  },
+  {
+    name: "Pitch Extraction",
+    run: async (s) => {
+      const match = s.pitch_selection_reasoning.match(/BEST PITCH:\s*(\d)/);
       const bestIndex = match ? match[1] : "1";
-      const result = await callLLM(
+      s.best_pitch = await llm.cheap(
         `From the pitches below, extract and reproduce ONLY the full text of Pitch ${bestIndex}, including its logline and full pitch sections. Output nothing else.
-PITCHES: ${state.pitches}`,
-        "cheap"
+PITCHES: ${s.pitches}`
       );
-      state.best_pitch = result;
-      state.current_step = 5;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 5: {
-      const result = await callLLM(
-        `You are a master story architect. Using the materials below, create a complete Story Dossier for a ${state.subgenre_label} novel.
+      return preview(s.best_pitch);
+    },
+  },
+  {
+    name: "Story Dossier Draft",
+    run: async (s) => {
+      s.dossier_v1 = await llm.powerful(
+        `You are a master story architect. Using the materials below, create a complete Story Dossier for a ${s.subgenre_label} novel.
 
 BEST PITCH:
-${state.best_pitch}
+${s.best_pitch}
 
 GENRE TROPES AND TEMPLATE:
-${tp}
+${tropePackToString(s.trope_pack!)}
 
 AUTHOR BRAIN DUMP:
-${state.brain_dump}
-
-${STORY_ARCHITECTURE_RULES}
+${s.brain_dump}
 
 The Story Dossier must include ALL of the following sections in Markdown:
 
@@ -236,128 +203,102 @@ For each theme: explain in concrete terms how it manifests in character choices,
 
 Include a ticking clock or escalating deadline that creates urgency across the plot.
 
-Be specific. No vague placeholders. Write as if you are handing this to a ghostwriter who needs to start writing tomorrow.
-
-${AUTHOR_VOICE_CONTRACT}
-
-${AI_WRITING_RULES}
-
-${CONTEXT_ENGINEERING_RULES}
-
-${ANTI_SLOP_FILTER}
-
-${DEFAULT_DECISION_RULE}`,
-        "powerful"
+Be specific. No vague placeholders. Write as if you are handing this to a ghostwriter who needs to start writing tomorrow.`,
+        { system: RULES_SYSTEM }
       );
-      state.dossier_v1 = result;
-      state.current_step = 6;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 6: {
+      return preview(s.dossier_v1);
+    },
+  },
+  {
+    name: "Emotional & Theme Check",
+    run: async (s) => {
       const emotionalCheck = getSkill("CHECKS_EMOTIONAL_CHECK");
-      const result = await callLLM(
+      s.emotional_check = await llm.powerful(
         `You are a developmental editor specializing in emotional resonance and theme.
 Analyze the Story Dossier below using the emotional check framework provided.
 
 STORY DOSSIER:
-${state.dossier_v1}
+${s.dossier_v1}
 
-${emotionalCheck}`,
-        "powerful"
+${emotionalCheck}`
       );
-      state.emotional_check = result;
-      state.current_step = 7;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 7: {
+      return preview(s.emotional_check);
+    },
+  },
+  {
+    name: "Character Name Check",
+    run: async (s) => {
       const nameBlacklist = getSkill("CHARACTER_NAME_BLACKLIST");
       const nameCheck = getSkill("CHECKS_CHARACTER_NAME_CHECK");
-      const result = await callLLM(
+      s.name_check = await llm.cheap(
         `You are a fiction editor. Review the character names in the Story Dossier below and flag any that read as AI-generated.
 
 ${nameBlacklist}
 
 STORY DOSSIER:
-${state.dossier_v1}
+${s.dossier_v1}
 
 AUTHOR BRAIN DUMP:
-${state.brain_dump}
+${s.brain_dump}
 
-${nameCheck}`,
-        "cheap"
+${nameCheck}`
       );
-      state.name_check = result;
-      state.current_step = 8;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 8: {
-      const result = await callLLM(
+      return preview(s.name_check);
+    },
+  },
+  {
+    name: "Dossier Revision I",
+    run: async (s) => {
+      s.dossier_v2 = await llm.cheap(
         `You are a precise editor. Your job is to implement specific improvement instructions into a Story Dossier without changing anything else.
 
 ORIGINAL STORY DOSSIER:
-${state.dossier_v1}
+${s.dossier_v1}
 
 EMOTIONAL IMPROVEMENT PLAN:
-${state.emotional_check}
+${s.emotional_check}
 
 CHARACTER NAME IMPROVEMENT PLAN:
-${state.name_check}
+${s.name_check}
 
 Instructions:
 - Implement ONLY the changes suggested in both improvement plans
 - Do NOT rewrite sections that weren't flagged
 - Do NOT add new content beyond what was suggested
 - Reproduce the ENTIRE dossier with changes applied
-- Maintain all original Markdown section headers
-
-${AUTHOR_VOICE_CONTRACT}
-
-${AI_WRITING_RULES}
-
-${ANTI_SLOP_FILTER}
-
-${DEFAULT_DECISION_RULE}`,
-        "cheap"
+- Maintain all original Markdown section headers`,
+        { system: RULES_SYSTEM }
       );
-      state.dossier_v2 = result;
-      state.current_step = 9;
-      outputPreview = "Dossier revised with emotional and name improvements.";
-      break;
-    }
-
-    case 9: {
+      return "Dossier revised with emotional and name improvements.";
+    },
+  },
+  {
+    name: "Logic & Plausibility Check",
+    run: async (s) => {
       const logicCheck = getSkill("CHECKS_LOGIC_CHECK");
-      const result = await callLLM(
+      s.logic_check = await llm.powerful(
         `You are auditing an early-stage story dossier for logical consistency and plausibility.
 
 <dossier>
-${state.dossier_v2}
+${s.dossier_v2}
 </dossier>
 
-${logicCheck}`,
-        "powerful"
+${logicCheck}`
       );
-      state.logic_check = result;
-      state.current_step = 10;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    case 10: {
-      const result = await callLLM(
+      return preview(s.logic_check);
+    },
+  },
+  {
+    name: "Final Polish",
+    run: async (s) => {
+      s.dossier_final = await llm.cheap(
         `You are a precise editor. Implement the fixes from the Logic Audit Report into the Story Dossier.
 
 STORY DOSSIER:
-${state.dossier_v2}
+${s.dossier_v2}
 
 LOGIC AUDIT REPORT:
-${state.logic_check}
+${s.logic_check}
 
 Instructions:
 - The audit report has 6 sections: Premise Logic, Character-World Fit, World-Building Coherence, Plot Setup Plausibility, Early-Stage Convenience Flags, and Specific Fixes
@@ -366,26 +307,21 @@ Instructions:
 - If Section 6 says "No significant issues identified," reproduce the dossier unchanged
 - Reproduce the ENTIRE dossier with changes applied
 - Maintain all Markdown section headers
-This is the FINAL version of the dossier.
-
-${AUTHOR_VOICE_CONTRACT}
-
-${AI_WRITING_RULES}
-
-${ANTI_SLOP_FILTER}
-
-${DEFAULT_DECISION_RULE}`,
-        "cheap"
+This is the FINAL version of the dossier.`,
+        { system: RULES_SYSTEM }
       );
-      state.dossier_final = result;
-      state.current_step = 11;
-      outputPreview = "Final dossier complete!";
-      break;
-    }
+      return "Final dossier complete!";
+    },
+  },
+]);
 
-    default:
-      throw new Error(`Invalid step: ${step}. Pipeline is already complete.`);
-  }
+export function getStepName(step: number): string {
+  return stepNameOf(dossierPipeline, step);
+}
 
-  return { updatedState: state, outputPreview };
+export async function runStep(state: ProjectState): Promise<{
+  updatedState: ProjectState;
+  outputPreview: string;
+}> {
+  return runPipelineStep(dossierPipeline, state);
 }

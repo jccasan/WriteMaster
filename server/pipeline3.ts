@@ -5,45 +5,20 @@
  *
  * Takes a book with (optional) P2 documents and writes a single chapter
  * through a 13-step pipeline that produces consistently higher quality prose
- * than the single-call approach.
- *
- * Steps:
- *   0   Init
- *   1   Context Selection — plot extract for this chapter          (cheap)
- *   2   Context Selection — characters for this chapter            (cheap)
- *   3   Context Selection — world-building for this chapter        (cheap)
- *   4   Word count estimate                                        (cheap)
- *   5   Plot scene brief                                           (powerful)
- *   6   Character scene brief  (sliders adjusted, no future leaks) (powerful)
- *   7   World-building scene brief  (no future leaks)              (cheap)
- *   8   Chronology check A — scene briefs vs. outline              (powerful)
- *   9   Scene brief consolidation + chrono fixes                   (cheap)
- *  10   First draft                                                (powerful)
- *  11   Chronology check B — new chapter vs. last 20k words        (powerful)
- *  12   Style check                                                (powerful)
- *  13   Final rewrite                                              (powerful)
+ * than the single-call approach: context selection → scene briefs →
+ * chronology checks → draft → style check → final rewrite.
  */
 
-import { callLLM } from "./llm";
 import {
   PROSE_RULES,
   SCENE_RULES,
   CONTEXT_RULES,
   DEFAULT_DECISION_RULE,
   NARRATIVE_SLIDER_RULES,
-  CHAPTER_SUMMARY_TEMPLATE,
-  // Legacy aliases — empty strings now, kept for steps not yet updated
-  AUTHOR_VOICE_CONTRACT,
-  AI_WRITING_RULES,
-  SCENE_WRITING_RULES,
-  CONTEXT_ENGINEERING_RULES,
-  ANTI_SLOP_FILTER,
-  LAYERED_GENERATION_WORKFLOW,
-  READER_VALUE_TEST,
-  RAW_MATERIAL_MINDSET,
 } from "./writing-rules";
 import { getSkill } from "./skillLoader";
 import type { NarrativeSliders } from "./storage";
+import { definePipeline, runPipelineStep, stepNameOf, llm, preview } from "./pipelineEngine";
 
 export interface ChapterPipelineState {
   pipeline3_id: string;
@@ -83,27 +58,6 @@ export interface ChapterPipelineState {
   final_draft: string;
 
   current_step: number;
-}
-
-const STEP_NAMES = [
-  "Initialization",
-  "Context Selection — Plot",
-  "Context Selection — Characters",
-  "Context Selection — World-Building",
-  "Word Count Estimation",
-  "Plot Scene Brief",
-  "Character Scene Brief",
-  "World-Building Scene Brief",
-  "Chronology Check A (Pre-Draft)",
-  "Scene Brief Consolidation",
-  "First Draft",
-  "Chronology Check B (Post-Draft)",
-  "Style Check",
-  "Final Rewrite",
-];
-
-export function getP3StepName(step: number): string {
-  return STEP_NAMES[step] ?? "Unknown Step";
 }
 
 export function createEmptyP3State(
@@ -168,62 +122,55 @@ function formatSliders(sliders: NarrativeSliders | null, characterName: string):
   return `\nNARRATIVE SLIDERS FOR ${characterName} (this chapter):\n${entries}\n`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// Static craft rules for the drafting steps, sent as a cacheable system
+// prompt. Identical across steps AND across chapters of a book, so prompt
+// caching pays off heavily on autopilot runs.
+const RULES_SYSTEM = [
+  PROSE_RULES,
+  SCENE_RULES,
+  CONTEXT_RULES,
+  NARRATIVE_SLIDER_RULES,
+  DEFAULT_DECISION_RULE,
+].join("\n\n");
 
-export async function runP3Step(state: ChapterPipelineState): Promise<{
-  updatedState: ChapterPipelineState;
-  outputPreview: string;
-}> {
-  const { chapter_number: cn, chapter_title: ct } = state;
-  let outputPreview = "";
-
-  const chronologyCheck = getSkill("CHECKS_CHRONOLOGY_CHECK");
-  const styleCheck = getSkill("CHECKS_STYLE_CHECK");
-  const cliffhangerGuide = getSkill("CLIFFHANGER_GUIDE");
-
-  switch (state.current_step) {
-
-    // ── 0: INIT ──────────────────────────────────────────────────────────────
-    case 0: {
-      outputPreview = `Pipeline 3 initialized for Chapter ${cn}: ${ct}`;
-      state.current_step = 1;
-      break;
-    }
-
-    // ── 1: PLOT EXTRACT ──────────────────────────────────────────────────────
-    case 1: {
-      const result = await callLLM(
-        `You are a parser. Your task is to extract ONLY the section of the book outline that corresponds to Chapter ${cn}: "${ct}".
+const p3Pipeline = definePipeline<ChapterPipelineState>("Pipeline 3", [
+  {
+    name: "Initialization",
+    run: (s) => `Pipeline 3 initialized for Chapter ${s.chapter_number}: ${s.chapter_title}`,
+  },
+  {
+    name: "Context Selection — Plot",
+    run: async (s) => {
+      const result = await llm.cheap(
+        `You are a parser. Your task is to extract ONLY the section of the book outline that corresponds to Chapter ${s.chapter_number}: "${s.chapter_title}".
 
 FULL OUTLINE:
-${state.full_outline}
+${s.full_outline}
 
 Instructions:
-- Find the entry for Chapter ${cn} (titled "${ct}" or similar)
+- Find the entry for Chapter ${s.chapter_number} (titled "${s.chapter_title}" or similar)
 - Reproduce that chapter's ENTIRE outline entry verbatim — every field, beat, and note
 - Do NOT include any other chapters
 - Do NOT summarize or paraphrase — verbatim extraction only
 - If you cannot find this exact chapter, output the closest matching entry and flag it
 
-Output ONLY the chapter outline text. Nothing else.`,
-        "cheap"
+Output ONLY the chapter outline text. Nothing else.`
       );
-      state.plot_extract = result.trim();
-      state.current_step = 2;
-      outputPreview = `Plot extract: ${result.substring(0, 200)}...`;
-      break;
-    }
+      s.plot_extract = result.trim();
+      return `Plot extract: ${result.substring(0, 200)}...`;
+    },
+  },
+  {
+    name: "Context Selection — Characters",
+    run: async (s) => {
+      const result = await llm.cheap(
+        `You are a context selector. Your task is to identify which characters are present or mentioned in Chapter ${s.chapter_number} and extract only their relevant profiles.
 
-    // ── 2: CHARACTER EXTRACT ─────────────────────────────────────────────────
-    case 2: {
-      const result = await callLLM(
-        `You are a context selector. Your task is to identify which characters are present or mentioned in Chapter ${cn} and extract only their relevant profiles.
-
-CHAPTER ${cn} OUTLINE:
-${state.plot_extract}
+CHAPTER ${s.chapter_number} OUTLINE:
+${s.plot_extract}
 
 FULL CHARACTER SHEET:
-${state.character_sheet}
+${s.character_sheet}
 
 Instructions:
 1. Read the chapter outline and identify:
@@ -246,26 +193,23 @@ Output in this format:
 
 ## MENTIONED CHARACTERS
 [Brief summaries only]`,
-        "cheap",
-        undefined,
-        8192
+        { maxTokens: 8192 }
       );
-      state.character_extract = result.trim();
-      state.current_step = 3;
-      outputPreview = `Character extract complete (${result.length} chars)`;
-      break;
-    }
+      s.character_extract = result.trim();
+      return `Character extract complete (${result.length} chars)`;
+    },
+  },
+  {
+    name: "Context Selection — World-Building",
+    run: async (s) => {
+      const result = await llm.cheap(
+        `You are a context selector. Extract only the world-building elements relevant to Chapter ${s.chapter_number}: "${s.chapter_title}".
 
-    // ── 3: WORLD-BUILDING EXTRACT ─────────────────────────────────────────────
-    case 3: {
-      const result = await callLLM(
-        `You are a context selector. Extract only the world-building elements relevant to Chapter ${cn}: "${ct}".
-
-CHAPTER ${cn} OUTLINE:
-${state.plot_extract}
+CHAPTER ${s.chapter_number} OUTLINE:
+${s.plot_extract}
 
 FULL WORLD-BUILDING SHEET:
-${state.world_building}
+${s.world_building}
 
 Instructions:
 1. Identify which locations, factions, rules, and world elements are active or referenced in this chapter
@@ -274,26 +218,23 @@ Instructions:
 4. Do NOT include world secrets whose reveal timing is marked as later than this chapter
 
 Output only the relevant world-building sections.`,
-        "cheap",
-        undefined,
-        8192
+        { maxTokens: 8192 }
       );
-      state.world_extract = result.trim();
-      state.current_step = 4;
-      outputPreview = `World-building extract complete (${result.length} chars)`;
-      break;
-    }
+      s.world_extract = result.trim();
+      return `World-building extract complete (${result.length} chars)`;
+    },
+  },
+  {
+    name: "Word Count Estimation",
+    run: async (s) => {
+      const raw = await llm.cheap(
+        `You are a story pacing specialist. Based on the chapter outline below, determine the appropriate word count for Chapter ${s.chapter_number}.
 
-    // ── 4: WORD COUNT ESTIMATE ───────────────────────────────────────────────
-    case 4: {
-      const raw = await callLLM(
-        `You are a story pacing specialist. Based on the chapter outline below, determine the appropriate word count for Chapter ${cn}.
-
-CHAPTER ${cn} OUTLINE:
-${state.plot_extract}
+CHAPTER ${s.chapter_number} OUTLINE:
+${s.plot_extract}
 
 FULL OUTLINE (for pacing context — how this chapter fits the whole):
-${state.full_outline}
+${s.full_outline}
 
 Rules:
 - Minimum: 1000 words
@@ -302,41 +243,38 @@ Rules:
 - Transitional or quiet chapters: lean toward the low end
 - Standard chapters: 2000-3500 words
 
-Analyze the scene density, emotional weight, and pacing position, then output ONLY the target word count as a single integer. No units, no explanation, no other text. Example: 2800`,
-        "cheap"
+Analyze the scene density, emotional weight, and pacing position, then output ONLY the target word count as a single integer. No units, no explanation, no other text. Example: 2800`
       );
       const parsed = parseInt(raw.trim().replace(/\D/g, ""), 10);
       const clamped = Math.min(5000, Math.max(1000, isNaN(parsed) ? 2500 : parsed));
       // Inflate by 25% since LLMs under-fill
-      state.word_count_target = Math.round(clamped * 1.25);
-      state.current_step = 5;
-      outputPreview = `Word count target: ${state.word_count_target} words (${clamped} base × 1.25)`;
-      break;
-    }
-
-    // ── 5: PLOT SCENE BRIEF ───────────────────────────────────────────────────
-    case 5: {
-      const result = await callLLM(
-        `You are a story architect creating a detailed Plot Scene Brief for Chapter ${cn}: "${ct}".
+      s.word_count_target = Math.round(clamped * 1.25);
+      return `Word count target: ${s.word_count_target} words (${clamped} base × 1.25)`;
+    },
+  },
+  {
+    name: "Plot Scene Brief",
+    run: async (s) => {
+      const cliffhangerGuide = getSkill("CLIFFHANGER_GUIDE");
+      const result = await llm.powerful(
+        `You are a story architect creating a detailed Plot Scene Brief for Chapter ${s.chapter_number}: "${s.chapter_title}".
 This brief will be handed to a novelist and must be specific enough to write from directly.
 
 CHAPTER OUTLINE:
-${state.plot_extract}
+${s.plot_extract}
 
 FULL OUTLINE (context — where this chapter sits):
-${state.full_outline}
+${s.full_outline}
 
 PREVIOUS CHAPTER TEXT (last 2000 words — where we left off):
-${state.previous_context || "(This is the first chapter)"}
-
-${CONTEXT_ENGINEERING_RULES}
+${s.previous_context || "(This is the first chapter)"}
 
 Create the PLOT SCENE BRIEF with these required sections:
 
-**Chapter:** Chapter ${cn} — ${ct}
+**Chapter:** Chapter ${s.chapter_number} — ${s.chapter_title}
 **POV:** [extract POV character from outline]
-**Tense:** ${state.tense}
-**Target Word Count:** ${state.word_count_target}
+**Tense:** ${s.tense}
+**Target Word Count:** ${s.word_count_target}
 
 **Plot (verbatim from outline):**
 [Copy the plot section from the chapter outline exactly]
@@ -355,36 +293,29 @@ For each scene in the chapter:
 ${cliffhangerGuide}
 
 **Author Notes:**
-${state.author_notes || "(None)"}`,
-        "powerful",
-        undefined,
-        6144
+${s.author_notes || "(None)"}`,
+        { system: RULES_SYSTEM, maxTokens: 6144 }
       );
-      state.plot_scene_brief = result.trim();
-      state.current_step = 6;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    // ── 6: CHARACTER SCENE BRIEF ──────────────────────────────────────────────
-    case 6: {
-      const slidersBlock = formatSliders(state.sliders, "POV character");
-      const result = await callLLM(
-        `You are a character director creating a Character Scene Brief for Chapter ${cn}: "${ct}".
+      s.plot_scene_brief = result.trim();
+      return preview(s.plot_scene_brief);
+    },
+  },
+  {
+    name: "Character Scene Brief",
+    run: async (s) => {
+      const slidersBlock = formatSliders(s.sliders, "POV character");
+      const result = await llm.powerful(
+        `You are a character director creating a Character Scene Brief for Chapter ${s.chapter_number}: "${s.chapter_title}".
 This brief ensures characters behave consistently with their psychology AND their current emotional state in this specific scene.
 
 PLOT SCENE BRIEF (what happens):
-${state.plot_scene_brief}
+${s.plot_scene_brief}
 
 CHARACTERS FOR THIS CHAPTER:
-${state.character_extract}
-
-NARRATIVE SLIDER SYSTEM:
-${NARRATIVE_SLIDER_RULES}
+${s.character_extract}
 ${slidersBlock}
-
 FULL OUTLINE (for future-proofing — do not reveal what comes after this chapter):
-${state.full_outline}
+${s.full_outline}
 
 Create the CHARACTER SCENE BRIEF with these required sections:
 
@@ -417,29 +348,26 @@ For each active character, produce a scene-specific version of their profile:
 
 ## SLIDER SETTINGS FOR THIS CHAPTER
 [For each active character: list only sliders that DEVIATE from their baseline, with the value and reason]`,
-        "powerful",
-        undefined,
-        8192
+        { system: RULES_SYSTEM, maxTokens: 8192 }
       );
-      state.character_scene_brief = result.trim();
-      state.current_step = 7;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    // ── 7: WORLD-BUILDING SCENE BRIEF ─────────────────────────────────────────
-    case 7: {
-      const result = await callLLM(
-        `You are a world-building editor creating a World Scene Brief for Chapter ${cn}: "${ct}".
+      s.character_scene_brief = result.trim();
+      return preview(s.character_scene_brief);
+    },
+  },
+  {
+    name: "World-Building Scene Brief",
+    run: async (s) => {
+      const result = await llm.cheap(
+        `You are a world-building editor creating a World Scene Brief for Chapter ${s.chapter_number}: "${s.chapter_title}".
 
 PLOT SCENE BRIEF:
-${state.plot_scene_brief}
+${s.plot_scene_brief}
 
 WORLD-BUILDING ELEMENTS FOR THIS CHAPTER:
-${state.world_extract}
+${s.world_extract}
 
 FULL OUTLINE (do not reveal world secrets scheduled for later):
-${state.full_outline}
+${s.full_outline}
 
 Create the WORLD SCENE BRIEF:
 
@@ -457,65 +385,61 @@ For each location used in this chapter:
 
 ## ATMOSPHERE NOTES
 [The specific sensory texture of this chapter's world — what makes "right now in this world" feel different from the default world state. What has the approaching conflict changed about the atmosphere?]`,
-        "cheap",
-        undefined,
-        4096
+        { maxTokens: 4096 }
       );
-      state.world_scene_brief = result.trim();
-      state.current_step = 8;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    // ── 8: CHRONOLOGY CHECK A (PRE-DRAFT) ─────────────────────────────────────
-    case 8: {
-      const result = await callLLM(
+      s.world_scene_brief = result.trim();
+      return preview(s.world_scene_brief);
+    },
+  },
+  {
+    name: "Chronology Check A (Pre-Draft)",
+    run: async (s) => {
+      const chronologyCheck = getSkill("CHECKS_CHRONOLOGY_CHECK");
+      const result = await llm.powerful(
         `You are a continuity editor. Run a Pre-Draft Chronology Check on the assembled scene briefs before the chapter is written.
 
-CHAPTER ${cn} SCENE BRIEFS:
+CHAPTER ${s.chapter_number} SCENE BRIEFS:
 
 PLOT BRIEF:
-${state.plot_scene_brief}
+${s.plot_scene_brief}
 
 CHARACTER BRIEF:
-${state.character_scene_brief}
+${s.character_scene_brief}
 
 WORLD BRIEF:
-${state.world_scene_brief}
+${s.world_scene_brief}
 
 FULL OUTLINE (authority — scene briefs must match this):
-${state.full_outline}
+${s.full_outline}
 
 ${chronologyCheck}
 
 Run VARIANT A (Pre-Draft Chronology Check) from the guide above.
 Check the scene briefs against the full outline for: timeline consistency, character state consistency, world state consistency, setup/payoff tracking.
 
-Output the PRE-DRAFT CHRONOLOGY REPORT as specified in the skill guide.`,
-        "powerful"
+Output the PRE-DRAFT CHRONOLOGY REPORT as specified in the skill guide.`
       );
-      state.chrono_check_a = result.trim();
-      state.current_step = 9;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    // ── 9: SCENE BRIEF CONSOLIDATION ─────────────────────────────────────────
-    case 9: {
-      const result = await callLLM(
+      s.chrono_check_a = result.trim();
+      return preview(s.chrono_check_a);
+    },
+  },
+  {
+    name: "Scene Brief Consolidation",
+    run: async (s) => {
+      const result = await llm.cheap(
         `You are a precise editor. Consolidate the three scene briefs into one unified Scene Brief, applying any corrections from the Pre-Draft Chronology Report.
 
 PLOT SCENE BRIEF:
-${state.plot_scene_brief}
+${s.plot_scene_brief}
 
 CHARACTER SCENE BRIEF:
-${state.character_scene_brief}
+${s.character_scene_brief}
 
 WORLD-BUILDING SCENE BRIEF:
-${state.world_scene_brief}
+${s.world_scene_brief}
 
 PRE-DRAFT CHRONOLOGY REPORT:
-${state.chrono_check_a}
+${s.chrono_check_a}
 
 Instructions:
 - Merge all three briefs into a single document
@@ -526,68 +450,56 @@ Instructions:
 - The result is the FINAL SCENE BRIEF used to write the chapter
 
 Output the complete unified Scene Brief.`,
-        "cheap",
-        undefined,
-        8192
+        { maxTokens: 8192 }
       );
-      state.consolidated_brief = result.trim();
-      state.current_step = 10;
-      outputPreview = "Scene Brief consolidated. Ready to write.";
-      break;
-    }
-
-    // ── 9b: BIBLE COMPLIANCE CHECK (if universe attached) ────────────────────
-    // This step runs automatically and is transparent — baked into step 10 context
-    // The check result is stored on state and injected into the first draft prompt
-    // No separate step number — runs as part of the transition to 10.
-
-    // ── 10: FIRST DRAFT ───────────────────────────────────────────────────────
-    case 10: {
+      s.consolidated_brief = result.trim();
+      return "Scene Brief consolidated. Ready to write.";
+    },
+  },
+  {
+    name: "First Draft",
+    run: async (s) => {
       // Run bible compliance check if universe is attached (cheap, pre-draft)
-      if (state.universe_id && !state.bible_compliance) {
+      if (s.universe_id && !s.bible_compliance) {
         try {
           const { checkSceneBriefAgainstBible } = await import("./universePipeline");
           const { getEffectiveBible } = await import("./universeStorage");
-          const bible = await getEffectiveBible(state.universe_id, state.series_id);
+          const bible = await getEffectiveBible(s.universe_id, s.series_id);
           if (bible.trim()) {
-            state.bible_compliance = await checkSceneBriefAgainstBible(
-              state.consolidated_brief, bible, state.chapter_number
+            s.bible_compliance = await checkSceneBriefAgainstBible(
+              s.consolidated_brief, bible, s.chapter_number
             );
           } else {
-            state.bible_compliance = "BIBLE COMPLIANCE: No bible content yet — check skipped.";
+            s.bible_compliance = "BIBLE COMPLIANCE: No bible content yet — check skipped.";
           }
         } catch {
-          state.bible_compliance = "BIBLE COMPLIANCE: Check failed — proceeding without it.";
+          s.bible_compliance = "BIBLE COMPLIANCE: Check failed — proceeding without it.";
         }
       }
 
-      const bibleSection = state.bible_compliance && !state.bible_compliance.includes("CLEAR") && !state.bible_compliance.includes("skipped") && !state.bible_compliance.includes("failed")
-        ? `\nBIBLE COMPLIANCE ISSUES TO AVOID:\n${state.bible_compliance}\n\nThe above conflicts between the scene brief and the story bible MUST be resolved before writing. Do not write anything that contradicts the story bible.\n`
+      const bibleSection = s.bible_compliance && !s.bible_compliance.includes("CLEAR") && !s.bible_compliance.includes("skipped") && !s.bible_compliance.includes("failed")
+        ? `\nBIBLE COMPLIANCE ISSUES TO AVOID:\n${s.bible_compliance}\n\nThe above conflicts between the scene brief and the story bible MUST be resolved before writing. Do not write anything that contradicts the story bible.\n`
         : "";
 
-      const styleSection = state.style_guide
-        ? `PROSE STYLE GUIDE (match this voice exactly):\n${state.style_guide}\n`
+      const styleSection = s.style_guide
+        ? `PROSE STYLE GUIDE (match this voice exactly):\n${s.style_guide}\n`
         : "";
 
-      // Build trope context if book has tropes set
+      // Build trope + dimension context if the book has them set
       let tropeBlock = "";
-      if (state.book_id) {
+      let dimensionBlock = "";
+      if (s.book_id) {
         try {
           const { buildTropePromptBlock } = await import("./tropes/tropeSystem");
-          const book = await (await import("./storage")).storage.getBook(state.book_id);
+          const book = await (await import("./storage")).storage.getBook(s.book_id);
           const tropeSelection = (book as any)?.tropes;
           if (tropeSelection?.primary) {
             tropeBlock = buildTropePromptBlock(tropeSelection, "full");
           }
         } catch { /* non-blocking */ }
-      }
-
-      // Build dimension context if book has dimensions set
-      let dimensionBlock = "";
-      if (state.book_id) {
         try {
           const { buildDimensionPromptBlock } = await import("./dimensions/dimensionSystem");
-          const book = await (await import("./storage")).storage.getBook(state.book_id);
+          const book = await (await import("./storage")).storage.getBook(s.book_id);
           const dimSelections = (book as any)?.dimensions;
           if (dimSelections && Object.keys(dimSelections).length > 0) {
             dimensionBlock = buildDimensionPromptBlock(dimSelections, "write");
@@ -595,8 +507,8 @@ Output the complete unified Scene Brief.`,
         } catch { /* non-blocking */ }
       }
 
-      const result = await callLLM(
-        `You are a skilled novelist. Write Chapter ${cn}: "${ct}" as polished, publication-ready prose.
+      const result = await llm.powerful(
+        `You are a skilled novelist. Write Chapter ${s.chapter_number}: "${s.chapter_title}" as polished, publication-ready prose.
 
 ${styleSection}
 
@@ -604,13 +516,7 @@ ${bibleSection}
 
 ${tropeBlock ? `${tropeBlock}\n` : ""}${dimensionBlock ? `${dimensionBlock}\n` : ""}
 SCENE BRIEF — follow every element:
-${state.consolidated_brief}
-
-${CONTEXT_RULES}
-
-${PROSE_RULES}
-
-${SCENE_RULES}
+${s.consolidated_brief}
 
 ADDICTION LOOP — required in every chapter:
 - STAKES: Establish character + specific risk + urgency in the first 200 words
@@ -618,107 +524,96 @@ ADDICTION LOOP — required in every chapter:
 - HEAD FAKE: Break that prediction in a way that makes retroactive sense
 - RE-HOOK: Open the next loop in the same beat as this chapter's resolution — no gap
 
-${DEFAULT_DECISION_RULE}
-
-Write in ${state.tense} tense. Target ${state.word_count_target} words.
+Write in ${s.tense} tense. Target ${s.word_count_target} words.
 Begin with the chapter title as a Markdown heading.
 Follow the scene brief exactly. Output ONLY the chapter prose.`,
-        "powerful",
-        undefined,
-        16384
+        { system: RULES_SYSTEM, maxTokens: 16384 }
       );
-      state.first_draft = result.trim();
-      state.current_step = 11;
-      outputPreview = `First draft complete (${result.length} chars, ~${Math.round(result.split(/\s+/).length)} words)`;
-      break;
-    }
-
-    // ── 11: CHRONOLOGY CHECK B (POST-DRAFT) ──────────────────────────────────
-    case 11: {
-      const priorText = state.long_context
-        ? `PRIOR CHAPTERS TEXT (last ~20,000 words):\n${state.long_context}`
+      s.first_draft = result.trim();
+      return `First draft complete (${result.length} chars, ~${Math.round(result.split(/\s+/).length)} words)`;
+    },
+  },
+  {
+    name: "Chronology Check B (Post-Draft)",
+    run: async (s) => {
+      const chronologyCheck = getSkill("CHECKS_CHRONOLOGY_CHECK");
+      const priorText = s.long_context
+        ? `PRIOR CHAPTERS TEXT (last ~20,000 words):\n${s.long_context}`
         : "(No prior chapters — this is the opening chapter)";
 
-      const result = await callLLM(
+      const result = await llm.powerful(
         `You are a continuity editor. Run a Post-Draft Chronology Check on the newly written chapter.
 
 ${priorText}
 
-NEWLY WRITTEN CHAPTER ${cn}:
-${state.first_draft}
+NEWLY WRITTEN CHAPTER ${s.chapter_number}:
+${s.first_draft}
 
 ${chronologyCheck}
 
 Run VARIANT B (Post-Draft Chronology Check) from the guide above.
 Check the new chapter against all prior text for: repeated introductions, contradicted facts, relationship state contradictions, active threat continuity, open loop status.
 
-Output the POST-DRAFT CHRONOLOGY REPORT as specified in the skill guide.`,
-        "powerful"
+Output the POST-DRAFT CHRONOLOGY REPORT as specified in the skill guide.`
       );
-      state.chrono_check_b = result.trim();
-      state.current_step = 12;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    // ── 12: STYLE CHECK ───────────────────────────────────────────────────────
-    case 12: {
-      if (!state.style_guide) {
+      s.chrono_check_b = result.trim();
+      return preview(s.chrono_check_b);
+    },
+  },
+  {
+    name: "Style Check",
+    run: async (s) => {
+      if (!s.style_guide) {
         // No style guide — skip this step
-        state.style_check = "SKIPPED — no prose style guide provided for this book.";
-        state.current_step = 13;
-        outputPreview = "Style check skipped (no style guide on file).";
-        break;
+        s.style_check = "SKIPPED — no prose style guide provided for this book.";
+        return "Style check skipped (no style guide on file).";
       }
 
-      const result = await callLLM(
+      const styleCheck = getSkill("CHECKS_STYLE_CHECK");
+      const result = await llm.powerful(
         `You are a prose style editor. Check the chapter draft against the author's style guide.
 
 PROSE STYLE GUIDE:
-${state.style_guide}
+${s.style_guide}
 
-CHAPTER ${cn} DRAFT:
-${state.first_draft}
+CHAPTER ${s.chapter_number} DRAFT:
+${s.first_draft}
 
 ${styleCheck}
 
 Run the Style Check using the framework above. Check all seven dimensions: sentence architecture, vocabulary/diction, interiority, emotional rendering, dialogue, pacing/rhythm, distinctive patterns.
 
-Output the STYLE IMPROVEMENT PLAN as specified.`,
-        "powerful"
+Output the STYLE IMPROVEMENT PLAN as specified.`
       );
-      state.style_check = result.trim();
-      state.current_step = 13;
-      outputPreview = result.substring(0, 300) + "...";
-      break;
-    }
-
-    // ── 13: FINAL REWRITE ─────────────────────────────────────────────────────
-    case 13: {
-      const hasStyleIssues = state.style_check && !state.style_check.startsWith("SKIPPED");
-      const hasChronoIssues = !state.chrono_check_b.includes("PASS");
+      s.style_check = result.trim();
+      return preview(s.style_check);
+    },
+  },
+  {
+    name: "Final Rewrite",
+    run: async (s) => {
+      const hasStyleIssues = s.style_check && !s.style_check.startsWith("SKIPPED");
+      const hasChronoIssues = !s.chrono_check_b.includes("PASS");
 
       if (!hasStyleIssues && !hasChronoIssues) {
         // Both checks passed — first draft is the final draft
-        state.final_draft = state.first_draft;
-        state.current_step = 14;
-        outputPreview = "Both checks passed. First draft accepted as final.";
-        break;
+        s.final_draft = s.first_draft;
+        return "Both checks passed. First draft accepted as final.";
       }
 
       const chronoSection = hasChronoIssues
-        ? `POST-DRAFT CHRONOLOGY REPORT (fix these issues):\n${state.chrono_check_b}\n`
+        ? `POST-DRAFT CHRONOLOGY REPORT (fix these issues):\n${s.chrono_check_b}\n`
         : "CHRONOLOGY: No issues found.\n";
 
       const styleSection = hasStyleIssues
-        ? `STYLE IMPROVEMENT PLAN (implement these fixes):\n${state.style_check}\n`
+        ? `STYLE IMPROVEMENT PLAN (implement these fixes):\n${s.style_check}\n`
         : "STYLE: No issues found.\n";
 
-      const result = await callLLM(
-        `You are a precise editor. Rewrite Chapter ${cn} implementing the specific fixes from the reports below.
+      const result = await llm.powerful(
+        `You are a precise editor. Rewrite Chapter ${s.chapter_number} implementing the specific fixes from the reports below.
 
 ORIGINAL CHAPTER DRAFT:
-${state.first_draft}
+${s.first_draft}
 
 ${chronoSection}
 
@@ -730,25 +625,25 @@ Instructions:
 - Do NOT change the chapter's structure, scene order, or cliffhanger
 - Reproduce the ENTIRE chapter with fixes applied
 - Maintain the prose voice established in the first draft
-- Output in ${state.tense} tense throughout all narration
+- Output in ${s.tense} tense throughout all narration
 - Begin with the chapter title heading
 
-${PROSE_RULES}
-
 Output ONLY the chapter prose.`,
-        "powerful",
-        undefined,
-        16384
+        { system: RULES_SYSTEM, maxTokens: 16384 }
       );
-      state.final_draft = result.trim();
-      state.current_step = 14;
-      outputPreview = `Final rewrite complete (${result.length} chars)`;
-      break;
-    }
+      s.final_draft = result.trim();
+      return `Final rewrite complete (${result.length} chars)`;
+    },
+  },
+]);
 
-    default:
-      throw new Error(`Pipeline 3 step ${state.current_step} is out of range. Pipeline is complete.`);
-  }
+export function getP3StepName(step: number): string {
+  return stepNameOf(p3Pipeline, step);
+}
 
-  return { updatedState: state, outputPreview };
+export async function runP3Step(state: ChapterPipelineState): Promise<{
+  updatedState: ChapterPipelineState;
+  outputPreview: string;
+}> {
+  return runPipelineStep(p3Pipeline, state);
 }

@@ -94,10 +94,9 @@ export default function UniverseDashboard() {
     <Layout>
       <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
-            <Globe className="w-6 h-6 text-primary" />
-          </div>
-          <h2 className="text-4xl font-serif font-bold mb-3">Universes</h2>
+          <p className="catalog-label text-xs mb-3">Wing I — Plan</p>
+          <h2 className="text-4xl font-serif font-bold mb-3">Universes & Series</h2>
+          <div className="library-rule max-w-xs mx-auto mb-4" />
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
             Organize your series and books under shared story bibles, character menageries, and world states.
           </p>

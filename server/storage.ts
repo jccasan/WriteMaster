@@ -1,4 +1,4 @@
-import { readFile, writeFile, readdir, mkdir, unlink } from "fs/promises";
+import { readFile, readdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -7,14 +7,22 @@ import { createEmptyProject } from "./pipeline";
 import type { Pipeline2State } from "./pipeline2";
 import type { ChapterPipelineState } from "./pipeline3";
 import type { LineEditState } from "./pipeline4";
+import { docGet, docPut, docDelete, docList, importLegacyDir } from "./docStore";
 
+// Genre trope packs are seed content that ships with the app — they stay as
+// files under data/templates and are tracked in git.
 const TEMPLATES_DIR = path.resolve("data/templates");
-const PROJECTS_DIR = path.resolve("data/projects");
-const CHAPTERS_DIR = path.resolve("data/chapters");
-const BOOKS_DIR = path.resolve("data/books");
-const PIPELINE2_DIR = path.resolve("data/pipeline2");
-const PIPELINE3_DIR = path.resolve("data/pipeline3");
-const PIPELINE4_DIR = path.resolve("data/pipeline4");
+
+// Everything user-generated lives in the SQLite document store, in these
+// collections (formerly folders of JSON files under data/).
+const COLLECTIONS = {
+  projects: "projects",
+  chapters: "chapters",
+  books: "books",
+  pipeline2: "pipeline2",
+  pipeline3: "pipeline3",
+  pipeline4: "pipeline4",
+} as const;
 
 const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 
@@ -23,16 +31,6 @@ function validateId(id: string): string {
     throw new Error("Invalid ID");
   }
   return id;
-}
-
-async function ensureDirs() {
-  if (!existsSync(TEMPLATES_DIR)) await mkdir(TEMPLATES_DIR, { recursive: true });
-  if (!existsSync(PROJECTS_DIR)) await mkdir(PROJECTS_DIR, { recursive: true });
-  if (!existsSync(CHAPTERS_DIR)) await mkdir(CHAPTERS_DIR, { recursive: true });
-  if (!existsSync(BOOKS_DIR)) await mkdir(BOOKS_DIR, { recursive: true });
-  if (!existsSync(PIPELINE2_DIR)) await mkdir(PIPELINE2_DIR, { recursive: true });
-  if (!existsSync(PIPELINE3_DIR)) await mkdir(PIPELINE3_DIR, { recursive: true });
-  if (!existsSync(PIPELINE4_DIR)) await mkdir(PIPELINE4_DIR, { recursive: true });
 }
 
 export interface ChapterElement {
@@ -148,10 +146,32 @@ export interface IStorage {
   listP4States(bookId: string): Promise<Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }>>;
 }
 
-export class FileStorage implements IStorage {
-  constructor() {
-    ensureDirs();
+/**
+ * SQLite-backed storage (Prisma document store). Public API is unchanged
+ * from the old FileStorage; only the persistence layer moved. On first use
+ * it imports any legacy data/*.json files into the database, leaving the
+ * files on disk as a backup.
+ */
+export class DocStorage implements IStorage {
+  private ready: Promise<void> | null = null;
+
+  private ensureReady(): Promise<void> {
+    if (!this.ready) {
+      this.ready = (async () => {
+        await importLegacyDir(COLLECTIONS.projects, "data/projects");
+        await importLegacyDir(COLLECTIONS.chapters, "data/chapters");
+        await importLegacyDir(COLLECTIONS.books, "data/books");
+        await importLegacyDir(COLLECTIONS.pipeline2, "data/pipeline2");
+        await importLegacyDir(COLLECTIONS.pipeline3, "data/pipeline3");
+        await importLegacyDir(COLLECTIONS.pipeline4, "data/pipeline4");
+      })().catch((err) => {
+        console.error("[storage] Legacy import failed:", err);
+      });
+    }
+    return this.ready;
   }
+
+  // ── Genre templates (seed files, read-only) ───────────────────────────────
 
   async getGenres(): Promise<Array<{ id: string; display_name: string }>> {
     const files = await readdir(TEMPLATES_DIR);
@@ -172,6 +192,8 @@ export class FileStorage implements IStorage {
     return JSON.parse(content) as TropePack;
   }
 
+  // ── Dossier projects ──────────────────────────────────────────────────────
+
   async createProject(brainDump: string, genre: string): Promise<ProjectState> {
     const template = await this.getTemplate(genre);
     if (!template) throw new Error(`Genre template not found: ${genre}`);
@@ -182,85 +204,64 @@ export class FileStorage implements IStorage {
   }
 
   async getProject(projectId: string): Promise<ProjectState | null> {
-    const filePath = path.join(PROJECTS_DIR, `${projectId}.json`);
-    if (!existsSync(filePath)) return null;
-    const content = await readFile(filePath, "utf-8");
-    return JSON.parse(content) as ProjectState;
+    await this.ensureReady();
+    return docGet<ProjectState>(COLLECTIONS.projects, projectId);
   }
 
   async saveProject(state: ProjectState): Promise<void> {
-    const filePath = path.join(PROJECTS_DIR, `${state.project_id}.json`);
-    await writeFile(filePath, JSON.stringify(state, null, 2));
+    await this.ensureReady();
+    await docPut(COLLECTIONS.projects, state.project_id, state);
   }
 
   async listProjects(): Promise<Array<{ id: string; created_at: string; genre: string; current_step: number; best_pitch: string }>> {
-    if (!existsSync(PROJECTS_DIR)) return [];
-    const files = await readdir(PROJECTS_DIR);
-    const projects: Array<{ id: string; created_at: string; genre: string; current_step: number; best_pitch: string }> = [];
-    for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-      try {
-        const content = await readFile(path.join(PROJECTS_DIR, file), "utf-8");
-        const data = JSON.parse(content) as ProjectState;
-        projects.push({
-          id: data.project_id,
-          created_at: data.created_at,
-          genre: data.genre,
-          current_step: data.current_step,
-          best_pitch: data.best_pitch || "",
-        });
-      } catch {
-        continue;
-      }
-    }
-    return projects.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    await this.ensureReady();
+    const all = await docList<ProjectState>(COLLECTIONS.projects);
+    return all
+      .map((data) => ({
+        id: data.project_id,
+        created_at: data.created_at,
+        genre: data.genre,
+        current_step: data.current_step,
+        best_pitch: data.best_pitch || "",
+      }))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
+  // ── Chapter analyzer sessions ─────────────────────────────────────────────
+
   async listChapterSessions(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; has_rewrite: boolean }>> {
-    if (!existsSync(CHAPTERS_DIR)) return [];
-    const files = await readdir(CHAPTERS_DIR);
-    const sessions: Array<{ id: string; title: string; created_at: string; updated_at: string; has_rewrite: boolean }> = [];
-    for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-      try {
-        const content = await readFile(path.join(CHAPTERS_DIR, file), "utf-8");
-        const data = JSON.parse(content) as ChapterSession;
-        sessions.push({
-          id: data.id,
-          title: data.title,
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-          has_rewrite: !!data.rewritten_chapter,
-        });
-      } catch {
-        continue;
-      }
-    }
-    sessions.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-    return sessions;
+    await this.ensureReady();
+    const all = await docList<ChapterSession>(COLLECTIONS.chapters);
+    return all
+      .map((data) => ({
+        id: data.id,
+        title: data.title,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        has_rewrite: !!data.rewritten_chapter,
+      }))
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   }
 
   async getChapterSession(id: string): Promise<ChapterSession | null> {
     validateId(id);
-    const filePath = path.join(CHAPTERS_DIR, `${id}.json`);
-    if (!existsSync(filePath)) return null;
-    const content = await readFile(filePath, "utf-8");
-    return JSON.parse(content) as ChapterSession;
+    await this.ensureReady();
+    return docGet<ChapterSession>(COLLECTIONS.chapters, id);
   }
 
   async saveChapterSession(session: ChapterSession): Promise<void> {
     validateId(session.id);
-    const filePath = path.join(CHAPTERS_DIR, `${session.id}.json`);
-    await writeFile(filePath, JSON.stringify(session, null, 2));
+    await this.ensureReady();
+    await docPut(COLLECTIONS.chapters, session.id, session);
   }
 
   async deleteChapterSession(id: string): Promise<boolean> {
     validateId(id);
-    const filePath = path.join(CHAPTERS_DIR, `${id}.json`);
-    if (!existsSync(filePath)) return false;
-    await unlink(filePath);
-    return true;
+    await this.ensureReady();
+    return docDelete(COLLECTIONS.chapters, id);
   }
+
+  // ── Books ─────────────────────────────────────────────────────────────────
 
   async createBook(sourceProjectId: string | null, brainDump: string, dossier: string, title: string): Promise<BookProject> {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -282,158 +283,113 @@ export class FileStorage implements IStorage {
 
   async getBook(id: string): Promise<BookProject | null> {
     validateId(id);
-    const filePath = path.join(BOOKS_DIR, `${id}.json`);
-    if (!existsSync(filePath)) return null;
-    const content = await readFile(filePath, "utf-8");
-    return JSON.parse(content) as BookProject;
+    await this.ensureReady();
+    return docGet<BookProject>(COLLECTIONS.books, id);
   }
 
   async saveBook(book: BookProject): Promise<void> {
     validateId(book.id);
+    await this.ensureReady();
     book.updated_at = new Date().toISOString();
-    const filePath = path.join(BOOKS_DIR, `${book.id}.json`);
-    await writeFile(filePath, JSON.stringify(book, null, 2));
+    await docPut(COLLECTIONS.books, book.id, book);
   }
 
   async listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number; last_written_chapter: number | null; last_written_chapter_title: string | null }>> {
-    if (!existsSync(BOOKS_DIR)) return [];
-    const files = await readdir(BOOKS_DIR);
-    const books: Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number; last_written_chapter: number | null; last_written_chapter_title: string | null }> = [];
-    for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-      try {
-        const content = await readFile(path.join(BOOKS_DIR, file), "utf-8");
-        const data = JSON.parse(content) as BookProject;
-        // Find the most recently active chapter — highest written/committed chapter
-        const writtenChapters = data.chapters
-          .filter(c => c.status === "written" || c.status === "committed");
-        const lastChapter = writtenChapters.length > 0
-          ? writtenChapters[writtenChapters.length - 1]
-          : data.chapters.find(c => c.status === "outlined") ?? null;
-        books.push({
-          id: data.id,
-          title: data.title,
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-          chapter_count: data.chapters.length,
-          chapters_written: writtenChapters.length,
-          last_written_chapter: lastChapter?.chapter_number ?? null,
-          last_written_chapter_title: lastChapter?.title ?? null,
-        });
-      } catch {
-        continue;
-      }
-    }
+    await this.ensureReady();
+    const all = await docList<BookProject>(COLLECTIONS.books);
+    const books = all.map((data) => {
+      // Find the most recently active chapter — highest written/committed chapter
+      const writtenChapters = data.chapters
+        .filter(c => c.status === "written" || c.status === "committed");
+      const lastChapter = writtenChapters.length > 0
+        ? writtenChapters[writtenChapters.length - 1]
+        : data.chapters.find(c => c.status === "outlined") ?? null;
+      return {
+        id: data.id,
+        title: data.title,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        chapter_count: data.chapters.length,
+        chapters_written: writtenChapters.length,
+        last_written_chapter: lastChapter?.chapter_number ?? null,
+        last_written_chapter_title: lastChapter?.title ?? null,
+      };
+    });
     books.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
     return books;
   }
 
   async deleteBook(id: string): Promise<boolean> {
     validateId(id);
-    const filePath = path.join(BOOKS_DIR, `${id}.json`);
-    if (!existsSync(filePath)) return false;
-    await unlink(filePath);
-    return true;
+    await this.ensureReady();
+    return docDelete(COLLECTIONS.books, id);
   }
 
   // ── Pipeline 2 ────────────────────────────────────────────────────────────
 
   async getP2State(id: string): Promise<Pipeline2State | null> {
     validateId(id);
-    const filePath = path.join(PIPELINE2_DIR, `${id}.json`);
-    if (!existsSync(filePath)) return null;
-    const content = await readFile(filePath, "utf-8");
-    return JSON.parse(content) as Pipeline2State;
+    await this.ensureReady();
+    return docGet<Pipeline2State>(COLLECTIONS.pipeline2, id);
   }
 
   async saveP2State(state: Pipeline2State): Promise<void> {
     validateId(state.pipeline2_id);
-    const filePath = path.join(PIPELINE2_DIR, `${state.pipeline2_id}.json`);
-    await writeFile(filePath, JSON.stringify(state, null, 2), "utf-8");
+    await this.ensureReady();
+    await docPut(COLLECTIONS.pipeline2, state.pipeline2_id, state);
   }
 
   async listP2States(bookId: string): Promise<Array<{ id: string; book_id: string; created_at: string; current_step: number }>> {
-    if (!existsSync(PIPELINE2_DIR)) return [];
-    const files = await readdir(PIPELINE2_DIR);
-    const results: Array<{ id: string; book_id: string; created_at: string; current_step: number }> = [];
-    for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-      try {
-        const content = await readFile(path.join(PIPELINE2_DIR, file), "utf-8");
-        const data = JSON.parse(content) as Pipeline2State;
-        if (data.book_id === bookId) {
-          results.push({ id: data.pipeline2_id, book_id: data.book_id, created_at: data.created_at, current_step: data.current_step });
-        }
-      } catch { continue; }
-    }
-    return results;
+    await this.ensureReady();
+    const all = await docList<Pipeline2State>(COLLECTIONS.pipeline2);
+    return all
+      .filter((data) => data.book_id === bookId)
+      .map((data) => ({ id: data.pipeline2_id, book_id: data.book_id, created_at: data.created_at, current_step: data.current_step }));
   }
 
   // ── Pipeline 3 ────────────────────────────────────────────────────────────
 
   async getP3State(id: string): Promise<ChapterPipelineState | null> {
     validateId(id);
-    const filePath = path.join(PIPELINE3_DIR, `${id}.json`);
-    if (!existsSync(filePath)) return null;
-    const content = await readFile(filePath, "utf-8");
-    return JSON.parse(content) as ChapterPipelineState;
+    await this.ensureReady();
+    return docGet<ChapterPipelineState>(COLLECTIONS.pipeline3, id);
   }
 
   async saveP3State(state: ChapterPipelineState): Promise<void> {
     validateId(state.pipeline3_id);
-    const filePath = path.join(PIPELINE3_DIR, `${state.pipeline3_id}.json`);
-    await writeFile(filePath, JSON.stringify(state, null, 2), "utf-8");
+    await this.ensureReady();
+    await docPut(COLLECTIONS.pipeline3, state.pipeline3_id, state);
   }
 
   async listP3States(bookId: string): Promise<Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }>> {
-    if (!existsSync(PIPELINE3_DIR)) return [];
-    const files = await readdir(PIPELINE3_DIR);
-    const results: Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }> = [];
-    for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-      try {
-        const content = await readFile(path.join(PIPELINE3_DIR, file), "utf-8");
-        const data = JSON.parse(content) as ChapterPipelineState;
-        if (data.book_id === bookId) {
-          results.push({ id: data.pipeline3_id, book_id: data.book_id, chapter_number: data.chapter_number, created_at: data.created_at, current_step: data.current_step });
-        }
-      } catch { continue; }
-    }
-    return results;
+    await this.ensureReady();
+    const all = await docList<ChapterPipelineState>(COLLECTIONS.pipeline3);
+    return all
+      .filter((data) => data.book_id === bookId)
+      .map((data) => ({ id: data.pipeline3_id, book_id: data.book_id, chapter_number: data.chapter_number, created_at: data.created_at, current_step: data.current_step }));
   }
 
   // ── Pipeline 4 ────────────────────────────────────────────────────────────
 
   async getP4State(id: string): Promise<LineEditState | null> {
     validateId(id);
-    const filePath = path.join(PIPELINE4_DIR, `${id}.json`);
-    if (!existsSync(filePath)) return null;
-    const content = await readFile(filePath, "utf-8");
-    return JSON.parse(content) as LineEditState;
+    await this.ensureReady();
+    return docGet<LineEditState>(COLLECTIONS.pipeline4, id);
   }
 
   async saveP4State(state: LineEditState): Promise<void> {
     validateId(state.pipeline4_id);
-    const filePath = path.join(PIPELINE4_DIR, `${state.pipeline4_id}.json`);
-    await writeFile(filePath, JSON.stringify(state, null, 2), "utf-8");
+    await this.ensureReady();
+    await docPut(COLLECTIONS.pipeline4, state.pipeline4_id, state);
   }
 
   async listP4States(bookId: string): Promise<Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }>> {
-    if (!existsSync(PIPELINE4_DIR)) return [];
-    const files = await readdir(PIPELINE4_DIR);
-    const results: Array<{ id: string; book_id: string; chapter_number: number; created_at: string; current_step: number }> = [];
-    for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-      try {
-        const content = await readFile(path.join(PIPELINE4_DIR, file), "utf-8");
-        const data = JSON.parse(content) as LineEditState;
-        if (data.book_id === bookId) {
-          results.push({ id: data.pipeline4_id, book_id: data.book_id, chapter_number: data.chapter_number, created_at: data.created_at, current_step: data.current_step });
-        }
-      } catch { continue; }
-    }
-    return results;
+    await this.ensureReady();
+    const all = await docList<LineEditState>(COLLECTIONS.pipeline4);
+    return all
+      .filter((data) => data.book_id === bookId)
+      .map((data) => ({ id: data.pipeline4_id, book_id: data.book_id, chapter_number: data.chapter_number, created_at: data.created_at, current_step: data.current_step }));
   }
 }
 
-export const storage = new FileStorage();
+export const storage = new DocStorage();

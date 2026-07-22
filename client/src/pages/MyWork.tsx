@@ -116,7 +116,10 @@ export default function MyWork() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-serif font-bold">My Work</h1>
+          <div>
+            <p className="catalog-label text-xs mb-1">Everything you're working on</p>
+            <h1 className="text-2xl font-serif font-bold">The Desk</h1>
+          </div>
           <div className="flex gap-2">
             <Button
               variant="outline"

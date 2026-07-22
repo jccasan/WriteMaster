@@ -8,26 +8,12 @@
  * pipeline misses: micro-level AI tells, prose rhythm issues, and the specific
  * patterns that trained readers flag.
  *
- * Operates in chunks to stay within context limits and avoid rewriting
- * more than necessary. Uses the check-plan-rewrite pattern throughout.
- *
- * Steps:
- *   0   Init
- *   1   AI-isms scan — full chapter, produce flagged list       (cheap)
- *   2   Dialogue audit — naturalness + subtext check            (cheap)
- *   3   Pacing audit — sentence rhythm + variety check          (cheap)
- *   4   Consolidate findings into unified edit plan             (cheap)
- *   5   Line edit rewrite — implement plan, change nothing else (powerful)
- *   6   Verify — quick diff check that plan was applied         (cheap)
+ * Four parallel-style audits → consolidated plan → single rewrite → verify.
  */
 
-import { callLLM } from "./llm";
-import {
-  AI_WRITING_RULES,
-  ANTI_SLOP_FILTER,
-  DEFAULT_DECISION_RULE,
-} from "./writing-rules";
+import { DEFAULT_DECISION_RULE } from "./writing-rules";
 import { getSkill } from "./skillLoader";
+import { definePipeline, runPipelineStep, stepNameOf, llm, preview } from "./pipelineEngine";
 
 export interface LineEditState {
   pipeline4_id: string;
@@ -50,21 +36,6 @@ export interface LineEditState {
   verification: string;
 
   current_step: number;
-}
-
-const STEP_NAMES = [
-  "Initialization",
-  "AI-Isms Scan",
-  "Dialogue Audit",
-  "Pacing Audit",
-  "Addiction Loop Audit",
-  "Edit Plan Consolidation",
-  "Line Edit Rewrite",
-  "Verification",
-];
-
-export function getP4StepName(step: number): string {
-  return STEP_NAMES[step] ?? "Unknown Step";
 }
 
 export function createEmptyLineEditState(
@@ -94,31 +65,22 @@ export function createEmptyLineEditState(
   };
 }
 
-export async function runP4Step(state: LineEditState): Promise<{
-  updatedState: LineEditState;
-  outputPreview: string;
-}> {
-  let outputPreview = "";
-  const aiIsms = getSkill("AI_ISMS");
-  const styleCheck = getSkill("CHECKS_STYLE_CHECK");
+const p4Pipeline = definePipeline<LineEditState>("Pipeline 4", [
+  {
+    name: "Initialization",
+    run: (s) => `Line edit pipeline initialized for Chapter ${s.chapter_number}: "${s.chapter_title}"`,
+  },
+  {
+    name: "AI-Isms Scan",
+    run: async (s) => {
+      const aiIsms = getSkill("AI_ISMS");
 
-  switch (state.current_step) {
-
-    // ── 0: INIT ──────────────────────────────────────────────────────────────
-    case 0: {
-      outputPreview = `Line edit pipeline initialized for Chapter ${state.chapter_number}: "${state.chapter_title}"`;
-      state.current_step = 1;
-      break;
-    }
-
-    // ── 1: AI-ISMS SCAN ───────────────────────────────────────────────────────
-    case 1: {
       // Load dimension-specific defaults to avoid if book has dimensions set
       let dimensionDefaultsBlock = "";
-      if (state.book_id) {
+      if (s.book_id) {
         try {
           const { buildDimensionPromptBlock } = await import("./dimensions/dimensionSystem");
-          const book = await (await import("./storage")).storage.getBook(state.book_id);
+          const book = await (await import("./storage")).storage.getBook(s.book_id);
           const dimSelections = (book as any)?.dimensions;
           if (dimSelections && Object.keys(dimSelections).length > 0) {
             dimensionDefaultsBlock = buildDimensionPromptBlock(dimSelections, "edit");
@@ -126,11 +88,11 @@ export async function runP4Step(state: LineEditState): Promise<{
         } catch { /* non-blocking */ }
       }
 
-      const result = await callLLM(
+      const result = await llm.cheap(
         `You are a line editor specializing in detecting AI-generated prose patterns. Scan the chapter below and produce a flagged list of every AI-tell instance found.
 
 CHAPTER TEXT:
-${state.original_text}
+${s.original_text}
 
 AI-ISMS DETECTION GUIDE:
 ${aiIsms}
@@ -150,24 +112,21 @@ Format each item as:
 [N]. ORIGINAL: "[exact quote]"
      CATEGORY: [which pattern type from the guide]
      FIX: "[specific replacement or instruction]"`,
-        "cheap",
-        undefined,
-        8192
+        { maxTokens: 8192 }
       );
-      state.ai_isms_scan = result.trim();
-      state.current_step = 2;
+      s.ai_isms_scan = result.trim();
       const flagCount = (result.match(/^\[\d+\]\./gm) ?? []).length;
-      outputPreview = `AI-isms scan complete. ${flagCount} instances flagged.`;
-      break;
-    }
-
-    // ── 2: DIALOGUE AUDIT ─────────────────────────────────────────────────────
-    case 2: {
-      const result = await callLLM(
+      return `AI-isms scan complete. ${flagCount} instances flagged.`;
+    },
+  },
+  {
+    name: "Dialogue Audit",
+    run: async (s) => {
+      const result = await llm.cheap(
         `You are a dialogue editor. Audit the dialogue in the chapter below for naturalness, subtext, and AI-tell patterns.
 
 CHAPTER TEXT:
-${state.original_text}
+${s.original_text}
 
 Scan every dialogue exchange and flag instances of:
 
@@ -192,23 +151,20 @@ Scan every dialogue exchange and flag instances of:
 If a category has no issues: "No [category] issues found."
 
 Output as: DIALOGUE AUDIT REPORT`,
-        "cheap",
-        undefined,
-        6144
+        { maxTokens: 6144 }
       );
-      state.dialogue_audit = result.trim();
-      state.current_step = 3;
-      outputPreview = result.substring(0, 200) + "...";
-      break;
-    }
-
-    // ── 3: PACING AUDIT ───────────────────────────────────────────────────────
-    case 3: {
-      const result = await callLLM(
+      s.dialogue_audit = result.trim();
+      return preview(s.dialogue_audit, 200);
+    },
+  },
+  {
+    name: "Pacing Audit",
+    run: async (s) => {
+      const result = await llm.cheap(
         `You are a prose rhythm editor. Audit the chapter below for sentence variety, pacing problems, and structural AI patterns.
 
 CHAPTER TEXT:
-${state.original_text}
+${s.original_text}
 
 Scan for:
 
@@ -234,27 +190,24 @@ Scan for:
 If a category has no issues: "No [category] issues found."
 
 Output as: PACING AUDIT REPORT`,
-        "cheap",
-        undefined,
-        6144
+        { maxTokens: 6144 }
       );
-      state.pacing_audit = result.trim();
-      state.current_step = 4;
-      outputPreview = result.substring(0, 200) + "...";
-      break;
-    }
-
-    // ── 4: ADDICTION LOOP AUDIT ───────────────────────────────────────────────
-    case 4: {
+      s.pacing_audit = result.trim();
+      return preview(s.pacing_audit, 200);
+    },
+  },
+  {
+    name: "Addiction Loop Audit",
+    run: async (s) => {
       const addictionLoop = getSkill("ADDICTION_LOOP_CHECK");
-      const result = await callLLM(
+      const result = await llm.cheap(
         `You are a story structure editor specializing in reader engagement and narrative tension.
 Evaluate this chapter against the four-step addiction loop framework.
 
 ${addictionLoop}
 
-CHAPTER ${state.chapter_number}: "${state.chapter_title}"
-${state.original_text}
+CHAPTER ${s.chapter_number}: "${s.chapter_title}"
+${s.original_text}
 
 Score each element (0-3) and identify specific fixes:
 
@@ -288,37 +241,34 @@ TOTAL: [X]/12
 PRIORITY FIXES (only items scoring 0-1):
 List specific, actionable changes to the existing prose that would improve each weak element.
 Do NOT rewrite the chapter — flag and prescribe.`,
-        "cheap",
-        undefined,
-        4096
+        { maxTokens: 4096 }
       );
-      state.addiction_loop_audit = result.trim();
-      state.current_step = 5;
+      s.addiction_loop_audit = result.trim();
       const score = result.match(/TOTAL:\s*(\d+)\/12/)?.[1] ?? "?";
-      outputPreview = `Addiction loop audit complete. Score: ${score}/12`;
-      break;
-    }
-
-    // ── 5: CONSOLIDATED EDIT PLAN ─────────────────────────────────────────────
-    case 5: {
-      const styleSection = state.style_guide
-        ? `PROSE STYLE GUIDE (ensure edits align with this voice):\n${state.style_guide}\n\n`
+      return `Addiction loop audit complete. Score: ${score}/12`;
+    },
+  },
+  {
+    name: "Edit Plan Consolidation",
+    run: async (s) => {
+      const styleSection = s.style_guide
+        ? `PROSE STYLE GUIDE (ensure edits align with this voice):\n${s.style_guide}\n\n`
         : "";
 
-      const result = await callLLM(
+      const result = await llm.cheap(
         `You are a senior editor. Consolidate the four audit reports below into a single unified Edit Plan, ordered by impact.
 
 AI-ISMS FLAG LIST:
-${state.ai_isms_scan}
+${s.ai_isms_scan}
 
 DIALOGUE AUDIT REPORT:
-${state.dialogue_audit}
+${s.dialogue_audit}
 
 PACING AUDIT REPORT:
-${state.pacing_audit}
+${s.pacing_audit}
 
 ADDICTION LOOP AUDIT:
-${state.addiction_loop_audit}
+${s.addiction_loop_audit}
 
 ${styleSection}
 
@@ -333,27 +283,24 @@ Instructions:
 
 Output as: UNIFIED EDIT PLAN
 Format: [N]. [GLOBAL/SPECIFIC]: [original] → [fix]`,
-        "cheap",
-        undefined,
-        6144
+        { maxTokens: 6144 }
       );
-      state.edit_plan = result.trim();
-      state.current_step = 6;
+      s.edit_plan = result.trim();
       const planCount = (result.match(/^\[\d+\]\./gm) ?? []).length;
-      outputPreview = `Edit plan consolidated: ${planCount} items.`;
-      break;
-    }
-
-    // ── 6: LINE EDIT REWRITE ──────────────────────────────────────────────────
-    case 6: {
-      const result = await callLLM(
+      return `Edit plan consolidated: ${planCount} items.`;
+    },
+  },
+  {
+    name: "Line Edit Rewrite",
+    run: async (s) => {
+      const result = await llm.powerful(
         `You are a precise line editor. Implement the edit plan into the chapter. Change only what the plan specifies.
 
 ORIGINAL CHAPTER:
-${state.original_text}
+${s.original_text}
 
 UNIFIED EDIT PLAN:
-${state.edit_plan}
+${s.edit_plan}
 
 Instructions:
 - Implement every item in the edit plan
@@ -365,56 +312,54 @@ Instructions:
 - Preserve the chapter title heading
 - Reproduce the ENTIRE chapter with edits applied
 
-${ANTI_SLOP_FILTER}
-
 ${DEFAULT_DECISION_RULE}
 
 Output ONLY the edited chapter text.`,
-        "powerful",
-        undefined,
-        16384
+        { maxTokens: 16384 }
       );
-      state.edited_draft = result.trim();
-      state.current_step = 7;
-      outputPreview = `Line edit complete (${result.length} chars, ~${Math.round(result.split(/\s+/).length)} words)`;
-      break;
-    }
-
-    // ── 7: VERIFICATION ───────────────────────────────────────────────────────
-    case 7: {
-      const result = await callLLM(
+      s.edited_draft = result.trim();
+      return `Line edit complete (${result.length} chars, ~${Math.round(result.split(/\s+/).length)} words)`;
+    },
+  },
+  {
+    name: "Verification",
+    run: async (s) => {
+      const result = await llm.cheap(
         `You are a quality control editor. Verify that the line edit was applied correctly.
 
 EDIT PLAN:
-${state.edit_plan}
+${s.edit_plan}
 
 EDITED CHAPTER:
-${state.edited_draft}
+${s.edited_draft}
 
 Check:
 1. Were the top 5 items in the edit plan actually implemented? Quote the relevant section of the edited chapter for each.
 2. Are there any remaining AI-isms from the plan that were missed?
 3. Did the editor introduce any NEW issues not present in the original (new AI-tells, new awkward phrasing, structural changes not in the plan)?
-4. Word count check: original was approximately ${Math.round(state.original_text.split(/\s+/).length)} words. Edited version should be within 10% of this. Is it?
+4. Word count check: original was approximately ${Math.round(s.original_text.split(/\s+/).length)} words. Edited version should be within 10% of this. Is it?
 
 Output as: VERIFICATION REPORT
 
 If all checks pass: "VERIFICATION PASSED — edit applied correctly."
-If issues found: list each specifically so the human can review.`,
-        "cheap"
+If issues found: list each specifically so the human can review.`
       );
-      state.verification = result.trim();
-      state.current_step = 8;
+      s.verification = result.trim();
       const passed = result.includes("PASSED");
-      outputPreview = passed
+      return passed
         ? "Verification passed. Line edit complete."
         : `Verification flagged issues — review needed. ${result.substring(0, 200)}...`;
-      break;
-    }
+    },
+  },
+]);
 
-    default:
-      throw new Error(`Pipeline 4 step ${state.current_step} is out of range. Pipeline is complete.`);
-  }
+export function getP4StepName(step: number): string {
+  return stepNameOf(p4Pipeline, step);
+}
 
-  return { updatedState: state, outputPreview };
+export async function runP4Step(state: LineEditState): Promise<{
+  updatedState: LineEditState;
+  outputPreview: string;
+}> {
+  return runPipelineStep(p4Pipeline, state);
 }

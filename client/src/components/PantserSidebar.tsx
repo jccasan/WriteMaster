@@ -7,6 +7,7 @@ import {
   Pause, Play, Check, ChevronDown, ChevronUp, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useJob } from "@/hooks/useJob";
 
 interface DiscoveredWorld {
   characters: Array<{ name: string; notes: string; first_chapter: number; last_seen_chapter: number }>;
@@ -42,9 +43,9 @@ export default function PantserSidebar({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Autopilot state
+  // Autopilot state — polling handled by the shared useJob hook
   const [autopilotJobId, setAutopilotJobId] = useState<string | null>(null);
-  const [autopilotStatus, setAutopilotStatus] = useState<any>(null);
+  const [autopilotLocal, setAutopilotLocal] = useState<any>(null);
   const [bookChapterCount, setBookChapterCount] = useState(30);
   const [batchCount, setBatchCount] = useState(2);
 
@@ -59,22 +60,26 @@ export default function PantserSidebar({
 
   useEffect(() => { loadWorld(); }, [loadWorld, chapterNum]);
 
-  // Poll autopilot status
-  useEffect(() => {
-    if (!autopilotJobId) return;
-    const interval = setInterval(async () => {
-      const r = await fetch(`/api/autopilot/${autopilotJobId}/status`);
-      if (r.ok) {
-        const status = await r.json();
-        setAutopilotStatus(status);
-        if (status.status === "done" || status.status === "error") {
-          clearInterval(interval);
-          loadWorld();
-        }
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [autopilotJobId, loadWorld]);
+  const { job: autopilotJob } = useJob(autopilotJobId, {
+    intervalMs: 3000,
+    onSettled: () => loadWorld(),
+  });
+
+  // Legacy-shaped status derived from the generic job, with local optimistic
+  // overrides for the moments right after "start" and "pause" clicks.
+  const autopilotStatus = (() => {
+    if (!autopilotJob) return autopilotLocal;
+    const shaped = {
+      status: autopilotJob.status === "queued" ? "running" : autopilotJob.status,
+      current_chapter: autopilotJob.progress?.current ?? autopilotLocal?.current_chapter ?? 0,
+      total_chapters: autopilotJob.progress?.total ?? autopilotLocal?.total_chapters ?? 0,
+      error: autopilotJob.error ?? undefined,
+    };
+    if (autopilotLocal?.status === "paused" && shaped.status === "running") {
+      shaped.status = "paused"; // pause requested, server not yet at a safe point
+    }
+    return shaped;
+  })();
 
   const writeFast = async () => {
     setLoading(true);
@@ -117,7 +122,7 @@ export default function PantserSidebar({
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Failed to start");
       setAutopilotJobId(d.job_id);
-      setAutopilotStatus({
+      setAutopilotLocal({
         status: "running",
         current_chapter: d.starting_chapter,
         total_chapters: chapterCount,
@@ -132,7 +137,7 @@ export default function PantserSidebar({
   const pauseAutopilot = async () => {
     if (!autopilotJobId) return;
     await fetch(`/api/autopilot/${autopilotJobId}/pause`, { method: "POST" });
-    setAutopilotStatus((s: any) => ({ ...s, status: "paused" }));
+    setAutopilotLocal((s: any) => ({ ...s, status: "paused" }));
   };
 
   const worldCharCount = world?.characters.length ?? 0;
