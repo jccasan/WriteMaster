@@ -1434,6 +1434,7 @@ If a category has nothing, return an empty array.`,
       } finally {
         await unlink(req.file.path).catch(() => {});
       }
+      text = text.replace(/\r\n?/g, "\n").replace(/[\v\f\u2028\u2029]/g, "\n");
       if (!text.trim()) return res.status(400).json({ error: "The file appears to be empty" });
 
       const title = (req.body?.title || "").trim()

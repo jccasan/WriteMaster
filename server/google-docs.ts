@@ -101,7 +101,13 @@ export async function readGoogleDoc(docIdOrUrl: string): Promise<{ title: string
   const doc = await docs.documents.get({ documentId: docId });
   const title = doc.data.title || "Untitled";
   const body = doc.data.body;
-  const text = body?.content ? extractTextFromElements(body.content) : "";
+  const raw = body?.content ? extractTextFromElements(body.content) : "";
+  // Google marks soft line breaks with vertical tabs and separates paragraphs
+  // with single newlines. Normalize to blank-line-separated paragraphs, the
+  // convention the editors and storage use.
+  const text = raw
+    .replace(/[\v\u2028\u2029]/g, "\n")
+    .replace(/\n(?!\n)/g, "\n\n");
   return { title, text: text.trim(), docId };
 }
 
