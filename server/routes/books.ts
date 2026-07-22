@@ -1420,6 +1420,44 @@ If a category has nothing, return an empty array.`,
 
   // ── PANTSER: Book creation with mode ─────────────────────────────────────
 
+  // Upload a finished/partial manuscript and turn it into a book with chapters,
+  // using Forge's chapter detection.
+  router.post("/api/books/upload-manuscript", bookUpload.single("file"), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const { extractText } = await import("../forge/parsing/manuscript-parser");
+      const { detectChapters, createSegments } = await import("../forge/parsing/chapter-detector");
+
+      let text: string;
+      try {
+        text = await extractText(req.file.path, req.file.mimetype);
+      } finally {
+        await unlink(req.file.path).catch(() => {});
+      }
+      if (!text.trim()) return res.status(400).json({ error: "The file appears to be empty" });
+
+      const title = (req.body?.title || "").trim()
+        || req.file.originalname.replace(/\.(txt|md|docx)$/i, "");
+
+      let detected = detectChapters(text);
+      if (detected.length === 0) detected = createSegments(text, 6);
+
+      const book = await storage.createBook(null, "", "", title);
+      book.chapters = detected.map(ch => ({
+        chapter_number: ch.number,
+        title: ch.title || `Chapter ${ch.number}`,
+        outline: "",
+        content: ch.rawText,
+        summary: null,
+        status: "written" as const,
+      }));
+      await storage.saveBook(book);
+      res.json({ id: book.id, title: book.title, chapter_count: book.chapters.length });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   router.post("/api/books/pantser", async (req, res) => {
     try {
       const { title = "Untitled Book", premise = "" } = req.body;

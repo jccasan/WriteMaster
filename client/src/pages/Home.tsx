@@ -71,10 +71,14 @@ export default function Home() {
       fetch("/api/books").then(r => r.json()).catch(() => []),
       fetch("/api/universe").then(r => r.json()).catch(() => []),
       fetch("/api/projects").then(r => r.json()).catch(() => []),
-    ]).then(([books, univs, projects]) => {
+    ]).then(([booksRaw, univsRaw, projectsRaw]) => {
+      // Guard against error payloads ({error: ...}) so a failing API can't blank the page
+      const books = Array.isArray(booksRaw) ? booksRaw : [];
+      const univs = Array.isArray(univsRaw) ? univsRaw : [];
+      const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
       const hasWork = books.length > 0 || univs.length > 0 || projects.length > 0;
       setIsFirstTime(!hasWork);
-      setUniverses(univs ?? []);
+      setUniverses(univs);
 
       const items: any[] = [];
       for (const b of books.slice(0, 5)) {
@@ -124,14 +128,14 @@ export default function Home() {
     setCreating(true);
     setError(null);
     try {
-      const r = await fetch("/api/books", {
+      const r = await fetch("/api/books/pantser", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newBookTitle.trim() }),
       });
       const book = await r.json();
       if (!r.ok) throw new Error(book.error ?? "Failed to create book");
-      navigate(`/book/${book.id}`);
+      navigate(`/book/${book.id}/write/1`);
     } catch (err: any) {
       setError(err.message);
     } finally {
