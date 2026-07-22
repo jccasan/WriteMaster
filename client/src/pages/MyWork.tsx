@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2, BookOpen, Globe, Plus, ChevronRight, Clock,
-  Trash2, Sparkles, PenTool, Search, List
+  Trash2, Sparkles, PenTool, Search, List, Archive
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +37,8 @@ export default function MyWork() {
   const [newUniverseName, setNewUniverseName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snapshotting, setSnapshotting] = useState(false);
+  const [snapshotInfo, setSnapshotInfo] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -108,6 +110,20 @@ export default function MyWork() {
     load();
   };
 
+  const takeSnapshot = async () => {
+    setSnapshotting(true);
+    try {
+      const r = await fetch("/api/library/snapshot", { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "Snapshot failed");
+      setSnapshotInfo(`Library saved for deployment — ${d.docCount} records, ${d.fileCount} files. Redeploy to carry it forward.`);
+    } catch (err: any) {
+      setSnapshotInfo(`Snapshot failed: ${err.message}`);
+    } finally {
+      setSnapshotting(false);
+    }
+  };
+
   const filteredBooks = books.filter(b => b.title.toLowerCase().includes(filter.toLowerCase()));
   const filteredUniverses = universes.filter(u => u.name.toLowerCase().includes(filter.toLowerCase()));
 
@@ -138,8 +154,24 @@ export default function MyWork() {
             >
               <Globe className="w-4 h-4" /> New Universe
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={takeSnapshot}
+              disabled={snapshotting}
+              className="gap-2"
+              title="Bundle your whole library into a snapshot file that deployments restore on first boot"
+            >
+              {snapshotting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+              Save for Deploy
+            </Button>
           </div>
         </div>
+        {snapshotInfo && (
+          <p className="text-xs text-muted-foreground -mt-4 mb-6 text-right">
+            {snapshotInfo}
+          </p>
+        )}
 
         {/* New book flow */}
         {newFlow === "book-choice" && (

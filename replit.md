@@ -9,6 +9,7 @@ One writing studio organized like the making of a book: **Plan → Write → Edi
 - **Storage**: One SQLite database (prisma/forge.db). Forge uses typed Prisma models; StoryDossier uses a generic `Doc` document store via `server/docStore.ts` (legacy data/*.json files auto-import on first run). Genre trope packs stay as seed files in data/templates/
 - **Pipelines**: All multi-step AI pipelines are declarative definitions run by `server/pipelineEngine.ts`
 - **Background jobs**: `server/jobs.ts` registry + `/api/jobs/:id`; client polls via the `useJob` hook (`client/src/hooks/useJob.ts`)
+- **Library snapshot**: "Save for Deploy" on The Desk (or `POST /api/library/snapshot`) bundles all user data into `data/library-snapshot.json` (committable); a fresh container restores it automatically at boot (`server/librarySnapshot.ts`)
 - **AI**: Replit AI Integrations (Anthropic) — Claude Sonnet 4.6 for complex tasks, Claude Haiku 4.5 for fast tasks. `server/llm.ts` adds retries, token logging, and prompt caching of static rule blocks
 - **Navigation**: Shared `Layout` component — The Desk (my work) plus Plan / Write / Edit / Publish dropdowns; `wouter` for routing
 

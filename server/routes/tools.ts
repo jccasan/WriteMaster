@@ -157,6 +157,26 @@ Important: Base every finding strictly on patterns present in the samples. Quote
     }
   });
 
+  // ── Library snapshot — carry the library into deployments ────────────────
+
+  router.get("/api/library/snapshot", async (_req, res) => {
+    try {
+      const { getSnapshotStatus } = await import("../librarySnapshot");
+      res.json(await getSnapshotStatus());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post("/api/library/snapshot", async (_req, res) => {
+    try {
+      const { exportLibrarySnapshot } = await import("../librarySnapshot");
+      res.json(await exportLibrarySnapshot());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   router.post("/api/skills/reload", async (_req, res) => {
     try {
       const { reloadSkills } = await import("../skillLoader");
