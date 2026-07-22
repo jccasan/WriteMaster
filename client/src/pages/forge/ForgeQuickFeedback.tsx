@@ -32,10 +32,10 @@ const BETA_PROFILES = [
 ];
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: "text-red-400 border-red-800 bg-red-950/40",
-  major: "text-orange-400 border-orange-800 bg-orange-950/40",
-  minor: "text-yellow-400 border-yellow-800 bg-yellow-950/40",
-  suggestion: "text-blue-400 border-blue-800 bg-blue-950/40",
+  critical: "text-red-800 border-red-300 bg-red-100",
+  major: "text-orange-800 border-orange-300 bg-orange-100",
+  minor: "text-yellow-800 border-yellow-300 bg-yellow-100",
+  suggestion: "text-blue-800 border-blue-300 bg-blue-100",
 };
 
 interface ChatMessage {
@@ -134,41 +134,42 @@ export default function ForgeQuickFeedback() {
   return (
     <ForgeLayout>
       <div className="max-w-4xl animate-in fade-in duration-300">
-        <h1 className="text-2xl font-bold text-amber-400 mb-2" data-testid="text-quick-feedback-heading">
+        <p className="catalog-label text-xs mb-1">Wing III — Edit</p>
+        <h1 className="text-2xl font-serif font-semibold text-foreground mb-2" data-testid="text-quick-feedback-heading">
           Quick Feedback
         </h1>
-        <p className="text-gray-400 text-sm mb-6">
+        <p className="text-muted-foreground text-sm mb-6">
           Paste a chapter or passage and get instant editorial assessment and beta reader reactions.
         </p>
 
         {!result && (
           <div className="space-y-4">
-            <Card className="bg-gray-900 border-amber-900/20">
+            <Card className="bookplate rounded-sm">
               <CardContent className="p-5 space-y-4">
                 <div>
-                  <Label className="text-gray-300 text-sm mb-2 block">Your Text</Label>
+                  <Label className="text-foreground/80 text-sm mb-2 block">Your Text</Label>
                   <Textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Paste your chapter, scene, or passage here..."
-                    className="min-h-[240px] bg-gray-950 border-gray-700 text-gray-100 placeholder:text-gray-600 resize-y font-mono text-sm"
+                    className="min-h-[240px] bg-background resize-y font-mono text-sm"
                     data-testid="input-text"
                   />
-                  <p className="text-xs text-gray-500 mt-1" data-testid="text-word-count">
+                  <p className="text-xs text-muted-foreground mt-1" data-testid="text-word-count">
                     {wordCount.toLocaleString()} words
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-gray-300 text-sm mb-2 block">Genre</Label>
+                    <Label className="text-foreground/80 text-sm mb-2 block">Genre</Label>
                     <Select value={genre} onValueChange={setGenre}>
-                      <SelectTrigger className="bg-gray-950 border-gray-700 text-gray-100" data-testid="select-genre">
+                      <SelectTrigger className="bg-background" data-testid="select-genre">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-900 border-gray-700">
+                      <SelectContent>
                         {GENRES.map(g => (
-                          <SelectItem key={g} value={g} className="text-gray-200 focus:bg-gray-800 focus:text-gray-100">
+                          <SelectItem key={g} value={g}>
                             {g}
                           </SelectItem>
                         ))}
@@ -178,7 +179,7 @@ export default function ForgeQuickFeedback() {
                 </div>
 
                 <div>
-                  <Label className="text-gray-300 text-sm mb-2 block">Beta Reader Profiles</Label>
+                  <Label className="text-foreground/80 text-sm mb-2 block">Beta Reader Profiles</Label>
                   <div className="space-y-2">
                     {BETA_PROFILES.map(p => (
                       <div key={p.key} className="flex items-center gap-2">
@@ -186,10 +187,9 @@ export default function ForgeQuickFeedback() {
                           id={`qf-${p.key}`}
                           checked={selectedProfiles.includes(p.key)}
                           onCheckedChange={() => toggleProfile(p.key)}
-                          className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
                           data-testid={`checkbox-profile-${p.key}`}
                         />
-                        <Label htmlFor={`qf-${p.key}`} className="text-gray-400 text-sm cursor-pointer">{p.label}</Label>
+                        <Label htmlFor={`qf-${p.key}`} className="text-muted-foreground text-sm cursor-pointer">{p.label}</Label>
                       </div>
                     ))}
                   </div>
@@ -198,7 +198,7 @@ export default function ForgeQuickFeedback() {
                 <Button
                   onClick={() => feedbackMutation.mutate()}
                   disabled={text.trim().length < 50 || feedbackMutation.isPending}
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                   data-testid="button-get-feedback"
                 >
                   {feedbackMutation.isPending ? (
@@ -215,7 +215,7 @@ export default function ForgeQuickFeedback() {
                 </Button>
 
                 {feedbackMutation.isError && (
-                  <p className="text-red-400 text-sm" data-testid="text-feedback-error">
+                  <p className="text-destructive text-sm" data-testid="text-feedback-error">
                     {(feedbackMutation.error as Error).message}
                   </p>
                 )}
@@ -228,37 +228,37 @@ export default function ForgeQuickFeedback() {
           <div className="space-y-6">
             <Button
               variant="outline"
-              className="border-amber-900/30 text-amber-400"
+              className="border-border text-primary hover:bg-primary/10"
               onClick={() => { feedbackMutation.reset(); setChatMessages([]); }}
               data-testid="button-new-feedback"
             >
               Analyze Another Passage
             </Button>
 
-            <Card className="bg-gray-900 border-amber-900/20" data-testid="card-editorial-result">
+            <Card className="bookplate rounded-sm" data-testid="card-editorial-result">
               <CardHeader className="pb-3">
-                <CardTitle className="text-amber-400 text-lg flex items-center gap-2">
-                  <Eye className="w-5 h-5" />
+                <CardTitle className="text-foreground text-lg flex items-center gap-2 font-serif">
+                  <Eye className="w-5 h-5 text-brass" />
                   Editorial Assessment
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {result.editorial.overallImpression && (
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-300 mb-1">Overall Impression</h3>
-                    <p className="text-sm text-gray-400">{result.editorial.overallImpression}</p>
+                    <h3 className="text-sm font-semibold text-foreground mb-1">Overall Impression</h3>
+                    <p className="text-sm text-muted-foreground">{result.editorial.overallImpression}</p>
                   </div>
                 )}
 
                 {result.editorial.strengths?.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-green-400 mb-2 flex items-center gap-1.5">
+                    <h3 className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-1.5">
                       <ThumbsUp className="w-3.5 h-3.5" /> Strengths
                     </h3>
                     <ul className="space-y-1">
                       {result.editorial.strengths.map((s: string, i: number) => (
-                        <li key={i} className="text-sm text-gray-400 flex gap-2">
-                          <span className="text-green-600 shrink-0">•</span> {s}
+                        <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                          <span className="text-green-700 shrink-0">•</span> {s}
                         </li>
                       ))}
                     </ul>
@@ -267,13 +267,13 @@ export default function ForgeQuickFeedback() {
 
                 {result.editorial.weaknesses?.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-orange-400 mb-2 flex items-center gap-1.5">
+                    <h3 className="text-sm font-semibold text-orange-700 mb-2 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5" /> Weaknesses
                     </h3>
                     <ul className="space-y-1">
                       {result.editorial.weaknesses.map((w: string, i: number) => (
-                        <li key={i} className="text-sm text-gray-400 flex gap-2">
-                          <span className="text-orange-600 shrink-0">•</span> {w}
+                        <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                          <span className="text-orange-700 shrink-0">•</span> {w}
                         </li>
                       ))}
                     </ul>
@@ -282,17 +282,17 @@ export default function ForgeQuickFeedback() {
 
                 {result.editorial.issues?.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-300 mb-2">Issues Found</h3>
+                    <h3 className="text-sm font-semibold text-foreground mb-2">Issues Found</h3>
                     <div className="space-y-2">
                       {result.editorial.issues.map((issue: any, i: number) => (
-                        <div key={i} className={`rounded-lg border p-3 ${SEVERITY_COLORS[issue.severity] || "text-gray-400 border-gray-700 bg-gray-800/40"}`}>
+                        <div key={i} className={`rounded-sm border p-3 ${SEVERITY_COLORS[issue.severity] || "text-foreground/80 border-border bg-muted"}`}>
                           <div className="flex items-center gap-2 mb-1">
                             <Badge variant="outline" className="text-[10px] border-current px-1.5 py-0">{issue.severity}</Badge>
                             <span className="text-sm font-medium">{issue.title}</span>
                           </div>
-                          <p className="text-xs opacity-80">{issue.description}</p>
+                          <p className="text-xs opacity-90">{issue.description}</p>
                           {issue.suggestion && (
-                            <p className="text-xs mt-1 opacity-60 italic">Suggestion: {issue.suggestion}</p>
+                            <p className="text-xs mt-1 opacity-75 italic">Suggestion: {issue.suggestion}</p>
                           )}
                         </div>
                       ))}
@@ -302,11 +302,11 @@ export default function ForgeQuickFeedback() {
 
                 {result.editorial.unresolvedQuestions?.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-300 mb-2">Unresolved Questions</h3>
+                    <h3 className="text-sm font-semibold text-foreground mb-2">Unresolved Questions</h3>
                     <ul className="space-y-1">
                       {result.editorial.unresolvedQuestions.map((q: string, i: number) => (
-                        <li key={i} className="text-sm text-gray-400 flex gap-2">
-                          <span className="text-amber-600 shrink-0">?</span> {q}
+                        <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                          <span className="text-brass shrink-0">?</span> {q}
                         </li>
                       ))}
                     </ul>
@@ -317,21 +317,21 @@ export default function ForgeQuickFeedback() {
 
             {result.betaReaders?.length > 0 && (
               <div>
-                <h2 className="text-lg font-bold text-amber-400 mb-3 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
+                <h2 className="text-lg font-serif font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-brass" />
                   Beta Reader Reactions
                 </h2>
                 <div className="space-y-3">
                   {result.betaReaders.map((br: any, i: number) => (
-                    <Card key={i} className="bg-gray-900 border-amber-900/15" data-testid={`card-beta-reader-${i}`}>
+                    <Card key={i} className="bg-card border border-border rounded-sm" data-testid={`card-beta-reader-${i}`}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-gray-100 text-base flex items-center justify-between">
+                        <CardTitle className="text-foreground text-base flex items-center justify-between">
                           <span>{br.profileName}</span>
                           <Badge
                             variant="outline"
                             className={br.wouldKeepReading
-                              ? "border-green-700 text-green-400"
-                              : "border-red-700 text-red-400"
+                              ? "border-green-700 text-green-700"
+                              : "border-red-700 text-red-700"
                             }
                           >
                             {br.wouldKeepReading ? "Would keep reading" : "Might stop reading"}
@@ -342,39 +342,39 @@ export default function ForgeQuickFeedback() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {br.hookedAt && (
                             <div>
-                              <span className="text-gray-500 text-xs font-medium block mb-0.5">Hooked At</span>
-                              <p className="text-gray-300">{br.hookedAt}</p>
+                              <span className="text-muted-foreground text-xs font-medium block mb-0.5">Hooked At</span>
+                              <p className="text-foreground/80">{br.hookedAt}</p>
                             </div>
                           )}
                           {br.attentionSaggedAt && (
                             <div>
-                              <span className="text-gray-500 text-xs font-medium block mb-0.5">Attention Sagged At</span>
-                              <p className="text-gray-300">{br.attentionSaggedAt}</p>
+                              <span className="text-muted-foreground text-xs font-medium block mb-0.5">Attention Sagged At</span>
+                              <p className="text-foreground/80">{br.attentionSaggedAt}</p>
                             </div>
                           )}
                           {br.mightQuitAt && (
                             <div>
-                              <span className="text-gray-500 text-xs font-medium block mb-0.5">Might Quit At</span>
-                              <p className="text-gray-300">{br.mightQuitAt}</p>
+                              <span className="text-muted-foreground text-xs font-medium block mb-0.5">Might Quit At</span>
+                              <p className="text-foreground/80">{br.mightQuitAt}</p>
                             </div>
                           )}
                           {br.favoriteCharacterReaction && (
                             <div>
-                              <span className="text-gray-500 text-xs font-medium block mb-0.5">Favorite Character Moment</span>
-                              <p className="text-gray-300">{br.favoriteCharacterReaction}</p>
+                              <span className="text-muted-foreground text-xs font-medium block mb-0.5">Favorite Character Moment</span>
+                              <p className="text-foreground/80">{br.favoriteCharacterReaction}</p>
                             </div>
                           )}
                         </div>
 
                         {br.strongestMoments?.length > 0 && (
                           <div>
-                            <span className="text-gray-500 text-xs font-medium flex items-center gap-1 mb-1">
+                            <span className="text-muted-foreground text-xs font-medium flex items-center gap-1 mb-1">
                               <Star className="w-3 h-3" /> Strongest Moments
                             </span>
                             <ul className="space-y-0.5">
                               {br.strongestMoments.map((m: string, j: number) => (
-                                <li key={j} className="text-gray-400 flex gap-2">
-                                  <span className="text-green-600 shrink-0">•</span> {m}
+                                <li key={j} className="text-muted-foreground flex gap-2">
+                                  <span className="text-green-700 shrink-0">•</span> {m}
                                 </li>
                               ))}
                             </ul>
@@ -383,11 +383,11 @@ export default function ForgeQuickFeedback() {
 
                         {br.confusionPoints?.length > 0 && (
                           <div>
-                            <span className="text-gray-500 text-xs font-medium block mb-1">Confusion Points</span>
+                            <span className="text-muted-foreground text-xs font-medium block mb-1">Confusion Points</span>
                             <ul className="space-y-0.5">
                               {br.confusionPoints.map((c: string, j: number) => (
-                                <li key={j} className="text-gray-400 flex gap-2">
-                                  <span className="text-amber-600 shrink-0">?</span> {c}
+                                <li key={j} className="text-muted-foreground flex gap-2">
+                                  <span className="text-brass shrink-0">?</span> {c}
                                 </li>
                               ))}
                             </ul>
@@ -396,11 +396,11 @@ export default function ForgeQuickFeedback() {
 
                         {br.leastCredibleMoments?.length > 0 && (
                           <div>
-                            <span className="text-gray-500 text-xs font-medium block mb-1">Least Credible</span>
+                            <span className="text-muted-foreground text-xs font-medium block mb-1">Least Credible</span>
                             <ul className="space-y-0.5">
                               {br.leastCredibleMoments.map((m: string, j: number) => (
-                                <li key={j} className="text-gray-400 flex gap-2">
-                                  <span className="text-red-600 shrink-0">!</span> {m}
+                                <li key={j} className="text-muted-foreground flex gap-2">
+                                  <span className="text-red-700 shrink-0">!</span> {m}
                                 </li>
                               ))}
                             </ul>
@@ -409,15 +409,15 @@ export default function ForgeQuickFeedback() {
 
                         {br.finalEmotionalReaction && (
                           <div>
-                            <span className="text-gray-500 text-xs font-medium block mb-0.5">Final Emotional Reaction</span>
-                            <p className="text-gray-300 italic">{br.finalEmotionalReaction}</p>
+                            <span className="text-muted-foreground text-xs font-medium block mb-0.5">Final Emotional Reaction</span>
+                            <p className="text-foreground/80 italic">{br.finalEmotionalReaction}</p>
                           </div>
                         )}
 
                         {br.recommendation && (
-                          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
-                            <span className="text-gray-500 text-xs font-medium block mb-0.5">Recommendation</span>
-                            <p className="text-gray-200">{br.recommendation}</p>
+                          <div className="bg-muted rounded-sm p-3 border border-border">
+                            <span className="text-muted-foreground text-xs font-medium block mb-0.5">Recommendation</span>
+                            <p className="text-foreground">{br.recommendation}</p>
                           </div>
                         )}
                       </CardContent>
@@ -427,16 +427,16 @@ export default function ForgeQuickFeedback() {
               </div>
             )}
 
-            <Card className="bg-gray-900 border-amber-900/20" data-testid="card-discussion">
+            <Card className="bookplate rounded-sm" data-testid="card-discussion">
               <CardHeader className="pb-3">
-                <CardTitle className="text-amber-400 text-lg flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
+                <CardTitle className="text-foreground text-lg flex items-center gap-2 font-serif">
+                  <MessageSquare className="w-5 h-5 text-brass" />
                   Discuss with AI
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {chatMessages.length === 0 && (
-                  <p className="text-gray-500 text-sm italic">
+                  <p className="text-muted-foreground text-sm italic">
                     Ask follow-up questions about the feedback, dig into specific issues, or brainstorm revisions.
                   </p>
                 )}
@@ -446,23 +446,23 @@ export default function ForgeQuickFeedback() {
                     {chatMessages.map((msg, i) => (
                       <div
                         key={i}
-                        className={`flex gap-3 ${msg.role === "user" ? "" : ""}`}
+                        className="flex gap-3"
                         data-testid={`chat-message-${i}`}
                       >
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                           msg.role === "user"
-                            ? "bg-amber-600/20"
-                            : "bg-purple-600/20"
+                            ? "bg-muted"
+                            : "bg-primary/10"
                         }`}>
                           {msg.role === "user"
-                            ? <User className="w-3.5 h-3.5 text-amber-400" />
-                            : <Bot className="w-3.5 h-3.5 text-purple-400" />
+                            ? <User className="w-3.5 h-3.5 text-muted-foreground" />
+                            : <Bot className="w-3.5 h-3.5 text-primary" />
                           }
                         </div>
-                        <div className={`flex-1 rounded-lg p-3 text-sm ${
+                        <div className={`flex-1 rounded-sm p-3 text-sm ${
                           msg.role === "user"
-                            ? "bg-gray-800/60 text-gray-200"
-                            : "bg-gray-800/30 text-gray-300 border border-gray-800"
+                            ? "bg-secondary text-foreground"
+                            : "bg-background text-foreground/90 border border-border"
                         }`}>
                           <p className="whitespace-pre-wrap">{msg.content}</p>
                         </div>
@@ -470,11 +470,11 @@ export default function ForgeQuickFeedback() {
                     ))}
                     {chatMutation.isPending && (
                       <div className="flex gap-3">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-purple-600/20">
-                          <Bot className="w-3.5 h-3.5 text-purple-400" />
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/10">
+                          <Bot className="w-3.5 h-3.5 text-primary" />
                         </div>
-                        <div className="flex-1 rounded-lg p-3 bg-gray-800/30 border border-gray-800">
-                          <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                        <div className="flex-1 rounded-sm p-3 bg-background border border-border">
+                          <Loader2 className="w-4 h-4 text-primary animate-spin" />
                         </div>
                       </div>
                     )}
@@ -488,7 +488,7 @@ export default function ForgeQuickFeedback() {
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                     placeholder="Ask about an issue, character, or craft element..."
-                    className="flex-1 bg-gray-950 border-gray-700 text-gray-100 placeholder:text-gray-600"
+                    className="flex-1 bg-background"
                     disabled={chatMutation.isPending}
                     data-testid="input-chat"
                   />
@@ -496,7 +496,7 @@ export default function ForgeQuickFeedback() {
                     onClick={sendMessage}
                     disabled={!chatInput.trim() || chatMutation.isPending}
                     size="icon"
-                    className="bg-amber-600 hover:bg-amber-700 text-gray-950 shrink-0"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
                     data-testid="button-send-chat"
                   >
                     <Send className="w-4 h-4" />
@@ -504,7 +504,7 @@ export default function ForgeQuickFeedback() {
                 </div>
 
                 {chatMutation.isError && (
-                  <p className="text-red-400 text-xs" data-testid="text-chat-error">
+                  <p className="text-destructive text-xs" data-testid="text-chat-error">
                     {(chatMutation.error as Error).message}
                   </p>
                 )}
