@@ -5,6 +5,7 @@ import { createServer } from "http";
 import forgeRouter from "./forge/routes";
 import universeRouter from "./universeRoutes";
 import { seedDemoProject } from "./forge/seed/seed-demo";
+import { importLibrarySnapshotIfEmpty } from "./librarySnapshot";
 
 const app = express();
 const httpServer = createServer(app);
@@ -71,6 +72,10 @@ app.use((req, res, next) => {
   app.use("/api/expand", (await import("./expandRoutes")).default);
   app.use("/api/romance", (await import("./romance/romanceRoutes")).default);
   app.use("/api/edit-book", (await import("./editBookRoutes")).default);
+  // Fresh container (empty database)? Restore the committed library snapshot
+  // so deployments open with the user's books, universes, and projects.
+  await importLibrarySnapshotIfEmpty();
+
   await registerRoutes(httpServer, app);
   
   seedDemoProject().catch(err => console.log("[FORGE] Seed skipped or failed:", err.message));
