@@ -160,63 +160,63 @@ export default function ForgeAnalysis() {
   return (
     <ForgeLayout projectId={projectId}>
       <div className="max-w-2xl animate-in fade-in duration-300">
-        <h1 className="text-2xl font-bold text-amber-400 mb-6" data-testid="text-analysis-heading">Analysis</h1>
+        <h1 className="text-2xl font-serif font-semibold text-foreground mb-6" data-testid="text-analysis-heading">Analysis</h1>
 
         {!jobId && (
           <>
             <div className="grid grid-cols-3 gap-3 mb-4">
               <button
                 onClick={() => applyPreset("quick")}
-                className={`p-4 rounded-lg border text-left transition-colors ${
+                className={`p-4 rounded-sm border text-left transition-colors ${
                   preset === "quick"
-                    ? "border-amber-500 bg-amber-600/15"
-                    : "border-gray-700 bg-gray-900 hover:border-gray-600"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/40"
                 }`}
                 data-testid="button-preset-quick"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <Gauge className="w-4 h-4 text-amber-400" />
-                  <span className="font-semibold text-gray-100">Quick</span>
+                  <Gauge className="w-4 h-4 text-brass" />
+                  <span className="font-semibold text-foreground">Quick</span>
                 </div>
-                <p className="text-xs text-gray-400">3 core modules. ~10-15 min for a full novel.</p>
+                <p className="text-xs text-muted-foreground">3 core modules. ~10-15 min for a full novel.</p>
               </button>
               <button
                 onClick={() => applyPreset("full")}
-                className={`p-4 rounded-lg border text-left transition-colors ${
+                className={`p-4 rounded-sm border text-left transition-colors ${
                   preset === "full"
-                    ? "border-amber-500 bg-amber-600/15"
-                    : "border-gray-700 bg-gray-900 hover:border-gray-600"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/40"
                 }`}
                 data-testid="button-preset-full"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <Clock className="w-4 h-4 text-amber-400" />
-                  <span className="font-semibold text-gray-100">Full</span>
+                  <Clock className="w-4 h-4 text-brass" />
+                  <span className="font-semibold text-foreground">Full</span>
                 </div>
-                <p className="text-xs text-gray-400">Core editorial modules in parallel. ~15-25 min for a full novel.</p>
+                <p className="text-xs text-muted-foreground">Core editorial modules in parallel. ~15-25 min for a full novel.</p>
               </button>
               <button
                 onClick={() => applyPreset("submission")}
-                className={`p-4 rounded-lg border text-left transition-colors ${
+                className={`p-4 rounded-sm border text-left transition-colors ${
                   preset === "submission"
-                    ? "border-amber-500 bg-amber-600/15"
-                    : "border-gray-700 bg-gray-900 hover:border-gray-600"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/40"
                 }`}
                 data-testid="button-preset-submission"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <Send className="w-4 h-4 text-amber-400" />
-                  <span className="font-semibold text-gray-100">Submission</span>
+                  <Send className="w-4 h-4 text-brass" />
+                  <span className="font-semibold text-foreground">Submission</span>
                 </div>
-                <p className="text-xs text-gray-400">Agent, acquisitions, positioning, and package readers.</p>
+                <p className="text-xs text-muted-foreground">Agent, acquisitions, positioning, and package readers.</p>
               </button>
             </div>
 
-            <Card className="bg-gray-900 border-amber-900/20 mb-6">
+            <Card className="bookplate rounded-sm mb-6">
               <CardHeader>
-                <CardTitle className="text-gray-100 text-lg flex items-center justify-between">
+                <CardTitle className="text-foreground text-lg flex items-center justify-between">
                   <span>Modules</span>
-                  {preset === "custom" && <Badge variant="outline" className="border-gray-600 text-gray-400 text-xs">Custom</Badge>}
+                  {preset === "custom" && <Badge variant="outline" className="border-border text-muted-foreground text-xs">Custom</Badge>}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -227,15 +227,14 @@ export default function ForgeAnalysis() {
                         id={mod.key}
                         checked={selectedModules.includes(mod.key)}
                         onCheckedChange={() => toggleModule(mod.key)}
-                        className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
                         data-testid={`checkbox-module-${mod.key}`}
                       />
-                      <Label htmlFor={mod.key} className="text-gray-300 cursor-pointer">{mod.label}</Label>
+                      <Label htmlFor={mod.key} className="text-foreground/80 cursor-pointer">{mod.label}</Label>
                     </div>
 
                     {mod.key === "sme_reviewer" && selectedModules.includes("sme_reviewer") && (
-                      <div className="ml-7 mt-2 space-y-2 border-l border-gray-800 pl-4">
-                        <p className="text-xs text-gray-500">
+                      <div className="ml-7 mt-2 space-y-2 border-l border-border pl-4">
+                        <p className="text-xs text-muted-foreground">
                           Leave all unchecked to auto-route: a router pass reads the manuscript and activates only the relevant experts.
                         </p>
                         {SME_DOMAINS.map((domain) => (
@@ -244,18 +243,18 @@ export default function ForgeAnalysis() {
                               id={`sme-${domain.key}`}
                               checked={selectedSmeDomains.includes(domain.key)}
                               onCheckedChange={() => toggleSmeDomain(domain.key)}
-                              className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 h-3.5 w-3.5"
+                              className="h-3.5 w-3.5"
                               data-testid={`checkbox-sme-${domain.key}`}
                             />
-                            <Label htmlFor={`sme-${domain.key}`} className="text-gray-400 text-sm cursor-pointer">{domain.label}</Label>
+                            <Label htmlFor={`sme-${domain.key}`} className="text-muted-foreground text-sm cursor-pointer">{domain.label}</Label>
                           </div>
                         ))}
                       </div>
                     )}
 
                     {mod.key === "beta_reader" && selectedModules.includes("beta_reader") && (
-                      <div className="ml-7 mt-2 space-y-2 border-l border-gray-800 pl-4">
-                        <p className="text-xs text-gray-500">
+                      <div className="ml-7 mt-2 space-y-2 border-l border-border pl-4">
+                        <p className="text-xs text-muted-foreground">
                           Each selected reader reviews every section independently.
                         </p>
                         {BETA_PROFILES.map((profile) => (
@@ -264,10 +263,10 @@ export default function ForgeAnalysis() {
                               id={`beta-${profile.key}`}
                               checked={selectedBetaProfiles.includes(profile.key)}
                               onCheckedChange={() => toggleBetaProfile(profile.key)}
-                              className="border-gray-600 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 h-3.5 w-3.5"
+                              className="h-3.5 w-3.5"
                               data-testid={`checkbox-beta-${profile.key}`}
                             />
-                            <Label htmlFor={`beta-${profile.key}`} className="text-gray-400 text-sm cursor-pointer">{profile.label}</Label>
+                            <Label htmlFor={`beta-${profile.key}`} className="text-muted-foreground text-sm cursor-pointer">{profile.label}</Label>
                           </div>
                         ))}
                       </div>
@@ -278,7 +277,7 @@ export default function ForgeAnalysis() {
                 <Button
                   onClick={() => analyzeMutation.mutate()}
                   disabled={selectedModules.length === 0 || analyzeMutation.isPending}
-                  className="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-gray-950 font-semibold"
+                  className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                   data-testid="button-start-analysis"
                 >
                   {analyzeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
@@ -286,7 +285,7 @@ export default function ForgeAnalysis() {
                 </Button>
 
                 {analyzeMutation.isError && (
-                  <p className="text-red-400 text-sm" data-testid="text-analysis-error">
+                  <p className="text-destructive text-sm" data-testid="text-analysis-error">
                     {(analyzeMutation.error as Error).message}
                   </p>
                 )}
@@ -296,29 +295,29 @@ export default function ForgeAnalysis() {
         )}
 
         {jobId && jobStatus && (
-          <Card className="bg-gray-900 border-amber-900/20" data-testid="card-job-status">
+          <Card className="bookplate rounded-sm" data-testid="card-job-status">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100 text-lg flex items-center gap-2">
-                {isRunning && <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />}
-                {isComplete && <CheckCircle className="w-5 h-5 text-green-400" />}
-                {isFailed && <XCircle className="w-5 h-5 text-red-400" />}
-                {isCancelled && <XCircle className="w-5 h-5 text-gray-400" />}
+              <CardTitle className="text-foreground text-lg flex items-center gap-2">
+                {isRunning && <Loader2 className="w-5 h-5 text-primary animate-spin" />}
+                {isComplete && <CheckCircle className="w-5 h-5 text-green-700" />}
+                {isFailed && <XCircle className="w-5 h-5 text-destructive" />}
+                {isCancelled && <XCircle className="w-5 h-5 text-muted-foreground" />}
                 Analysis {isComplete ? "Complete" : isFailed ? "Failed" : isCancelled ? "Cancelled" : "In Progress"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-400">Progress</span>
-                  <span className="text-amber-400" data-testid="text-progress-percent">{Math.round(jobStatus.progress || 0)}%</span>
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="text-primary" data-testid="text-progress-percent">{Math.round(jobStatus.progress || 0)}%</span>
                 </div>
-                <Progress value={jobStatus.progress || 0} className="bg-gray-800 [&>div]:bg-amber-600" data-testid="progress-bar" />
+                <Progress value={jobStatus.progress || 0} className="bg-secondary [&>div]:bg-primary" data-testid="progress-bar" />
               </div>
 
               {jobStatus.logs && jobStatus.logs.length > 0 && (
-                <div className="bg-gray-950 rounded-lg p-3 max-h-64 overflow-y-auto font-mono text-xs" data-testid="log-display">
+                <div className="bg-muted border border-border rounded-sm p-3 max-h-64 overflow-y-auto font-mono text-xs" data-testid="log-display">
                   {jobStatus.logs.map((log: string, i: number) => (
-                    <div key={i} className="text-gray-400 py-0.5" data-testid={`log-entry-${i}`}>
+                    <div key={i} className="text-muted-foreground py-0.5" data-testid={`log-entry-${i}`}>
                       {log}
                     </div>
                   ))}
@@ -326,13 +325,13 @@ export default function ForgeAnalysis() {
               )}
 
               {jobStatus.error && (
-                <p className="text-red-400 text-sm" data-testid="text-job-error">{jobStatus.error}</p>
+                <p className="text-destructive text-sm" data-testid="text-job-error">{jobStatus.error}</p>
               )}
 
               {isRunning && (
                 <Button
                   variant="outline"
-                  className="border-red-900/40 text-red-400 hover:bg-red-950/30"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
                   onClick={() => cancelMutation.mutate()}
                   disabled={cancelMutation.isPending || cancelMutation.isSuccess}
                   data-testid="button-stop-analysis"
@@ -346,7 +345,7 @@ export default function ForgeAnalysis() {
               )}
 
               {isCancelled && (
-                <p className="text-gray-400 text-sm" data-testid="text-job-cancelled">
+                <p className="text-muted-foreground text-sm" data-testid="text-job-cancelled">
                   Analysis stopped. Results gathered before cancelling are kept; the editorial letter was not generated.
                 </p>
               )}
@@ -354,7 +353,7 @@ export default function ForgeAnalysis() {
               {(isComplete || isFailed || isCancelled) && (
                 <Button
                   variant="outline"
-                  className="border-amber-900/30 text-amber-400"
+                  className="border-border text-primary hover:bg-primary/10"
                   onClick={() => { setJobId(null); }}
                   data-testid="button-new-analysis"
                 >
