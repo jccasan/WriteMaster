@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Loader2, BookOpen, Globe, ArrowRight, Clock, ChevronRight, Sparkles,
-  ChevronDown, Plus, Map, Feather, Scissors, Stamp,
+  ChevronDown, Plus, Map, Feather, Scissors, Stamp, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -62,9 +62,11 @@ export default function Home() {
   const [firstTimeStep, setFirstTimeStep] = useState<FirstTimeStep>("root");
   const [newBookTitle, setNewBookTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNewBookMenu, setShowNewBookMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -143,6 +145,41 @@ export default function Home() {
     }
   }
 
+  async function uploadManuscript(file: File) {
+    setUploading(true);
+    setError(null);
+    setShowNewBookMenu(false);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const r = await fetch("/api/books/upload-manuscript", {
+        method: "POST",
+        body: form,
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "Upload failed");
+      navigate(`/book/${data.id}/write/1`);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const manuscriptUploadInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept=".txt,.md,.docx"
+      className="hidden"
+      onChange={e => {
+        const file = e.target.files?.[0];
+        if (file) uploadManuscript(file);
+        e.target.value = "";
+      }}
+    />
+  );
+
   // ── NEW BOOK DROPDOWN ───────────────────────────────────────────────────────
   function NewBookDropdown({ iconSize = "sm" }: { iconSize?: "sm" | "default" }) {
     return (
@@ -151,14 +188,15 @@ export default function Home() {
           size={iconSize}
           className="gap-2"
           onClick={() => setShowNewBookMenu(v => !v)}
+          disabled={uploading}
         >
-          <BookOpen className="w-4 h-4" />
-          New Book
-          <ChevronDown className={cn("w-3 h-3 transition-transform", showNewBookMenu && "rotate-180")} />
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
+          {uploading ? "Reading..." : "New Book"}
+          {!uploading && <ChevronDown className={cn("w-3 h-3 transition-transform", showNewBookMenu && "rotate-180")} />}
         </Button>
 
         {showNewBookMenu && (
-          <div className="absolute right-0 top-full mt-1 z-50 w-56 bookplate rounded-sm animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="absolute right-0 top-full mt-1 z-50 w-64 bookplate rounded-sm animate-in fade-in slide-in-from-top-1 duration-150">
             <div className="p-1">
               <button
                 onClick={() => { setShowNewBookMenu(false); navigate("/pipeline/new"); }}
@@ -167,7 +205,20 @@ export default function Home() {
                 <BookOpen className="w-4 h-4 text-brass shrink-0" />
                 <div>
                   <p className="font-medium">Standalone book</p>
-                  <p className="text-xs text-muted-foreground">Not part of a universe</p>
+                  <p className="text-xs text-muted-foreground">Plan a new book from scratch</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-sm hover:bg-accent/60 transition-colors text-left"
+                disabled={uploading}
+                data-testid="button-upload-book-home"
+              >
+                <Upload className="w-4 h-4 text-brass shrink-0" />
+                <div>
+                  <p className="font-medium">Upload a book</p>
+                  <p className="text-xs text-muted-foreground">Import a TXT, Markdown, or Word file</p>
                 </div>
               </button>
 
@@ -237,6 +288,7 @@ export default function Home() {
   if (isFirstTime) {
     return (
       <Layout>
+        {manuscriptUploadInput}
         <div className="max-w-lg mx-auto py-16 animate-in fade-in duration-500">
           {firstTimeStep === "root" && (
             <div className="text-center space-y-8">
@@ -302,7 +354,21 @@ export default function Home() {
                     Start outlining <ArrowRight className="w-4 h-4" />
                   </div>
                 </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bookplate p-5 rounded-sm text-left transition-all group hover:shadow-md disabled:opacity-60"
+                  disabled={uploading}
+                  data-testid="button-upload-book-first-time"
+                >
+                  <h3 className="font-semibold mb-1 font-serif">Upload an existing book</h3>
+                  <p className="text-sm text-muted-foreground">Import a TXT, Markdown, or Word manuscript and continue writing.</p>
+                  <div className="flex items-center gap-1 text-primary text-sm font-medium mt-3">
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {uploading ? "Reading manuscript..." : "Choose a file"}
+                  </div>
+                </button>
               </div>
+              {error && <p className="text-sm text-destructive text-center">{error}</p>}
             </div>
           )}
 
@@ -344,6 +410,7 @@ export default function Home() {
   // ── RETURNING USER ─────────────────────────────────────────────────────────
   return (
     <Layout>
+      {manuscriptUploadInput}
       <div className="max-w-3xl mx-auto animate-in fade-in duration-300">
         <div className="flex items-end justify-between mb-2">
           <div>
@@ -353,6 +420,8 @@ export default function Home() {
           <NewBookDropdown iconSize="sm" />
         </div>
         <div className="library-rule mb-8" />
+
+        {error && <p className="text-sm text-destructive text-right mb-4">{error}</p>}
 
         {recentWork.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
