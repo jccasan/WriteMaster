@@ -8,10 +8,16 @@ const execFileAsync = promisify(execFile);
 function cleanMammothMarkdown(md: string): string {
   let text = md;
   text = text.replace(/<a\s+id="[^"]*"><\/a>/g, "");
-  // Drop images. Mammoth inlines them as base64 data URIs (`![](data:...)`),
-  // which are useless as manuscript prose and can bloat a single chapter into
-  // megabytes of gibberish. Strip the whole image construct.
+  // Drop images. Mammoth embeds them as base64 blobs that are useless as
+  // manuscript prose and can bloat a single chapter into megabytes of
+  // gibberish. Depending on the image (inline vs floating, PNG vs EMF/WMF)
+  // the blob can arrive as markdown `![alt](data:...)`, an HTML `<img>` tag,
+  // a bare `data:...;base64,...` URI, or — worst case — a naked base64 run.
+  // Strip every form; a 200+ char base64 token never occurs in real prose.
+  text = text.replace(/<img\b[^>]*>/gi, "");
   text = text.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
+  text = text.replace(/data:[a-z0-9.+/-]*;base64,[A-Za-z0-9+/=]+/gi, "");
+  text = text.replace(/[A-Za-z0-9+/]{200,}={0,2}/g, "");
   text = text.replace(/\\([.\-!@#$%^&*()_+=\[\]{};:'",<>?/|`~])/g, "$1");
   text = text.replace(/__([^_]+)__/g, "$1");
   text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
