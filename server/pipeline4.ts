@@ -13,7 +13,7 @@
 
 import { DEFAULT_DECISION_RULE } from "./writing-rules";
 import { getSkill } from "./skillLoader";
-import { definePipeline, runPipelineStep, stepNameOf, llm, preview } from "./pipelineEngine";
+import { definePipeline, runPipelineStep, stepNameOf, isComplete, llm, preview } from "./pipelineEngine";
 
 export interface LineEditState {
   pipeline4_id: string;
@@ -355,6 +355,14 @@ If issues found: list each specifically so the human can review.`
 
 export function getP4StepName(step: number): string {
   return stepNameOf(p4Pipeline, step);
+}
+
+export function getP4StepCount(): number {
+  return p4Pipeline.steps.length;
+}
+
+export function isP4Complete(state: LineEditState): boolean {
+  return isComplete(p4Pipeline, state);
 }
 
 export async function runP4Step(state: LineEditState): Promise<{
