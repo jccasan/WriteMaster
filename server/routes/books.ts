@@ -136,9 +136,8 @@ const bookUpload = multer({
         const buffer = await readFile(filePath);
 
         if (name.endsWith(".docx")) {
-          const mammoth = await import("mammoth");
-          const result = await (mammoth.default as any).convertToMarkdown({ buffer });
-          content = result.value;
+          const { docxBufferToText } = await import("../forge/parsing/manuscript-parser");
+          content = await docxBufferToText(buffer);
         } else {
           content = buffer.toString("utf-8");
         }
