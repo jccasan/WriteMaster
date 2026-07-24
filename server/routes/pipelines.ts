@@ -2,7 +2,7 @@ import express from "express";
 import { storage } from "../storage";
 import { runP2Step, getP2StepName, createEmptyP2State } from "../pipeline2";
 import { runP3Step, getP3StepName, createEmptyP3State } from "../pipeline3";
-import { runP4Step, getP4StepName, createEmptyLineEditState } from "../pipeline4";
+import { runP4Step, getP4StepName, createEmptyLineEditState, isP4Complete } from "../pipeline4";
 import { buildPreviousSummariesContext } from "./helpers";
 
 const router = express.Router();
@@ -291,7 +291,7 @@ const router = express.Router();
     try {
       const state = await storage.getP4State(req.params.p4Id);
       if (!state) return res.status(404).json({ error: "Pipeline 4 session not found" });
-      if (state.current_step >= 7) {
+      if (isP4Complete(state)) {
         return res.json({ step_completed: state.current_step, step_name: "Complete", is_complete: true });
       }
 
@@ -304,7 +304,7 @@ const router = express.Router();
         step_name: stepName,
         output_preview: outputPreview,
         current_step: updatedState.current_step,
-        is_complete: updatedState.current_step >= 7,
+        is_complete: isP4Complete(updatedState),
       });
     } catch (err: any) {
       console.error("[Pipeline4 Step Error]", err);
@@ -327,7 +327,7 @@ const router = express.Router();
     try {
       const state = await storage.getP4State(req.params.p4Id);
       if (!state) return res.status(404).json({ error: "Pipeline 4 session not found" });
-      if (state.current_step < 7) return res.status(400).json({ error: "Pipeline 4 not yet complete" });
+      if (!isP4Complete(state)) return res.status(400).json({ error: "Pipeline 4 not yet complete" });
       if (!state.edited_draft) return res.status(400).json({ error: "Pipeline 4 has no edited draft" });
 
       const book = await storage.getBook(state.book_id);
@@ -336,7 +336,11 @@ const router = express.Router();
       const chapter = book.chapters.find(c => c.chapter_number === state.chapter_number);
       if (!chapter) return res.status(404).json({ error: `Chapter ${state.chapter_number} not found` });
 
-      chapter.content = state.edited_draft;
+      // Optional override: the line-edit review UI lets the author decline
+      // individual flagged edits, so the text applied may differ from the
+      // pipeline's full rewrite (state.edited_draft).
+      const override = typeof req.body?.content === "string" ? req.body.content.trim() : "";
+      chapter.content = override || state.edited_draft;
       await storage.saveBook(book);
 
       res.json({
