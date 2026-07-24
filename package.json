@@ -5,11 +5,12 @@
   "license": "MIT",
   "scripts": {
     "dev:client": "vite dev --port 5000",
-    "dev": "prisma db push --skip-generate && NODE_ENV=development tsx server/index.ts",
-    "build": "tsx script/build.ts",
-    "start": "prisma db push --skip-generate && NODE_ENV=production node dist/index.cjs",
+    "dev": "prisma db push && NODE_ENV=development tsx server/index.ts",
+    "build": "prisma generate && tsx script/build.ts",
+    "start": "prisma db push && NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
