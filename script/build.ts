@@ -8,6 +8,7 @@ const allowlist = [
   "date-fns",
   "express",
   "multer",
+  "p-retry",
   "uuid",
   "zod",
   "zod-validation-error",
