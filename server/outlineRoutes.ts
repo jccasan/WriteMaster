@@ -18,13 +18,32 @@ import { readFile, writeFile, mkdir, readdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import multer from "multer";
 import { callLLM } from "./llm";
 import { storage } from "./storage";
+import { extractText, countWords } from "./forge/parsing/manuscript-parser";
 
 const router = Router();
 const SESSIONS_DIR = path.resolve("data/outline-sessions");
+const UPLOADS_DIR = path.resolve("data/outline-uploads");
 
 if (!existsSync(SESSIONS_DIR)) mkdir(SESSIONS_DIR, { recursive: true }).catch(() => {});
+if (!existsSync(UPLOADS_DIR)) mkdir(UPLOADS_DIR, { recursive: true }).catch(() => {});
+
+// Max characters of an uploaded outline/scene list we keep and feed to the AI.
+// ~20k chars ≈ 5k words — covers almost any outline while keeping prompts sane.
+const REF_DOC_MAX = 20000;
+
+const docUpload = multer({
+  dest: UPLOADS_DIR,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req: any, file: any, cb: any) => {
+    const allowed = [".txt", ".md", ".docx"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error("Only .txt, .md, and .docx files are supported"));
+  },
+});
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,6 +77,8 @@ interface GuidedSession {
   universe_id: string | null;
   series_id: string | null;
   bible_context: string; // pre-seeded world context from universe bible
+  reference_document: string; // uploaded outline / scene list text (optional)
+  reference_document_name: string; // original filename, for display
 }
 
 async function saveSession(session: GuidedSession) {
@@ -127,13 +148,63 @@ router.delete("/guided/:id", async (req, res) => {
   }
 });
 
+// ─── REFERENCE DOCUMENT UPLOAD ────────────────────────────────────────────────
+
+// Accepts an outline / scene list (.txt, .md, .docx), extracts its text, and
+// returns it so the client can hand it to a guided interview. Nothing is
+// persisted here — the text lives on the session once the interview starts.
+router.post("/extract-document", (req, res) => {
+  docUpload.single("file")(req as any, res as any, async (uploadErr: any) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message });
+    const file = (req as any).file;
+    try {
+      if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+      let text: string;
+      try {
+        text = await extractText(file.path, file.mimetype);
+      } finally {
+        await unlink(file.path).catch(() => {});
+      }
+
+      text = text.replace(/\r\n?/g, "\n").replace(/[\v\f\u2028\u2029]/g, "\n").trim();
+      if (!text) {
+        return res.status(400).json({ error: "The file appears to be empty or has no extractable text" });
+      }
+
+      const wordCount = countWords(text);
+      const truncated = text.length > REF_DOC_MAX;
+      if (truncated) text = text.slice(0, REF_DOC_MAX);
+
+      res.json({
+        text,
+        word_count: wordCount,
+        filename: file.originalname,
+        truncated,
+      });
+    } catch (err: any) {
+      if (file?.path) await unlink(file.path).catch(() => {});
+      res.status(400).json({ error: err.message });
+    }
+  });
+});
+
 // ─── GUIDED MODE ──────────────────────────────────────────────────────────────
 
 const FIRST_QUESTION = "Let's build your story together. I'll ask you up to 50 questions — answer as much or as little as you like for each one.\n\nFirst: What's the core of your story? Give me the rough idea — character, situation, or just the feeling you're going for. Anything at all.";
 
 router.post("/guided/start", async (req, res) => {
   try {
-    const { genre = "fiction", universe_id = null, series_id = null } = req.body;
+    const {
+      genre = "fiction",
+      universe_id = null,
+      series_id = null,
+      reference_document = "",
+      reference_document_name = "",
+    } = req.body;
+
+    const refDoc =
+      typeof reference_document === "string" ? reference_document.slice(0, REF_DOC_MAX) : "";
 
     // Load bible if universe provided
     let bibleContext = "";
@@ -142,19 +213,23 @@ router.post("/guided/start", async (req, res) => {
       bibleContext = await getEffectiveBible(universe_id, series_id);
     }
 
-    // Generate an appropriate first question
+    // Generate an appropriate first question. A tailored opener is generated
+    // whenever we have prior material to work from — an established universe
+    // bible, an uploaded outline / scene list, or both.
     let firstQuestion = FIRST_QUESTION;
-    if (bibleContext) {
+    if (bibleContext || refDoc) {
       firstQuestion = await callLLM(
-        `You are a story development interviewer helping an author create a new book in an established universe.
-
+        `You are a story development interviewer helping an author create a new book${bibleContext ? " in an established universe" : ""}.
+${bibleContext ? `
 UNIVERSE BIBLE (already known — do NOT ask about this):
 ${bibleContext.substring(0, 3000)}
+` : ""}${refDoc ? `
+The author has uploaded an outline / scene list. It is your primary reference. Read it closely: do NOT ask about anything it already establishes — your questions exist to fill its gaps and deepen it.
 
-Your job: Ask the author about the SPECIFIC STORY for this book, not the world (that's already established).
-Focus on: the protagonist of THIS book, the central conflict, the stakes, the plot.
-
-Write a warm opening message (2-3 sentences) acknowledging the established world, then ask the first specific story question.
+UPLOADED OUTLINE / SCENE LIST:
+${refDoc.substring(0, 6000)}
+` : ""}
+Write a warm opening message (2-3 sentences)${refDoc ? " acknowledging the outline they shared" : ""}${bibleContext ? `${refDoc ? " and" : " acknowledging"} the established world` : ""}, then ask the single most valuable first question that their material does not already answer.
 Keep it conversational. Output only the message text.`,
         "cheap"
       );
@@ -174,6 +249,8 @@ Keep it conversational. Output only the message text.`,
       universe_id,
       series_id,
       bible_context: bibleContext,
+      reference_document: refDoc,
+      reference_document_name: reference_document_name || "",
     };
     await saveSession(session);
     res.json(session);
@@ -241,6 +318,9 @@ ${session.bible_context ? `
 UNIVERSE BIBLE (world already established — skip world-building questions entirely):
 ${session.bible_context.substring(0, 2000)}
 Focus only on: protagonist, plot, character arcs, conflict, stakes specific to THIS book.
+` : ""}${session.reference_document ? `
+AUTHOR'S UPLOADED OUTLINE / SCENE LIST — treat everything here as already established. Do NOT ask about anything it already answers; ask only to fill its gaps or resolve its ambiguities:
+${session.reference_document.substring(0, 8000)}
 ` : ""}
 
 EVERY QUESTION YOU HAVE ALREADY ASKED — do not repeat, rephrase, or ask anything similar:
@@ -259,8 +339,8 @@ Rules:
 - Check every question above before asking — if the topic is covered, skip it
 - Be specific to what the author said — no generic questions
 - ${session.bible_context ? "Skip world-building, magic, geography, lore — use bible" : "Priority gaps to fill: protagonist want/need → central conflict → antagonist → stakes → world rules → theme → ending"}
-- Go deeper on rich answers; broaden only if author is sparse
-- Signal READY_TO_SYNTHESIZE when ALL covered:
+${session.reference_document ? "- The uploaded outline already covers parts of the story — never re-ask what it establishes; target the gaps it leaves open\n" : ""}- Go deeper on rich answers; broaden only if author is sparse
+- Signal READY_TO_SYNTHESIZE when ALL covered (an item counts as covered if the uploaded outline or the author's answers establish it):
   * Protagonist: who they are, what they want externally and internally
   * Central conflict
   * Antagonist or opposing force
@@ -399,16 +479,19 @@ GENRE: ${session.genre}
 ${session.bible_context ? `
 UNIVERSE (established world context):
 ${session.bible_context.substring(0, 2000)}
+` : ""}${session.reference_document ? `
+AUTHOR'S UPLOADED OUTLINE / SCENE LIST — source material, equal in weight to the interview. Fold its scenes, structure, and specific details into the brain dump:
+${session.reference_document.substring(0, 12000)}
 ` : ""}
 
-INTERVIEW TRANSCRIPT — this is your ONLY source material:
+INTERVIEW TRANSCRIPT — ${session.reference_document ? "source material, to be combined with the uploaded outline above" : "this is your ONLY source material"}:
 ${history}
 
 Write a 400-800 word brain dump that:
-- Captures every specific detail the author mentioned
+- Captures every specific detail the author mentioned${session.reference_document ? " in the interview OR the uploaded outline" : ""}
 - Uses their exact names, places, and concepts
 - Preserves their tone and voice
-- Does NOT add anything they didn't say
+- Does NOT add anything they didn't say${session.reference_document ? " (in either the interview or the outline)" : ""}
 - Does NOT use generic placeholder content
 - Covers: protagonist, central conflict, antagonist, stakes, world, theme, ending direction
 

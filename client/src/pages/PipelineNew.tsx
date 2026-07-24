@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Loader2, Sparkles, MessageCircle, FileText, Layers,
   AlertTriangle, Check, ChevronDown, ChevronUp, Plus, Minus,
-  ArrowRight, Send, Save, X
+  ArrowRight, Send, Save, X, Upload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,7 @@ interface GuidedSession {
   question_count: number;
   max_questions: number;
   project_id: string | null;
+  reference_document_name?: string;
 }
 
 interface HybridQuestion {
@@ -66,6 +67,11 @@ export default function PipelineNew() {
   const [error, setError] = useState<string | null>(null);
   const [savedSessions, setSavedSessions] = useState<any[]>([]);
   const [dismissedSessions, setDismissedSessions] = useState<Set<string>>(new Set());
+
+  // Uploaded outline / scene list that seeds the guided interview
+  const [refDoc, setRefDoc] = useState<{ text: string; word_count: number; filename: string; truncated: boolean } | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   // Guided state
   const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
@@ -129,6 +135,28 @@ export default function PipelineNew() {
 
   // ── GUIDED ──────────────────────────────────────────────────────────────────
 
+  const uploadReferenceDoc = async (file: File) => {
+    setUploadingDoc(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const r = await fetch("/api/outline/extract-document", { method: "POST", body: form });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "Upload failed");
+      setRefDoc({
+        text: data.text,
+        word_count: data.word_count,
+        filename: data.filename,
+        truncated: !!data.truncated,
+      });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
   const startGuided = async () => {
     if (!genre) return;
     setLoading(true);
@@ -137,7 +165,11 @@ export default function PipelineNew() {
       const r = await fetch("/api/outline/guided/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ genre }),
+        body: JSON.stringify({
+          genre,
+          reference_document: refDoc?.text ?? "",
+          reference_document_name: refDoc?.filename ?? "",
+        }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
@@ -365,6 +397,54 @@ export default function PipelineNew() {
           </Select>
         </div>
 
+        {/* Optional reference document — seeds the Guided Interview */}
+        <div className="mb-6">
+          <Label className="text-sm font-medium mb-2 block">
+            Outline or scene list <span className="text-muted-foreground font-normal">(optional)</span>
+          </Label>
+          {refDoc ? (
+            <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
+              <FileText className="w-4 h-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{refDoc.filename}</p>
+                <p className="text-xs text-muted-foreground">
+                  {refDoc.word_count.toLocaleString()} words{refDoc.truncated ? " · trimmed to fit" : ""} · the Guided Interview will build on this
+                </p>
+              </div>
+              <button
+                onClick={() => setRefDoc(null)}
+                className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                title="Remove document"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => docInputRef.current?.click()}
+              disabled={uploadingDoc}
+              className="w-full flex items-center gap-2 p-3 rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-sm text-muted-foreground text-left disabled:opacity-60"
+            >
+              {uploadingDoc ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Upload className="w-4 h-4 shrink-0" />}
+              <span>{uploadingDoc ? "Reading document..." : "Upload an outline or scene list — the AI reads it and tailors its interview questions"}</span>
+            </button>
+          )}
+          <p className="text-xs text-muted-foreground mt-2">
+            Used by the Guided Interview to skip what you've already figured out and dig into the gaps. .txt, .md, or .docx.
+          </p>
+          <input
+            ref={docInputRef}
+            type="file"
+            accept=".txt,.md,.docx"
+            className="hidden"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) uploadReferenceDoc(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
         <div className="grid gap-4">
           {[
             {
@@ -439,6 +519,12 @@ export default function PipelineNew() {
           <Badge variant="outline" className="text-xs">
             {guidedSession.question_count} question{guidedSession.question_count !== 1 ? "s" : ""}
           </Badge>
+          {guidedSession.reference_document_name && (
+            <Badge variant="outline" className="text-xs gap-1 max-w-[220px]" title={`Building on ${guidedSession.reference_document_name}`}>
+              <FileText className="w-3 h-3 shrink-0" />
+              <span className="truncate">{guidedSession.reference_document_name}</span>
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {unresolved > 0 && (
