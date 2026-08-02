@@ -1,4 +1,4 @@
-# Volume 5 — Publishing Lens
+# Volume 5 ,  Publishing Lens
 
 Included skills:
 - literary-agent-reader

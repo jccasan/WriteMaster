@@ -4,12 +4,12 @@ An Agent Skills-compatible package for restrained, professional fiction copyedit
 
 ## Contents
 
-- `SKILL.md` — primary workflow and activation instructions
-- `references/COPYEDIT_RULES.md` — judgment rules and fiction conventions
-- `references/OUTPUT_PROTOCOL.md` — response formats
-- `assets/STYLE_SHEET_TEMPLATE.md` — cumulative manuscript style sheet
-- `assets/EDITING_BRIEF_TEMPLATE.md` — optional project brief
-- `examples/BEFORE_AFTER.md` — examples of appropriate restraint
+- `SKILL.md` ,  primary workflow and activation instructions
+- `references/COPYEDIT_RULES.md` ,  judgment rules and fiction conventions
+- `references/OUTPUT_PROTOCOL.md` ,  response formats
+- `assets/STYLE_SHEET_TEMPLATE.md` ,  cumulative manuscript style sheet
+- `assets/EDITING_BRIEF_TEMPLATE.md` ,  optional project brief
+- `examples/BEFORE_AFTER.md` ,  examples of appropriate restraint
 
 ## Suggested first test
 

@@ -1,4 +1,4 @@
-# Editorial Operating System — Complete Suite
+# Editorial Operating System ,  Complete Suite
 
 A modular fiction-editing and beta-reader system with independent reviewer identities, shared project memory, issue tracking, revision verification, subject-matter routing, and publishing-stage evaluation.
 

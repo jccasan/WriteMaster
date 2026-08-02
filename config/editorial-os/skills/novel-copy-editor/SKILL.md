@@ -246,7 +246,7 @@ For a novel or multi-chapter project:
 
 Use this format:
 
-`1. "Short identifying quotation" — The scene says Mara injured her left hand, but the prior continuity note lists her right hand. Which is correct?`
+`1. "Short identifying quotation" ,  The scene says Mara injured her left hand, but the prior continuity note lists her right hand. Which is correct?`
 
 A strong query identifies the conflict and the decision needed. It does not disguise a rewrite preference as a question.
 
@@ -335,3 +335,10 @@ For additional guidance, consult:
 - `examples/BEFORE_AFTER.md`
 - `assets/STYLE_SHEET_TEMPLATE.md`
 - `assets/EDITING_BRIEF_TEMPLATE.md`
+
+## v2 addenda
+
+Governed additionally by `REVIEWER_ENFORCEMENT.md` and `INPUT_CONTRACT.md`.
+Accept chunks of 800 words or fewer with a scene context header. Refuse full
+manuscript passes. Do not produce a clean revision unless the author writes
+`REWRITE [id]`. Every issue opens with verbatim quoted text.

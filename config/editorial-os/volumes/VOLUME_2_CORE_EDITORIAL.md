@@ -1,4 +1,4 @@
-# Volume 2 — Core Editorial Skills
+# Volume 2 ,  Core Editorial Skills
 
 Included skills:
 - developmental-editor
