@@ -15,6 +15,8 @@ import {
   Wand2,
   Upload,
   PenLine,
+  Scissors,
+  Users,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 
@@ -27,6 +29,11 @@ interface BookSummary {
   chapters_written: number;
   last_written_chapter: number | null;
   last_written_chapter_title: string | null;
+  editorial?: {
+    status: "not_linked" | "needs_draft" | "ready" | "analyzing" | "reviewed" | "failed";
+    issues: number;
+    reports: number;
+  } | null;
 }
 
 function formatDate(iso: string) {
@@ -133,6 +140,8 @@ export default function Books() {
   // Every way to work on a book, named plainly. One desk, many drawers.
   const MODES = [
     { label: "Write", hint: "Open the manuscript in the rich-text editor", icon: <PenLine className="w-3 h-3" />, route: writeRoute },
+    { label: "Edit", hint: "Run manuscript editing and reader panels", icon: <Scissors className="w-3 h-3" />, route: (b: BookSummary) => `/forge?bookId=${encodeURIComponent(b.id)}` },
+    { label: "Reader Panel", hint: "Hear from multiple beta-reader personas", icon: <Users className="w-3 h-3" />, route: (b: BookSummary) => `/forge?bookId=${encodeURIComponent(b.id)}&review=readers` },
     { label: "Studio", hint: "Prompt-driven writing with story bible & memory", icon: <Feather className="w-3 h-3" />, route: (b: BookSummary) => `/book/${b.id}/studio` },
     { label: "Classic Writer", hint: "Chapter-by-chapter writer with autopilot", icon: <PenTool className="w-3 h-3" />, route: (b: BookSummary) => `/book/${b.id}` },
     { label: "Story Docs", hint: "Expand dossier into character sheet, world bible & outline", icon: <FileStack className="w-3 h-3" />, route: (b: BookSummary) => `/book/${b.id}/build` },
@@ -273,6 +282,14 @@ export default function Books() {
                         <span className="text-xs px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary font-medium">
                           {book.chapters_written}/{book.chapter_count} chapters written
                         </span>
+                        {book.editorial?.status === "analyzing" && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-sm bg-brass/15 text-brass font-medium">Review running</span>
+                        )}
+                        {book.editorial?.status === "reviewed" && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-sm bg-green-700/10 text-green-700 font-medium">
+                            {book.editorial.issues} issues · {book.editorial.reports} reports
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">

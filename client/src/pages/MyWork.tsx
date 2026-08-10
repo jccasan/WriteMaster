@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2, BookOpen, Globe, Plus, ChevronRight, Clock,
-  Trash2, Sparkles, PenTool, Search, List, Archive
+  Trash2, Sparkles, PenTool, Search, List, Archive, Scissors, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -310,6 +310,14 @@ export default function MyWork() {
                           {book.chapters_written}/{book.chapter_count} ch
                         </Badge>
                       )}
+                      {book.editorial?.status === "analyzing" && (
+                        <Badge variant="outline" className="text-xs h-4 px-1.5 shrink-0 border-brass/40 text-brass">Review running</Badge>
+                      )}
+                      {book.editorial?.status === "reviewed" && (
+                        <Badge variant="outline" className="text-xs h-4 px-1.5 shrink-0 border-green-700/40 text-green-700">
+                          {book.editorial.issues} editorial issues
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Clock className="w-3 h-3 text-muted-foreground/50" />
@@ -317,6 +325,26 @@ export default function MyWork() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    {book.chapters_written > 0 && (
+                      <>
+                        <Button
+                          size="sm" variant="outline"
+                          className="h-7 gap-1.5 px-2 text-xs"
+                          onClick={e => { e.stopPropagation(); navigate(`/forge?bookId=${encodeURIComponent(book.id)}`); }}
+                          data-testid={`button-edit-book-${book.id}`}
+                        >
+                          <Scissors className="w-3 h-3" /> Edit
+                        </Button>
+                        <Button
+                          size="sm" variant="outline"
+                          className="h-7 gap-1.5 px-2 text-xs"
+                          onClick={e => { e.stopPropagation(); navigate(`/forge?bookId=${encodeURIComponent(book.id)}&review=readers`); }}
+                          data-testid={`button-reader-panel-book-${book.id}`}
+                        >
+                          <Users className="w-3 h-3" /> Readers
+                        </Button>
+                      </>
+                    )}
                     <Button
                       size="sm" variant="ghost"
                       className="h-7 w-7 p-0 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"

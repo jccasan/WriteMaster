@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Loader2, BookOpen, Globe, ArrowRight, Clock, ChevronRight, Sparkles,
-  ChevronDown, Plus, Map, Feather, Scissors, Stamp, Upload,
+  ChevronDown, Plus, Map, Feather, Scissors, Stamp, Upload, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +96,7 @@ export default function Home() {
           date: b.updated_at,
           route: `/book/${b.id}`,
           continueRoute: hasChapter ? `/book/${b.id}/write/${b.last_written_chapter}` : null,
+          editorial: b.editorial || null,
         });
       }
       for (const u of univs.slice(0, 2)) {
@@ -459,9 +460,39 @@ export default function Home() {
                         <Clock className="w-3 h-3 text-muted-foreground/50" />
                         <span className="text-xs text-muted-foreground/70">{formatDate(item.date)}</span>
                       </div>
+                      {item.editorial?.status === "analyzing" && (
+                        <span className="text-xs rounded-sm bg-brass/15 text-brass px-1.5 py-0.5">Review running</span>
+                      )}
+                      {item.editorial?.status === "reviewed" && (
+                        <span className="text-xs rounded-sm bg-green-700/10 text-green-700 px-1.5 py-0.5">
+                          {item.editorial.issues} issues · {item.editorial.reports} reports
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                    {item.type === "book" && item.continueRoute && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={e => { e.stopPropagation(); navigate(`/forge?bookId=${encodeURIComponent(item.id)}`); }}
+                          data-testid={`button-edit-recent-${item.id}`}
+                        >
+                          <Scissors className="w-3 h-3" /> Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={e => { e.stopPropagation(); navigate(`/forge?bookId=${encodeURIComponent(item.id)}&review=readers`); }}
+                          data-testid={`button-readers-recent-${item.id}`}
+                        >
+                          <Users className="w-3 h-3" /> Readers
+                        </Button>
+                      </>
+                    )}
                     {item.continueRoute && (
                       <Button
                         size="sm"

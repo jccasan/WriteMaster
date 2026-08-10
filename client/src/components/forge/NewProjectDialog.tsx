@@ -48,12 +48,12 @@ export default function NewProjectDialog({ onCreated }: NewProjectDialogProps) {
       <DialogTrigger asChild>
         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" data-testid="button-new-project">
           <Plus className="w-4 h-4 mr-2" />
-          New Project
+          Blank workspace
         </Button>
       </DialogTrigger>
       <DialogContent className="bookplate rounded-sm">
         <DialogHeader>
-          <DialogTitle className="font-serif text-foreground">Create New Project</DialogTitle>
+          <DialogTitle className="font-serif text-foreground">Create Blank Editorial Workspace</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div>
@@ -109,7 +109,7 @@ export default function NewProjectDialog({ onCreated }: NewProjectDialogProps) {
             data-testid="button-create-project"
           >
             {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Create Project
+            Create Workspace
           </Button>
           {mutation.isError && (
             <p className="text-destructive text-sm" data-testid="text-create-error">

@@ -2,8 +2,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
 import {
-  LayoutDashboard, Upload, Zap, FileText, AlertTriangle,
-  Users, GitBranch, Film, Search, BookOpen, ArrowLeft, MessageSquare, Bot
+  LayoutDashboard, Upload, Zap, FileText, ArrowLeft, MessageSquare,
 } from "lucide-react";
 
 interface NavItem {
@@ -16,16 +15,9 @@ function getProjectNav(projectId: string): NavItem[] {
   const base = `/forge/project/${projectId}`;
   return [
     { label: "Overview", path: base, icon: <LayoutDashboard className="w-4 h-4" /> },
-    { label: "Upload", path: `${base}/upload`, icon: <Upload className="w-4 h-4" /> },
-    { label: "Analyze", path: `${base}/analyze`, icon: <Zap className="w-4 h-4" /> },
-    { label: "Reports", path: `${base}/reports`, icon: <FileText className="w-4 h-4" /> },
-    { label: "Issues", path: `${base}/issues`, icon: <AlertTriangle className="w-4 h-4" /> },
-    { label: "Characters", path: `${base}/characters`, icon: <Users className="w-4 h-4" /> },
-    { label: "Structure", path: `${base}/structure`, icon: <GitBranch className="w-4 h-4" /> },
-    { label: "Scenes", path: `${base}/scenes`, icon: <Film className="w-4 h-4" /> },
-    { label: "Fact Check", path: `${base}/fact-check`, icon: <Search className="w-4 h-4" /> },
-    { label: "Beta Readers", path: `${base}/beta-readers`, icon: <BookOpen className="w-4 h-4" /> },
-    { label: "Chat with AI", path: `${base}/chat`, icon: <Bot className="w-4 h-4" /> },
+    { label: "Draft & Revisions", path: `${base}/upload`, icon: <Upload className="w-4 h-4" /> },
+    { label: "Run Review", path: `${base}/analyze`, icon: <Zap className="w-4 h-4" /> },
+    { label: "Results", path: `${base}/reports`, icon: <FileText className="w-4 h-4" /> },
   ];
 }
 

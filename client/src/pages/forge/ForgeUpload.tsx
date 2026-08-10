@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { Link, useRoute } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Loader2, CheckCircle, GitCompare, XCircle } from "lucide-react";
+import { Upload, Loader2, CheckCircle, GitCompare, XCircle, ArrowRight, Zap } from "lucide-react";
 
 export default function ForgeUpload() {
   const [, params] = useRoute("/forge/project/:id/upload");
@@ -126,7 +126,8 @@ export default function ForgeUpload() {
   return (
     <ForgeLayout projectId={projectId}>
       <div className="max-w-2xl animate-in fade-in duration-300">
-        <h1 className="text-2xl font-serif font-semibold text-foreground mb-6" data-testid="text-upload-heading">Upload Manuscript</h1>
+        <h1 className="text-2xl font-serif font-semibold text-foreground mb-1" data-testid="text-upload-heading">Draft &amp; Revisions</h1>
+        <p className="text-sm text-muted-foreground mb-6">Upload source material, replace the current draft, or verify a revised manuscript.</p>
 
         <Card className="bookplate rounded-sm mb-6">
           <CardContent className="p-6 space-y-5">
@@ -232,6 +233,13 @@ export default function ForgeUpload() {
                   </div>
                 )}
               </div>
+              <Link
+                href={`/forge/project/${projectId}/analyze`}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-semibold h-10 px-4 no-underline"
+                data-testid="link-choose-editing-options"
+              >
+                <Zap className="w-4 h-4" /> Choose editing options <ArrowRight className="w-4 h-4" />
+              </Link>
             </CardContent>
           </Card>
         )}

@@ -130,7 +130,7 @@ export interface IStorage {
   createBook(sourceProjectId: string | null, brainDump: string, dossier: string, title: string): Promise<BookProject>;
   getBook(id: string): Promise<BookProject | null>;
   saveBook(book: BookProject): Promise<void>;
-  listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number }>>;
+  listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number; last_written_chapter: number | null; last_written_chapter_title: string | null; forge_project_id: string | null }>>;
   deleteBook(id: string): Promise<boolean>;
   // Pipeline 2
   getP2State(id: string): Promise<Pipeline2State | null>;
@@ -294,7 +294,7 @@ export class DocStorage implements IStorage {
     await docPut(COLLECTIONS.books, book.id, book);
   }
 
-  async listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number; last_written_chapter: number | null; last_written_chapter_title: string | null }>> {
+  async listBooks(): Promise<Array<{ id: string; title: string; created_at: string; updated_at: string; chapter_count: number; chapters_written: number; last_written_chapter: number | null; last_written_chapter_title: string | null; forge_project_id: string | null }>> {
     await this.ensureReady();
     const all = await docList<BookProject>(COLLECTIONS.books);
     const books = all.map((data) => {
@@ -313,6 +313,7 @@ export class DocStorage implements IStorage {
         chapters_written: writtenChapters.length,
         last_written_chapter: lastChapter?.chapter_number ?? null,
         last_written_chapter_title: lastChapter?.title ?? null,
+        forge_project_id: data.forge_project_id ?? null,
       };
     });
     books.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());

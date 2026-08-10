@@ -53,7 +53,7 @@ const SECTIONS: NavSection[] = [
       { label: "Story Forge", path: "/forge", icon: <Anvil className="w-4 h-4" />, hint: "Full manuscript analysis studio" },
       { label: "Quick Feedback", path: "/forge/quick-feedback", icon: <MessageSquare className="w-4 h-4" />, hint: "Paste a passage, get notes" },
       { label: "Chapter Analyzer", path: "/chapter-analyzer", icon: <Scissors className="w-4 h-4" />, hint: "Extract & rework chapter elements" },
-      { label: "Prose Editor", path: "/editor", icon: <FileText className="w-4 h-4" />, hint: "Line-level analysis of a passage" },
+      { label: "Quick Passage Review", path: "/editor", icon: <FileText className="w-4 h-4" />, hint: "Paste a passage for one focused review" },
       { label: "Style Extractor", path: "/style-extractor", icon: <Sparkles className="w-4 h-4" />, hint: "Build a voice guide from samples" },
     ],
   },
