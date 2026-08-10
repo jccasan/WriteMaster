@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { Link, useRoute, useSearch } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import ForgeLayout from "@/components/forge/ForgeLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Zap, CheckCircle, XCircle, Clock, Gauge, Send } from "lucide-react";
+import { Loader2, Zap, CheckCircle, XCircle, Clock, Gauge, Send, BookOpen, ArrowRight } from "lucide-react";
 
 const MODULES = [
   { key: "editorial_assessment", label: "Editorial Assessment" },
@@ -54,15 +54,21 @@ const BETA_PROFILES = [
 const QUICK_MODULES = ["editorial_assessment", "character_tracker", "developmental_editor"];
 const FULL_MODULES = MODULES.filter(m => m.key !== "beta_reader" && m.key !== "publishing_review").map(m => m.key);
 const SUBMISSION_MODULES = ["editorial_assessment", "character_tracker", "publishing_review"];
+const READER_MODULES = ["editorial_assessment", "beta_reader"];
 
-type Preset = "quick" | "full" | "submission" | "custom";
+type Preset = "quick" | "full" | "readers" | "submission" | "custom";
 
 export default function ForgeAnalysis() {
   const [, params] = useRoute("/forge/project/:id/analyze");
   const projectId = params?.id || "";
+  const search = useSearch();
+  const requestedPreset = new URLSearchParams(search).get("preset");
+  const initialPreset: Preset = requestedPreset === "readers" ? "readers" : "full";
 
-  const [preset, setPreset] = useState<Preset>("full");
-  const [selectedModules, setSelectedModules] = useState<string[]>(FULL_MODULES);
+  const [preset, setPreset] = useState<Preset>(initialPreset);
+  const [selectedModules, setSelectedModules] = useState<string[]>(
+    initialPreset === "readers" ? READER_MODULES : FULL_MODULES,
+  );
   const [selectedSmeDomains, setSelectedSmeDomains] = useState<string[]>([]);
   const [selectedBetaProfiles, setSelectedBetaProfiles] = useState<string[]>(BETA_PROFILES.map(p => p.key));
   const [jobId, setJobId] = useState<string | null>(null);
@@ -71,6 +77,7 @@ export default function ForgeAnalysis() {
     setPreset(p);
     if (p === "quick") setSelectedModules([...QUICK_MODULES]);
     else if (p === "full") setSelectedModules([...FULL_MODULES]);
+    else if (p === "readers") setSelectedModules([...READER_MODULES]);
     else if (p === "submission") setSelectedModules([...SUBMISSION_MODULES]);
   };
 
@@ -160,11 +167,12 @@ export default function ForgeAnalysis() {
   return (
     <ForgeLayout projectId={projectId}>
       <div className="max-w-2xl animate-in fade-in duration-300">
-        <h1 className="text-2xl font-serif font-semibold text-foreground mb-6" data-testid="text-analysis-heading">Analysis</h1>
+        <h1 className="text-2xl font-serif font-semibold text-foreground mb-1" data-testid="text-analysis-heading">Choose Editing Options</h1>
+        <p className="text-sm text-muted-foreground mb-6">Choose a review package or build your own panel. Every result stays attached to this draft.</p>
 
         {!jobId && (
           <>
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <button
                 onClick={() => applyPreset("quick")}
                 className={`p-4 rounded-sm border text-left transition-colors ${
@@ -179,6 +187,21 @@ export default function ForgeAnalysis() {
                   <span className="font-semibold text-foreground">Quick</span>
                 </div>
                 <p className="text-xs text-muted-foreground">3 core modules. ~10-15 min for a full novel.</p>
+              </button>
+              <button
+                onClick={() => applyPreset("readers")}
+                className={`p-4 rounded-sm border text-left transition-colors ${
+                  preset === "readers"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/40"
+                }`}
+                data-testid="button-preset-readers"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <BookOpen className="w-4 h-4 text-brass" />
+                  <span className="font-semibold text-foreground">Reader Panel</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Editorial overview plus your selected beta readers.</p>
               </button>
               <button
                 onClick={() => applyPreset("full")}
@@ -351,14 +374,25 @@ export default function ForgeAnalysis() {
               )}
 
               {(isComplete || isFailed || isCancelled) && (
-                <Button
-                  variant="outline"
-                  className="border-border text-primary hover:bg-primary/10"
-                  onClick={() => { setJobId(null); }}
-                  data-testid="button-new-analysis"
-                >
-                  Run New Analysis
-                </Button>
+                <div className="flex gap-2 flex-wrap">
+                  {isComplete && (
+                    <Link
+                      href={`/forge/project/${projectId}/reports`}
+                      className="inline-flex flex-1 min-w-48 items-center justify-center gap-2 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-semibold h-10 px-4 no-underline"
+                      data-testid="link-view-analysis-results"
+                    >
+                      View results <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="border-border text-primary hover:bg-primary/10"
+                    onClick={() => { setJobId(null); }}
+                    data-testid="button-new-analysis"
+                  >
+                    Run another review
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>

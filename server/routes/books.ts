@@ -17,6 +17,7 @@ import {
 } from "../writing-rules";
 import { buildPreviousSummariesContext, formatSlidersBlock, VARIANT_LENSES } from "./helpers";
 import { startJob, getJob, requestPause } from "../jobs";
+import { ensureBookEditorialProject, getBookEditorialStatus } from "../forge/book-bridge";
 
 const router = express.Router();
 
@@ -38,7 +39,12 @@ const bookUpload = multer({
   router.get("/api/books", async (_req, res) => {
     try {
       const books = await storage.listBooks();
-      res.json(books);
+      const enriched = await Promise.all(books.map(async (summary) => {
+        const book = await storage.getBook(summary.id);
+        const editorial = book ? await getBookEditorialStatus(book) : null;
+        return { ...summary, editorial };
+      }));
+      res.json(enriched);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -73,6 +79,35 @@ const bookUpload = multer({
         req.body.title || "Untitled Book"
       );
       res.json(book);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post("/api/books/:id/editorial-project", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
+      const result = await ensureBookEditorialProject(book);
+      res.json({
+        ...result,
+        analyzeUrl: `/forge/project/${result.projectId}/analyze`,
+        overviewUrl: `/forge/project/${result.projectId}`,
+      });
+    } catch (err: any) {
+      const status = err.message?.includes("no written manuscript content") ? 400 : 500;
+      res.status(status).json({ error: err.message });
+    }
+  });
+
+  // This route intentionally appears before /api/books/:id so "editorial-status"
+  // cannot be interpreted as a Book ID by Express.
+  router.get("/api/books/:id/editorial-status", async (req, res) => {
+    try {
+      const book = await storage.getBook(req.params.id);
+      if (!book) return res.status(404).json({ error: "Book not found" });
+      res.json(await getBookEditorialStatus(book));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -1452,7 +1487,14 @@ If a category has nothing, return an empty array.`,
         status: "written" as const,
       }));
       await storage.saveBook(book);
-      res.json({ id: book.id, title: book.title, chapter_count: book.chapters.length });
+      const editorial = await ensureBookEditorialProject(book);
+      res.json({
+        id: book.id,
+        title: book.title,
+        chapter_count: book.chapters.length,
+        forge_project_id: editorial.projectId,
+        analyze_url: `/forge/project/${editorial.projectId}/analyze`,
+      });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

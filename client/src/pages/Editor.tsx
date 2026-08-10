@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Layout from "@/components/Layout";
+import { Link } from "wouter";
 
 const MODULES = [
   {
@@ -581,8 +582,12 @@ export default function Editor() {
     <Layout>
       <div className="max-w-5xl mx-auto animate-in fade-in duration-300">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-editor-heading">Editor</h1>
-          <p className="text-muted-foreground text-sm">Paste a chapter or passage and run any of the FORGE feedback modules to get instant AI analysis.</p>
+          <p className="catalog-label text-xs mb-1">Quick review</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-editor-heading">Quick Passage Review</h1>
+          <p className="text-muted-foreground text-sm">Paste a chapter, scene, or excerpt and run one focused review. For an uploaded manuscript, multiple editors, or a reader panel, use the Editor's Office.</p>
+          <Link href="/forge" className="inline-flex text-sm text-primary hover:underline mt-2" data-testid="link-full-manuscript-review">
+            Review a full manuscript instead →
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
