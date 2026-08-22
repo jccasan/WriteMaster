@@ -10,6 +10,7 @@ import { startAnalysisJob, startVerificationJob, getJobStatus, getAllJobs, reque
 import { seedDemoProject } from "./seed/seed-demo";
 import { runEditorialAssessment } from "./analysis/modules/editorial-assessment";
 import { runBetaReader, getLegacyProfileKeys, getProfileCatalog, ensureBetaReaderProfiles } from "./analysis/modules/beta-reader";
+import { callChatLLM } from "../llm";
 
 const router = Router();
 
@@ -671,12 +672,6 @@ router.post("/quick-feedback/chat", async (req: Request, res: Response) => {
       }
     }
 
-    const Anthropic = (await import("@anthropic-ai/sdk")).default;
-    const anthropic = new Anthropic({
-      apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-      baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-    });
-
     const systemPrompt = `You are an expert fiction editor and writing coach. The user has submitted a passage for feedback and wants to discuss the results with you.
 
 GENRE: ${genre || "general fiction"}
@@ -689,19 +684,14 @@ ${(feedbackSummary || "").slice(0, 6000)}
 
 Use the passage and feedback as context. Give specific, actionable craft advice. Reference exact lines or moments from the passage when possible. Be encouraging but honest. Keep responses focused and concise.`;
 
-    const apiMessages = messages.map((m: { role: string; content: string }) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
-
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: apiMessages,
-    });
-
-    const reply = response.content[0].type === "text" ? response.content[0].text : "";
+    const reply = await callChatLLM(
+      systemPrompt,
+      messages.map((m: { role: string; content: string }) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+      "cheap"
+    );
     res.json({ reply });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -808,23 +798,14 @@ Be direct, specific, and reference characters, chapters, and issues by name when
 PROJECT CONTEXT:
 ${contextParts.join("\n")}`;
 
-    const Anthropic = (await import("@anthropic-ai/sdk")).default;
-    const anthropic = new Anthropic({
-      apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-      baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-    });
-
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: validated.map((m: any) => ({
+    const reply = await callChatLLM(
+      systemPrompt,
+      validated.map((m: any) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       })),
-    });
-
-    const reply = response.content[0].type === "text" ? response.content[0].text : "";
+      "powerful"
+    );
     res.json({ reply });
   } catch (err: any) {
     console.error("[forge chat] Error:", err.message);

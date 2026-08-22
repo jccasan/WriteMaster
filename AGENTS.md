@@ -35,18 +35,20 @@ On startup the server restores the committed library snapshot
 ("The Meridian Deception"). Both are no-ops when data already exists.
 
 ## Secrets
-The AI features (LLM calls in `server/llm.ts` and `server/forge/routes.ts`) use
-Replit's AI-integration env vars:
-- `AI_INTEGRATIONS_ANTHROPIC_API_KEY`
-- `AI_INTEGRATIONS_ANTHROPIC_BASE_URL`
+The AI features (LLM calls in `server/llm.ts` and the chat endpoints in
+`server/forge/routes.ts`) run through Base44's built-in **InvokeLLM**
+integration via `@base44/sdk`, which bills against the workspace's Base44
+integration credits — no external API key is needed. They require one secret:
+- `BASE44_APP_ID` — the Base44 app id (from the editor URL, between `/apps/`
+  and `/editor/`).
 
-The app UI and non-AI endpoints work **without** these. They are delivered via
-`/run/base44/app.env` (last `env_file` in compose); `.env.base44-defaults` holds
-empty placeholders so the app boots before credentials are provided.
+The app UI and non-AI endpoints work **without** it. It is delivered via
+`/run/base44/app.env` (last `env_file` in compose); `.env.base44-defaults`
+holds an empty placeholder so the app boots before the id is provided.
 
-Caveat: the code hardcodes Replit-aliased model names (`claude-haiku-4-5`,
-`claude-sonnet-4-6`). A direct Anthropic key + `https://api.anthropic.com` may
-need matching model aliases to function.
+Model mapping: `cheap` → `gpt_5_mini`, `powerful` → `claude_sonnet_4_6`
+(Base44 model ids). The old Replit Anthropic env vars
+(`AI_INTEGRATIONS_ANTHROPIC_*`) are no longer used.
 
 ## Things that won't work here
 - Google Docs import (`server/google-docs.ts`) relies on Replit's connector

@@ -4,13 +4,8 @@
   "startCommand": "docker compose -f docker-compose.base44.yml up -d",
   "secrets": [
     {
-      "name": "AI_INTEGRATIONS_ANTHROPIC_API_KEY",
-      "description": "Anthropic API key for the AI-powered writing/analysis features. The app UI boots without it; AI endpoints fail until it is set. NOTE: the code uses Replit's aliased model names (claude-haiku-4-5, claude-sonnet-4-6), so a plain Anthropic key + api.anthropic.com base URL may need matching model aliases to work.",
-      "requiredAtBoot": false
-    },
-    {
-      "name": "AI_INTEGRATIONS_ANTHROPIC_BASE_URL",
-      "description": "Base URL for the Anthropic-compatible API (e.g. https://api.anthropic.com, or a Replit AI integrations proxy URL). Optional but recommended alongside the API key.",
+      "name": "BASE44_APP_ID",
+      "description": "The Base44 app id (found in the Base44 editor URL, between /apps/ and /editor/). The app's AI features use Base44's built-in InvokeLLM integration, which bills against your workspace's Base44 integration credits instead of a user-supplied API key. The app UI boots without it; AI endpoints fail until it is set.",
       "requiredAtBoot": false
     }
   ]
