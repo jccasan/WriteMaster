@@ -1,10 +1,30 @@
-# Base44 development compose for WriteMaster (Express + Vite-middleware + Prisma/SQLite).
+# Base44 development compose for WriteMaster (Express + Vite-middleware + Prisma/Postgres).
 # Single-origin: the Express server integrates Vite in middleware mode and serves
 # both the API and the client on one port (mapped to host 3000).
 services:
+  db:
+    image: postgres:16
+    environment:
+      # Local infra credentials — generated here, not user secrets.
+      POSTGRES_USER: writemaster
+      POSTGRES_PASSWORD: writemaster_dev
+      POSTGRES_DB: writemaster
+    volumes:
+      # Persistent database storage — survives container rebuilds.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U writemaster -d writemaster"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   app:
     image: node:20-bookworm
     working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       # Bind-mount the cloned source so edits appear live (no image rebuilds).
       - ./:/app
@@ -16,6 +36,8 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=5000
+      # Postgres connection (local infra credential, not a user secret).
+      - DATABASE_URL=postgresql://writemaster:writemaster_dev@db:5432/writemaster
       # Bind-mount file watchers often need polling to fire reliably.
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
@@ -29,3 +51,4 @@ services:
 
 volumes:
   node_modules:
+  pgdata:

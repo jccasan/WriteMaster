@@ -11,7 +11,15 @@ docker compose -f docker-compose.base44.yml up -d
 ```
 - Web entry: host port **3000** → container port 5000 (`PORT=5000` inside).
 - Health check: `curl -sf http://localhost:3000/` (returns the Vite-served HTML).
-- Logs: `docker compose -f docker-compose.base44.yml logs -f app`.
+- Logs: `docker compose -f docker-compose.base44.yml logs -f app` (or `... logs db`).
+
+## Database
+- Postgres runs as a `db` service (`postgres:16`) with a named `pgdata` volume
+  — data survives container rebuilds. The app connects via
+  `DATABASE_URL=postgresql://writemaster:writemaster_dev@db:5432/writemaster`.
+- Prisma provider is `postgresql` (`prisma/schema.prisma`); `prisma db push`
+  runs on boot to sync the schema. On an empty DB the committed library snapshot
+  (`data/library-snapshot.json`) is restored and a demo project is seeded.
 
 ## How the dev loop works
 - The `app` service uses the plain `node:20-bookworm` image with the repo
@@ -22,7 +30,6 @@ docker compose -f docker-compose.base44.yml up -d
   edits appear without image rebuilds.
 - `node_modules` lives in a named volume (not the host repo) so installs persist
   across restarts.
-- The SQLite DB is `prisma/forge.db` (bind-mounted onto the host repo; gitignored).
 
 ## Image choice
 Use `node:20-bookworm` (full), **not** `-slim`: Prisma's schema engine needs
