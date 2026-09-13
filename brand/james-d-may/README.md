@@ -66,6 +66,7 @@ These are flagged inside the system and none of them are design decisions to mak
 
 - One accent colour. One symbol. Three typefaces.
 - Signal appears once per screen. Covers are the only exception and they take exactly two.
+- The red dot inside a mark travels with the mark and never counts against that budget.
 - Buttons fill with `#C31219`, not `#D4141B`. Bone on the brighter red fails WCAG AA.
 - Fog never exceeds 24% opacity and never sets type. Ember never touches interface.
 - The reticle is never animated to track or target anything.

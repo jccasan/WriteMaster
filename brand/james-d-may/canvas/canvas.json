@@ -1,31 +1,152 @@
 {
   "pages": [
-    { "id": "page-1", "name": "Foundation" },
-    { "id": "page-2", "name": "Application" }
+    {
+      "id": "page-1",
+      "name": "Foundation"
+    },
+    {
+      "id": "page-2",
+      "name": "Application"
+    }
   ],
   "artboards": [
-    { "file": "Main.dc.html",          "x": 0,    "y": 0,    "w": 1120, "h": 1780, "page": "page-1", "title": "01 Foundation" },
-    { "file": "Color.dc.html",         "x": 1220, "y": 0,    "w": 1180, "h": 2220, "page": "page-1", "title": "02 Colour" },
-    { "file": "Type.dc.html",          "x": 2500, "y": 0,    "w": 1180, "h": 2720, "page": "page-1", "title": "03 Typography" },
-    { "file": "Marks.dc.html",         "x": 0,    "y": 2880, "w": 1260, "h": 3180, "page": "page-1", "title": "04 Marks" },
-    { "file": "Texture.dc.html",       "x": 1360, "y": 2880, "w": 1180, "h": 1900, "page": "page-1", "title": "05 Texture" },
-    { "file": "Voice.dc.html",         "x": 2640, "y": 2880, "w": 1180, "h": 1900, "page": "page-1", "title": "10 Voice" },
-
-    { "file": "CoverGrid.dc.html",     "x": 0,    "y": 0,    "w": 1420, "h": 2120, "page": "page-2", "title": "06 Cover grid" },
-    { "file": "WebComponents.dc.html", "x": 1520, "y": 0,    "w": 1460, "h": 2960, "page": "page-2", "title": "07 Web components" },
-    { "file": "QuickRef.dc.html",      "x": 3080, "y": 0,    "w": 816,  "h": 1056, "page": "page-2", "title": "Quick reference (Letter)", "print": "fixed" },
-    { "file": "Email.dc.html",         "x": 0,    "y": 3120, "w": 1700, "h": 1740, "page": "page-2", "title": "08 Email" },
-    { "file": "Social.dc.html",        "x": 1800, "y": 3120, "w": 1460, "h": 1980, "page": "page-2", "title": "09 Social and video" }
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1120,
+      "h": 1840,
+      "page": "page-1",
+      "title": "01 Foundation"
+    },
+    {
+      "file": "Color.dc.html",
+      "x": 1220,
+      "y": 0,
+      "w": 1180,
+      "h": 2620,
+      "page": "page-1",
+      "title": "02 Colour"
+    },
+    {
+      "file": "Type.dc.html",
+      "x": 2500,
+      "y": 0,
+      "w": 1180,
+      "h": 2800,
+      "page": "page-1",
+      "title": "03 Typography"
+    },
+    {
+      "file": "Marks.dc.html",
+      "x": 0,
+      "y": 2960,
+      "w": 1260,
+      "h": 3380,
+      "page": "page-1",
+      "title": "04 Marks"
+    },
+    {
+      "file": "Texture.dc.html",
+      "x": 1360,
+      "y": 2960,
+      "w": 1180,
+      "h": 1940,
+      "page": "page-1",
+      "title": "05 Texture"
+    },
+    {
+      "file": "Voice.dc.html",
+      "x": 2640,
+      "y": 2960,
+      "w": 1180,
+      "h": 1920,
+      "page": "page-1",
+      "title": "10 Voice"
+    },
+    {
+      "file": "CoverGrid.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1420,
+      "h": 2220,
+      "page": "page-2",
+      "title": "06 Cover grid"
+    },
+    {
+      "file": "WebComponents.dc.html",
+      "x": 1520,
+      "y": 0,
+      "w": 1460,
+      "h": 3020,
+      "page": "page-2",
+      "title": "07 Web components"
+    },
+    {
+      "file": "QuickRef.dc.html",
+      "x": 3080,
+      "y": 0,
+      "w": 816,
+      "h": 1056,
+      "page": "page-2",
+      "title": "Quick reference (Letter)",
+      "print": "fixed"
+    },
+    {
+      "file": "Email.dc.html",
+      "x": 0,
+      "y": 3180,
+      "w": 1700,
+      "h": 1840,
+      "page": "page-2",
+      "title": "08 Email"
+    },
+    {
+      "file": "Social.dc.html",
+      "x": 1800,
+      "y": 3180,
+      "w": 1460,
+      "h": 2100,
+      "page": "page-2",
+      "title": "09 Social and video"
+    }
   ],
   "annotations": [
-    { "id": "source-note", "x": 0, "y": -210, "w": 700, "page": "page-1",
-      "text": "Source of truth: the Oracle Veil Book 1 cover and the approved wordmark.\n\nThree things in the brief conflict with the cover. All three are flagged in red on 01 Foundation, 02 Colour and 04 Marks, and resolved in favour of the cover. Read those before applying anything." },
-    { "id": "ramp-note", "x": 1220, "y": -210, "w": 640, "page": "page-1",
-      "text": "The cover red fails WCAG AA under button text (4.35:1). Fixed with two darker shades of the same hue rather than a second accent colour. Buttons fill #C31219." },
-    { "id": "apply-note", "x": 0, "y": -210, "w": 700, "page": "page-2",
-      "text": "The cover panels on 06 use stand-in art drawn from the palette. They are there to prove the type grid holds for a two-word title and a one-word title. They are not a Darkwell cover proposal." },
-    { "id": "qr-note", "x": 3080, "y": -210, "w": 660, "page": "page-2",
-      "text": "Quick reference is a fixed Letter page (816x1056 at 96ppi). Export PDF renders it as one page. This is the sheet to hand anyone who is not a designer." }
+    {
+      "id": "source-note",
+      "x": 0,
+      "y": -210,
+      "w": 700,
+      "page": "page-1",
+      "text": "Source of truth: the Oracle Veil Book 1 cover and the approved wordmark.\n\nThree things in the brief conflict with the cover. All three are flagged in red on 01 Foundation, 02 Colour and 04 Marks, and resolved in favour of the cover. Read those before applying anything."
+    },
+    {
+      "id": "ramp-note",
+      "x": 1220,
+      "y": -210,
+      "w": 640,
+      "page": "page-1",
+      "text": "The cover red fails WCAG AA under button text (4.35:1). Fixed with two darker shades of the same hue rather than a second accent colour. Buttons fill #C31219."
+    },
+    {
+      "id": "apply-note",
+      "x": 0,
+      "y": -210,
+      "w": 700,
+      "page": "page-2",
+      "text": "The cover panels on 06 use stand-in art drawn from the palette. They are there to prove the type grid holds for a two-word title and a one-word title. They are not a Darkwell cover proposal."
+    },
+    {
+      "id": "qr-note",
+      "x": 3080,
+      "y": -210,
+      "w": 660,
+      "page": "page-2",
+      "text": "Quick reference is a fixed Letter page (816x1056 at 96ppi). Export PDF renders it as one page. This is the sheet to hand anyone who is not a designer."
+    }
   ],
-  "launch": { "view": "canvas", "page": "page-1" }
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
 }

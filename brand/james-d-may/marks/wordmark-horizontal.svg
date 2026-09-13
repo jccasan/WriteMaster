@@ -11,10 +11,10 @@
   <!-- Reticle sits on the cap-height midline (y=50), 40 units clear of the name. -->
   <g stroke="#EAE7E1" stroke-width="2.6" stroke-linecap="butt">
     <circle cx="638" cy="50" r="14.82" fill="none"/>
-    <line x1="638" y1="23.9" x2="638" y2="33.88"/>
-    <line x1="638" y1="66.12" x2="638" y2="76.1"/>
-    <line x1="611.9" y1="50" x2="621.88" y2="50"/>
-    <line x1="654.12" y1="50" x2="664.1" y2="50"/>
+    <line x1="638" y1="24" x2="638" y2="33.88"/>
+    <line x1="638" y1="66.12" x2="638" y2="76"/>
+    <line x1="612" y1="50" x2="621.88" y2="50"/>
+    <line x1="654.12" y1="50" x2="664" y2="50"/>
   </g>
   <circle cx="638" cy="50" r="4.68" fill="#D4141B"/>
 

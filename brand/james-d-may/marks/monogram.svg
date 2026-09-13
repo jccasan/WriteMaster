@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-58 -58 116 116" width="116" height="116" role="img" aria-label="JDM">
   <title>JDM monogram — social avatar and 12mm spine mark</title>
-  <desc>Ring and ticks at true grid scale. JDM sits letterspaced on the ring's horizontal axis. The red centre dot is preserved directly beneath the letters, at the same weight as the period after D in the wordmark. Floor is 32px: below that the letters close up and the reticle glyph alone is the mark. See marks/README.md.</desc>
+  <desc>Ring and ticks at true grid scale. JDM sits letterspaced on the ring's horizontal axis. VARIANT DOT: JDM occupies the centre of the ring, so the red dot moves below the letters at the weight of the period after D in the wordmark. This is the only authorised departure from the canonical centre dot (r=9 at true centre, as in reticle.svg) and it applies to the monogram alone. Floor is 32px: below that the letters close up and the reticle glyph alone is the mark. See marks/README.md.</desc>
   <g stroke="#EAE7E1" stroke-width="5" fill="none" stroke-linecap="butt">
     <circle cx="0" cy="0" r="28.5"/>
     <line x1="0" y1="-50" x2="0" y2="-31"/>

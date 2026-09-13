@@ -19,10 +19,10 @@
          Four ticks, all four equal at 9.88 units long (19 grid units x 0.52),
          running from the ring's outer edge to r=26.0. -->
     <circle cx="286" cy="136" r="14.82" fill="none"/>
-    <line x1="286" y1="109.9" x2="286" y2="119.88"/>
-    <line x1="286" y1="152.12" x2="286" y2="162.1"/>
-    <line x1="259.9" y1="136" x2="269.88" y2="136"/>
-    <line x1="302.12" y1="136" x2="312.1" y2="136"/>
+    <line x1="286" y1="110" x2="286" y2="119.88"/>
+    <line x1="286" y1="152.12" x2="286" y2="162"/>
+    <line x1="260" y1="136" x2="269.88" y2="136"/>
+    <line x1="302.12" y1="136" x2="312" y2="136"/>
   </g>
   <circle cx="286" cy="136" r="4.68" fill="#D4141B"/>
 
