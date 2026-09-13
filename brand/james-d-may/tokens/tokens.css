@@ -1,0 +1,55 @@
+/* James D. May Books - design tokens
+   Derived from the Oracle Veil Book 1 cover and the approved wordmark.
+   Re-sample hex values against the layered cover file before any press run. */
+
+:root {
+  /* Colour */
+  --jdm-ink:          #102229;
+  --jdm-slate:        #1C3743;
+  --jdm-fog:          #49C2D6;
+  --jdm-bone:         #EAE7E1;
+  --jdm-signal:       #D4141B;
+  --jdm-signal-fill:  #C31219;
+  --jdm-signal-press: #A51015;
+  --jdm-ember:        #DD5A1E;
+
+  /* Derived surfaces. Nothing here is a new colour. */
+  --jdm-hairline:     rgba(234, 231, 225, 0.10);
+  --jdm-hairline-firm:rgba(234, 231, 225, 0.22);
+  --jdm-bone-muted:   rgba(234, 231, 225, 0.62);
+  --jdm-bone-faint:   rgba(234, 231, 225, 0.38);
+  --jdm-fog-glow:     rgba(73, 194, 214, 0.16);
+  --jdm-scrim:        rgba(16, 34, 41, 0.82);
+
+  /* Type */
+  --jdm-font-display: "Druk Condensed", Oswald, "Arial Narrow", sans-serif;
+  --jdm-font-ui:      Inter, -apple-system, "Segoe UI", sans-serif;
+  --jdm-font-reading: "Source Serif 4", Georgia, "Times New Roman", serif;
+
+  --jdm-ds-100: 12px;  --jdm-lh-100: 16px;  --jdm-tr-100: 0.08em;
+  --jdm-ds-200: 14px;  --jdm-lh-200: 20px;  --jdm-tr-200: 0.01em;
+  --jdm-ds-300: 16px;  --jdm-lh-300: 26px;  --jdm-tr-300: 0;
+  --jdm-ds-400: 20px;  --jdm-lh-400: 30px;  --jdm-tr-400: 0;
+  --jdm-ds-500: 25px;  --jdm-lh-500: 32px;  --jdm-tr-500: -0.01em;
+  --jdm-ds-600: 32px;  --jdm-lh-600: 36px;  --jdm-tr-600: -0.02em;
+  --jdm-ds-700: 42px;  --jdm-lh-700: 44px;  --jdm-tr-700: -0.02em;
+  --jdm-ds-800: 56px;  --jdm-lh-800: 56px;  --jdm-tr-800: -0.03em;
+
+  /* Space. 4px unit. */
+  --jdm-s-1: 4px;  --jdm-s-2: 8px;  --jdm-s-3: 12px;
+  --jdm-s-4: 16px; --jdm-s-5: 24px; --jdm-s-6: 32px;
+  --jdm-s-7: 48px; --jdm-s-8: 64px; --jdm-s-9: 96px;
+
+  /* Geometry. The system is square. The reticle is the only circle. */
+  --jdm-radius: 0;
+  --jdm-radius-max: 2px;
+  --jdm-control-h: 48px;
+  --jdm-tap-min: 44px;
+}
+
+/* Light surfaces exist for one thing only: the excerpt reading panel
+   and printed forms. There is no light theme for the site. */
+:root {
+  --jdm-paper:      #F4F1EA;
+  --jdm-paper-ink:  #1A1714;
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap">
+  <style>
+:root{
+  --ink:#102229; --slate:#1C3743; --fog:#49C2D6; --bone:#EAE7E1;
+  --signal:#D4141B; --signal-fill:#C31219; --signal-press:#A51015; --ember:#DD5A1E;
+  --hair:rgba(234,231,225,0.10); --hair-firm:rgba(234,231,225,0.22);
+  --muted:rgba(234,231,225,0.62); --faint:rgba(234,231,225,0.38);
+  --paper:#F4F1EA; --paper-ink:#1A1714;
+  --disp:"Druk Condensed",Oswald,"Arial Narrow",sans-serif;
+  --ui:Inter,-apple-system,"Segoe UI",sans-serif;
+  --read:"Source Serif 4",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--ink);color:var(--bone);font-family:var(--ui);
+     -webkit-font-smoothing:antialiased;}
+a{color:var(--bone);text-decoration:none;border-bottom:1px solid var(--signal);}
+a:hover{color:var(--fog);border-bottom-color:var(--fog);}
+.sheet{background:var(--ink);padding:56px;min-height:100%;}
+.head{display:flex;justify-content:space-between;align-items:flex-end;
+      gap:24px;padding-bottom:18px;border-bottom:1px solid var(--hair-firm);}
+.eyebrow{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.22em;
+         text-transform:uppercase;color:var(--faint);}
+.secno{font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.22em;
+       color:var(--signal);}
+h1.title{font-family:var(--disp);font-weight:600;font-size:52px;line-height:.98;
+         letter-spacing:.01em;text-transform:uppercase;margin:28px 0 0;}
+.lede{font-family:var(--read);font-size:19px;line-height:29px;color:var(--muted);
+      max-width:62ch;margin:14px 0 0;text-wrap:pretty;}
+h2{font-family:var(--disp);font-weight:600;font-size:20px;letter-spacing:.14em;
+   text-transform:uppercase;margin:0 0 14px;color:var(--bone);}
+h3{font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.16em;
+   text-transform:uppercase;margin:0 0 8px;color:var(--faint);}
+p{font-size:15px;line-height:24px;color:var(--muted);margin:0 0 10px;text-wrap:pretty;}
+.block{margin-top:44px;}
+.rule{height:1px;background:var(--hair);margin:32px 0;}
+.grid{display:grid;gap:20px;}
+.card{background:var(--slate);border:1px solid var(--hair);padding:20px;}
+.mono{font-family:var(--ui);font-variant-numeric:tabular-nums;font-size:12.5px;
+      line-height:20px;letter-spacing:.02em;}
+.k{color:var(--faint);}
+table{border-collapse:collapse;width:100%;font-size:13px;}
+th{text-align:left;font-family:var(--ui);font-weight:600;font-size:10.5px;
+   letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+   padding:0 12px 8px 0;border-bottom:1px solid var(--hair-firm);}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--hair);color:var(--muted);
+   vertical-align:top;font-variant-numeric:tabular-nums;}
+td.on{color:var(--bone);}
+.pass{color:var(--fog);font-weight:600;}
+.fail{color:var(--signal);font-weight:600;}
+.flag{border-left:3px solid var(--signal);background:rgba(212,20,27,0.07);
+      padding:16px 18px;margin-top:16px;}
+.flag h3{color:var(--signal);}
+.gap{border-left:3px solid var(--fog);background:rgba(73,194,214,0.06);
+     padding:16px 18px;margin-top:16px;}
+.gap h3{color:var(--fog);}
+.tag{display:inline-block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+     padding:3px 8px;border:1px solid var(--hair-firm);color:var(--faint);}
+</style>
+</helmet>
+<div class="sheet">
+<div class="head"><div class="eyebrow"><svg width="13" height="13" viewBox="-56 -56 112 112" aria-hidden="true" style="flex:none;display:block"><g stroke="#EAE7E1" stroke-width="5" fill="none"><circle cx="0" cy="0" r="28.5"/><line x1="0" y1="-50" x2="0" y2="-31"/><line x1="0" y1="31" x2="0" y2="50"/><line x1="-50" y1="0" x2="-31" y2="0"/><line x1="31" y1="0" x2="50" y2="0"/></g><circle cx="0" cy="0" r="9" fill="#D4141B"/></svg><span>James D. May Books &middot; Design System</span></div><div class="secno">05 &mdash; Texture and imagery</div></div><h1 class="title">Surface</h1><p class="lede">Three textures, each with a ceiling. Nothing here is allowed near interface text.</p><div class="block"><h2>Texture kit</h2><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="card" style="padding:0;overflow:hidden"><div style="height:120px;background:var(--ink);position:relative"><div style="position:absolute;inset:0;opacity:.09;background-image:radial-gradient(rgba(234,231,225,.9) .5px,transparent .5px),radial-gradient(rgba(234,231,225,.7) .5px,transparent .5px);background-size:3px 3px,5px 5px;background-position:0 0,2px 2px;"></div></div><div style="padding:18px 20px 20px"><h3 style="margin-bottom:8px">Film grain</h3><div class="mono" style="color:var(--muted);margin-bottom:12px">Opacity 4% to 10%. Monochrome. Shown here at 9%.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag" style="border-color:rgba(73,194,214,.5);color:var(--fog)">Print, covers, social, UI backgrounds at 3%</span><span class="tag" style="border-color:rgba(212,20,27,.5);color:var(--signal)">Never over UI text</span></div></div></div><div class="card" style="padding:0;overflow:hidden"><div style="height:120px;background:var(--ink);position:relative"><div style="position:absolute;inset:0;opacity:.20;background-image:radial-gradient(rgba(234,231,225,1) 1.1px,transparent 1.2px);background-size:6px 6px;-webkit-mask-image:linear-gradient(160deg,transparent 25%,#000 100%);mask-image:linear-gradient(160deg,transparent 25%,#000 100%);"></div></div><div style="padding:18px 20px 20px"><h3 style="margin-bottom:8px">Halftone in shadow</h3><div class="mono" style="color:var(--muted);margin-bottom:12px">Opacity 12% to 22%. Shadow areas only, never a flat field. Shown at 20%.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag" style="border-color:rgba(73,194,214,.5);color:var(--fog)">Print and covers</span><span class="tag" style="border-color:rgba(212,20,27,.5);color:var(--signal)">Never in UI at all</span></div></div></div><div class="card" style="padding:0;overflow:hidden"><div style="height:120px;background:var(--ink);position:relative"><div style="position:absolute;inset:0;opacity:.55;background-image:radial-gradient(circle at 22% 34%,#102229 0 3px,transparent 4px),radial-gradient(circle at 61% 18%,#102229 0 2px,transparent 3px),radial-gradient(circle at 78% 62%,#102229 0 4px,transparent 5px),radial-gradient(circle at 38% 74%,#102229 0 2px,transparent 3px),radial-gradient(circle at 8% 82%,#102229 0 3px,transparent 4px);background-color:rgba(234,231,225,.85);"></div></div><div style="padding:18px 20px 20px"><h3 style="margin-bottom:8px">Concrete distress</h3><div class="mono" style="color:var(--muted);margin-bottom:12px">Chips out of the letterform, not a layer over it. Covers and title cards only.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag" style="border-color:rgba(73,194,214,.5);color:var(--fog)">Display type at 48px and above</span><span class="tag" style="border-color:rgba(212,20,27,.5);color:var(--signal)">Never below 48px, never in UI</span></div></div></div></div></div><div class="block"><h2>Photography and illustration</h2><div class="grid" style="grid-template-columns:1fr 1fr"><div class="card" style="padding:0;overflow:hidden;border-color:rgba(73,194,214,.4)"><div style="position:relative;height:250px;overflow:hidden;background:linear-gradient(175deg,#16303b 0%,#102229 46%,#2a1a12 74%,#6e2f11 100%);"><div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:34%;height:62%;background:#0a161b;border-radius:46% 46% 0 0 / 30% 30% 0 0"></div><div style="position:absolute;left:50%;bottom:56%;transform:translateX(-46%);width:13%;height:15%;background:#0a161b;border-radius:50%"></div><div style="position:absolute;left:16%;top:14%;width:34%;height:2px;background:rgba(73,194,214,.22)"></div><div style="position:absolute;inset:0;opacity:.07;background-image:radial-gradient(rgba(234,231,225,.9) .5px,transparent .5px),radial-gradient(rgba(234,231,225,.7) .5px,transparent .5px);background-size:3px 3px,5px 5px;background-position:0 0,2px 2px;"></div></div><div style="padding:18px 20px 20px"><h3 style="color:var(--fog);margin-bottom:10px">Do</h3><p style="margin:0">Desaturated to near monochrome, with one warm accent doing all the colour work. Long lens, compressed depth. The figure is turned three quarters away and the face is a profile at most. Light comes from one source and the rest of the frame gives it up.</p></div></div><div class="card" style="padding:0;overflow:hidden;border-color:rgba(212,20,27,.4)"><div style="position:relative;height:250px;overflow:hidden;background:linear-gradient(175deg,#1d5fb0 0%,#1aa36a 38%,#e8c81e 66%,#c9268f 100%);"><div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:40%;height:70%;background:#2b1a12;border-radius:42% 42% 0 0 / 22% 22% 0 0"></div><div style="position:absolute;left:50%;bottom:62%;transform:translateX(-50%);width:22%;height:22%;background:#8a5a3c;border-radius:50%"></div><div style="position:absolute;left:50%;bottom:66%;transform:translateX(-50%);width:14%;height:4%;background:#f2e6dd;border-radius:2px"></div><div style="position:absolute;inset:0;opacity:.07;background-image:radial-gradient(rgba(234,231,225,.9) .5px,transparent .5px),radial-gradient(rgba(234,231,225,.7) .5px,transparent .5px);background-size:3px 3px,5px 5px;background-position:0 0,2px 2px;"></div></div><div style="padding:18px 20px 20px"><h3 style="color:var(--signal);margin-bottom:10px">Don&rsquo;t</h3><p style="margin:0">Four hues competing, none of them subordinate. Wide lens, everything in focus. The subject faces camera and makes eye contact, which turns a thriller into a portrait. Even lighting flattens the frame and there is nothing left for the red to interrupt.</p></div></div></div></div><div class="block"><div class="grid" style="grid-template-columns:1fr 1fr"><div class="card"><h3 style="color:var(--fog)">Where each texture is allowed</h3><table style="margin-top:12px"><thead><tr><th>Surface</th><th>Grain</th><th>Halftone</th><th>Distress</th></tr></thead><tbody><tr><td class="on">Cover art</td><td class="pass">Yes</td><td class="pass">Yes</td><td class="pass">Yes</td></tr><tr><td class="on">Print collateral</td><td class="pass">Yes</td><td class="pass">Yes</td><td class="pass">Yes</td></tr><tr><td class="on">Social and video</td><td class="pass">Yes</td><td class="fail">No</td><td class="pass">Yes</td></tr><tr><td class="on">Web background</td><td class="pass">3% cap</td><td class="fail">No</td><td class="fail">No</td></tr><tr><td class="on">Web and email text</td><td class="fail">No</td><td class="fail">No</td><td class="fail">No</td></tr><tr><td class="on">Email background</td><td class="fail">No</td><td class="fail">No</td><td class="fail">No</td></tr></tbody></table><p style="margin-top:14px">Email gets nothing. Clients strip background images, rescale them, or render them as an attachment icon. A flat ink field is the only thing that survives Outlook.</p></div><div><div class="gap"><h3>Gap &middot; there is no photo library</h3><p style="color:var(--bone)">The two panels above are direction diagrams drawn in CSS. They are not reference photography and nobody should shoot from them. The Book 1 cover is currently the only real image in this brand, and one image is not a direction. Before Darkwell art starts, put twenty frames on a board and cut it to six. Otherwise the second cover gets designed off a memory of the first one.</p></div><div class="gap"><h3>Gap &middot; the distress is approximated</h3><p style="color:var(--bone)">The concrete texture on the Book 1 title was made from a source file nobody here has. What is specified above was read off a compressed image. Get the original texture asset or the layered cover file from whoever built it, or Darkwell will not match Book 1 and the shelf will show it.</p></div><div class="flag"><h3>Opacity is a ceiling, not a suggestion</h3><p style="color:var(--bone)">Every range here has a top. Grain at 18% stops being grain and starts being noise, and it is the first thing that makes a cover look self published.</p></div></div></div></div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-58 -58 116 116" width="116" height="116" role="img" aria-label="JDM">
+  <title>JDM monogram — social avatar and 12mm spine mark</title>
+  <desc>Ring and ticks at true grid scale. JDM sits letterspaced on the ring's horizontal axis. The red centre dot is preserved directly beneath the letters, at the same weight as the period after D in the wordmark. Floor is 32px: below that the letters close up and the reticle glyph alone is the mark. See marks/README.md.</desc>
+  <g stroke="#EAE7E1" stroke-width="5" fill="none" stroke-linecap="butt">
+    <circle cx="0" cy="0" r="28.5"/>
+    <line x1="0" y1="-50" x2="0" y2="-31"/>
+    <line x1="0" y1="31"  x2="0" y2="50"/>
+    <line x1="-50" y1="0" x2="-31" y2="0"/>
+    <line x1="31"  y1="0" x2="50"  y2="0"/>
+  </g>
+  <text x="0" y="4" text-anchor="middle" textLength="38" lengthAdjust="spacing"
+        font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif"
+        font-weight="600" font-size="28" fill="#EAE7E1">JDM</text>
+  <circle cx="0" cy="16" r="3.4" fill="#D4141B"/>
+</svg>

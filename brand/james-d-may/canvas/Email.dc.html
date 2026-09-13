@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap">
+  <style>
+:root{
+  --ink:#102229; --slate:#1C3743; --fog:#49C2D6; --bone:#EAE7E1;
+  --signal:#D4141B; --signal-fill:#C31219; --signal-press:#A51015; --ember:#DD5A1E;
+  --hair:rgba(234,231,225,0.10); --hair-firm:rgba(234,231,225,0.22);
+  --muted:rgba(234,231,225,0.62); --faint:rgba(234,231,225,0.38);
+  --paper:#F4F1EA; --paper-ink:#1A1714;
+  --disp:"Druk Condensed",Oswald,"Arial Narrow",sans-serif;
+  --ui:Inter,-apple-system,"Segoe UI",sans-serif;
+  --read:"Source Serif 4",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--ink);color:var(--bone);font-family:var(--ui);
+     -webkit-font-smoothing:antialiased;}
+a{color:var(--bone);text-decoration:none;border-bottom:1px solid var(--signal);}
+a:hover{color:var(--fog);border-bottom-color:var(--fog);}
+.sheet{background:var(--ink);padding:56px;min-height:100%;}
+.head{display:flex;justify-content:space-between;align-items:flex-end;
+      gap:24px;padding-bottom:18px;border-bottom:1px solid var(--hair-firm);}
+.eyebrow{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.22em;
+         text-transform:uppercase;color:var(--faint);}
+.secno{font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.22em;
+       color:var(--signal);}
+h1.title{font-family:var(--disp);font-weight:600;font-size:52px;line-height:.98;
+         letter-spacing:.01em;text-transform:uppercase;margin:28px 0 0;}
+.lede{font-family:var(--read);font-size:19px;line-height:29px;color:var(--muted);
+      max-width:62ch;margin:14px 0 0;text-wrap:pretty;}
+h2{font-family:var(--disp);font-weight:600;font-size:20px;letter-spacing:.14em;
+   text-transform:uppercase;margin:0 0 14px;color:var(--bone);}
+h3{font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.16em;
+   text-transform:uppercase;margin:0 0 8px;color:var(--faint);}
+p{font-size:15px;line-height:24px;color:var(--muted);margin:0 0 10px;text-wrap:pretty;}
+.block{margin-top:44px;}
+.rule{height:1px;background:var(--hair);margin:32px 0;}
+.grid{display:grid;gap:20px;}
+.card{background:var(--slate);border:1px solid var(--hair);padding:20px;}
+.mono{font-family:var(--ui);font-variant-numeric:tabular-nums;font-size:12.5px;
+      line-height:20px;letter-spacing:.02em;}
+.k{color:var(--faint);}
+table{border-collapse:collapse;width:100%;font-size:13px;}
+th{text-align:left;font-family:var(--ui);font-weight:600;font-size:10.5px;
+   letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+   padding:0 12px 8px 0;border-bottom:1px solid var(--hair-firm);}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--hair);color:var(--muted);
+   vertical-align:top;font-variant-numeric:tabular-nums;}
+td.on{color:var(--bone);}
+.pass{color:var(--fog);font-weight:600;}
+.fail{color:var(--signal);font-weight:600;}
+.flag{border-left:3px solid var(--signal);background:rgba(212,20,27,0.07);
+      padding:16px 18px;margin-top:16px;}
+.flag h3{color:var(--signal);}
+.gap{border-left:3px solid var(--fog);background:rgba(73,194,214,0.06);
+     padding:16px 18px;margin-top:16px;}
+.gap h3{color:var(--fog);}
+.tag{display:inline-block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+     padding:3px 8px;border:1px solid var(--hair-firm);color:var(--faint);}
+</style>
+</helmet>
+<div class="sheet">
+<div class="head"><div class="eyebrow"><svg width="13" height="13" viewBox="-56 -56 112 112" aria-hidden="true" style="flex:none;display:block"><g stroke="#EAE7E1" stroke-width="5" fill="none"><circle cx="0" cy="0" r="28.5"/><line x1="0" y1="-50" x2="0" y2="-31"/><line x1="0" y1="31" x2="0" y2="50"/><line x1="-50" y1="0" x2="-31" y2="0"/><line x1="31" y1="0" x2="50" y2="0"/></g><circle cx="0" cy="0" r="9" fill="#D4141B"/></svg><span>James D. May Books &middot; Design System</span></div><div class="secno">08 &mdash; Email</div></div><h1 class="title">Email</h1><p class="lede">600px, one column, one call to action. The header and footer sit on baked ink plates so a client that force-inverts cannot strip the wordmark.</p><div class="block"><div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap"><div><div style="margin-bottom:14px"><span class="tag">Dark &middot; primary</span></div><div style="width:600px;background:#102229;border:1px solid var(--hair-firm)"><div style="background:#102229;padding:30px 32px;text-align:center"><svg style="margin:0 auto" viewBox="0 0 572 231" width="240" aria-label="James D. May Books" style="display:block"><text x="0" y="100" textLength="572" lengthAdjust="spacing" font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif" font-weight="600" font-size="137" fill="#EAE7E1">JAMES D. MAY</text><g stroke="#EAE7E1" stroke-width="2.6" fill="none"><line x1="0" y1="136" x2="252.72" y2="136"/><line x1="319.28" y1="136" x2="572" y2="136"/><circle cx="286" cy="136" r="14.82"/><line x1="286" y1="109.9" x2="286" y2="119.88"/><line x1="286" y1="152.12" x2="286" y2="162.1"/><line x1="259.9" y1="136" x2="269.88" y2="136"/><line x1="302.12" y1="136" x2="312.1" y2="136"/></g><circle cx="286" cy="136" r="4.68" fill="#D4141B"/><text x="0" y="231" textLength="572" lengthAdjust="spacing" font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif" font-weight="600" font-size="79" fill="#EAE7E1">BOOKS</text></svg></div><div style="height:2px;background:#D4141B"></div><div style="padding:34px 32px"><div style="font-family:var(--disp);font-weight:600;font-size:34px;line-height:1.02;letter-spacing:.01em;text-transform:uppercase;color:#EAE7E1">Darkwell has a date</div><p style="font-family:var(--read);font-size:16px;line-height:26px;color:rgba(234,231,225,.62);margin:16px 0 0">Book 2 of the Oracle Veil series goes on sale 14 April. Miranda is still inside the programme. Noah has stopped answering the question she keeps asking him.</p><p style="font-family:var(--read);font-size:16px;line-height:26px;color:rgba(234,231,225,.62);margin:14px 0 0">Preorder now and it arrives on your device the morning it releases.</p><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:26px"><tr><td bgcolor="#C31219" style="background:#C31219;padding:15px 30px"><span style="font-family:Inter,Arial,sans-serif;font-weight:600;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:#EAE7E1">Preorder Darkwell</span></td></tr></table><div style="height:1px;background:rgba(234,231,225,.10);margin:30px 0"></div><div style="background:#1C3743;padding:22px 24px"><div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:rgba(234,231,225,.62)">From chapter one</div><p style="font-family:var(--read);font-style:italic;font-size:15px;line-height:25px;color:#EAE7E1;margin:12px 0 0">Cash. All in advance. Fair trade.</p></div></div><div style="background:#102229;padding:24px 32px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:14px"><svg width="16" height="16" viewBox="-56 -56 112 112" aria-hidden="true" style="flex:none;display:block"><g stroke="#EAE7E1" stroke-width="5" fill="none"><circle cx="0" cy="0" r="28.5"/><line x1="0" y1="-50" x2="0" y2="-31"/><line x1="0" y1="31" x2="0" y2="50"/><line x1="-50" y1="0" x2="-31" y2="0"/><line x1="31" y1="0" x2="50" y2="0"/></g><circle cx="0" cy="0" r="9" fill="#D4141B"/></svg></div><div style="font-family:Inter,Arial,sans-serif;font-size:11.5px;line-height:19px;color:rgba(234,231,225,.54)">You get one email when a book is out. Nothing else.<br>Unsubscribe &middot; jamesdmaybooks.com</div></div></div></div><div><div style="margin-bottom:14px"><span class="tag">Light &middot; forced-inversion fallback</span></div><div style="width:600px;background:#F4F1EA;border:1px solid var(--hair-firm)"><div style="background:#102229;padding:30px 32px;text-align:center"><svg style="margin:0 auto" viewBox="0 0 572 231" width="240" aria-label="James D. May Books" style="display:block"><text x="0" y="100" textLength="572" lengthAdjust="spacing" font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif" font-weight="600" font-size="137" fill="#EAE7E1">JAMES D. MAY</text><g stroke="#EAE7E1" stroke-width="2.6" fill="none"><line x1="0" y1="136" x2="252.72" y2="136"/><line x1="319.28" y1="136" x2="572" y2="136"/><circle cx="286" cy="136" r="14.82"/><line x1="286" y1="109.9" x2="286" y2="119.88"/><line x1="286" y1="152.12" x2="286" y2="162.1"/><line x1="259.9" y1="136" x2="269.88" y2="136"/><line x1="302.12" y1="136" x2="312.1" y2="136"/></g><circle cx="286" cy="136" r="4.68" fill="#D4141B"/><text x="0" y="231" textLength="572" lengthAdjust="spacing" font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif" font-weight="600" font-size="79" fill="#EAE7E1">BOOKS</text></svg></div><div style="height:2px;background:#D4141B"></div><div style="padding:34px 32px"><div style="font-family:var(--disp);font-weight:600;font-size:34px;line-height:1.02;letter-spacing:.01em;text-transform:uppercase;color:#1A1714">Darkwell has a date</div><p style="font-family:var(--read);font-size:16px;line-height:26px;color:rgba(26,23,20,.66);margin:16px 0 0">Book 2 of the Oracle Veil series goes on sale 14 April. Miranda is still inside the programme. Noah has stopped answering the question she keeps asking him.</p><p style="font-family:var(--read);font-size:16px;line-height:26px;color:rgba(26,23,20,.66);margin:14px 0 0">Preorder now and it arrives on your device the morning it releases.</p><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:26px"><tr><td bgcolor="#C31219" style="background:#C31219;padding:15px 30px"><span style="font-family:Inter,Arial,sans-serif;font-weight:600;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:#EAE7E1">Preorder Darkwell</span></td></tr></table><div style="height:1px;background:rgba(26,23,20,.12);margin:30px 0"></div><div style="background:#FFFFFF;padding:22px 24px"><div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:rgba(26,23,20,.66)">From chapter one</div><p style="font-family:var(--read);font-style:italic;font-size:15px;line-height:25px;color:#1A1714;margin:12px 0 0">Cash. All in advance. Fair trade.</p></div></div><div style="background:#102229;padding:24px 32px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:14px"><svg width="16" height="16" viewBox="-56 -56 112 112" aria-hidden="true" style="flex:none;display:block"><g stroke="#EAE7E1" stroke-width="5" fill="none"><circle cx="0" cy="0" r="28.5"/><line x1="0" y1="-50" x2="0" y2="-31"/><line x1="0" y1="31" x2="0" y2="50"/><line x1="-50" y1="0" x2="-31" y2="0"/><line x1="31" y1="0" x2="50" y2="0"/></g><circle cx="0" cy="0" r="9" fill="#D4141B"/></svg></div><div style="font-family:Inter,Arial,sans-serif;font-size:11.5px;line-height:19px;color:rgba(234,231,225,.54)">You get one email when a book is out. Nothing else.<br>Unsubscribe &middot; jamesdmaybooks.com</div></div></div></div><div style="flex:1;min-width:320px"><h2>What breaks and what to do</h2><table><tbody><tr><td class="on" style="width:38%">Forced dark mode</td><td>Apple Mail and Outlook iOS invert a light email. This one is already dark, so the risk runs the other way. Declare <span class="mono">&lt;meta name="color-scheme" content="dark light"&gt;</span> and <span class="mono">supported-color-schemes</span>, then supply the light values above so a forced flip lands somewhere designed.</td></tr><tr><td class="on">Gmail Android</td><td>Force-inverts regardless of what you declare. A transparent bone wordmark disappears. Bake the ink plate into the PNG so the mark carries its own background.</td></tr><tr><td class="on">Outlook Windows</td><td>Word rendering engine. No background images, no flexbox, no CSS grid. Use nested tables with <span class="mono">bgcolor</span> attributes, not CSS background shorthand. The square corners are an advantage here: nothing to fake.</td></tr><tr><td class="on">The button</td><td>Padded table cell with <span class="mono">bgcolor</span>, never a background image and never a styled anchor on its own. 15px vertical padding on 14px text gives 44px of tap. Add VML for Outlook if the cell fill still drops.</td></tr><tr><td class="on">Images off</td><td>The wordmark PNG needs alt text reading <span class="mono">James D. May Books</span> in bone on ink, so the header still reads as a brand when it fails to load.</td></tr><tr><td class="on">Texture</td><td>None. No grain, no halftone, no distress. Clients rescale background images or render them as an attachment. Flat ink only.</td></tr></tbody></table><div class="flag"><h3>One red per email</h3><p style="color:var(--bone)">The 2px rule under the header and the button fill are both signal, which is two. Keep the rule, since it is the thing that reads at a glance in an inbox preview, and the button earns the second because it is the only action. This is the one place in the system outside a cover where signal appears twice, and it is deliberate. Nothing else in the email gets red.</p></div><div class="gap"><h3>Gap &middot; no ESP is chosen</h3><p style="color:var(--bone)">These specs assume hand-built HTML. If the newsletter runs on a drag and drop builder, most of the above becomes unenforceable and the practical answer is a locked template built once by someone who knows the tool. Decide the platform before anyone builds this.</p></div></div></div></div>
+</div>
+</x-dc>
+</body>
+</html>
