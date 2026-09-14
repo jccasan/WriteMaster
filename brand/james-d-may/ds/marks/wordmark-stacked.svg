@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 772 431" width="772" height="431" role="img" aria-label="James D. May Books">
+  <title>James D. May Books — stacked wordmark (primary)</title>
+  <desc>Vector master. Unit grid: 1 unit = 1/100 of the cap height of JAMES. Clear space = 100 units on all four sides (the viewBox already contains it). Type is live for review only; convert to outlines against the licensed Druk Condensed file before release. The reticle is true vector and is final.</desc>
+
+  <rect x="-100" y="-100" width="772" height="431" fill="#102229"/>
+
+  <!-- Name. textLength locks the optical width to 572 units. -->
+  <text x="0" y="100" textLength="572" lengthAdjust="spacing"
+        font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif"
+        font-weight="600" font-size="137" fill="#EAE7E1">JAMES D. MAY</text>
+
+  <!-- Rule. Breaks symmetrically 33.28 units either side of centre (x=286).
+       Both gaps are identical by construction. Stroke matches the reticle. -->
+  <g stroke="#EAE7E1" stroke-width="2.6" stroke-linecap="butt">
+    <line x1="0" y1="136" x2="252.72" y2="136"/>
+    <line x1="319.28" y1="136" x2="572" y2="136"/>
+
+    <!-- Reticle. 52 units tip to tip. Ring r=14.82 (outer edge 16.12).
+         Four ticks, all four equal at 9.88 units long (19 grid units x 0.52),
+         running from the ring's outer edge to r=26.0. -->
+    <circle cx="286" cy="136" r="14.82" fill="none"/>
+    <line x1="286" y1="110" x2="286" y2="119.88"/>
+    <line x1="286" y1="152.12" x2="286" y2="162"/>
+    <line x1="260" y1="136" x2="269.88" y2="136"/>
+    <line x1="302.12" y1="136" x2="312" y2="136"/>
+  </g>
+  <circle cx="286" cy="136" r="4.68" fill="#D4141B"/>
+
+  <!-- BOOKS. Letterspaced to the full 572-unit width of the name above, so its
+       first and last letters align with the J and the Y. lengthAdjust="spacing"
+       distributes the tracking evenly, which also equalises the K-to-S gap. -->
+  <text x="0" y="231" textLength="572" lengthAdjust="spacing"
+        font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif"
+        font-weight="600" font-size="79" fill="#EAE7E1">BOOKS</text>
+</svg>

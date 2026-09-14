@@ -1,4 +1,4 @@
-# James D. May Books — design system
+# James D. May Books: design system
 
 Author brand for the Oracle Veil series (Oracle Veil, Darkwell, The Long Sleep) and the
 Alex Guerrero series (Slingshot, Shield).
