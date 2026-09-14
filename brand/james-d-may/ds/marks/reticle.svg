@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-58 -58 116 116" width="116" height="116" role="img" aria-label="Reticle">
+  <title>Reticle glyph</title>
+  <desc>The brand's only symbol. Section divider, bullet, cover seam mark, and the sub-32px favicon. 100-unit grid, tick tip to tick tip, drawn at true grid scale with 8 units of clear space. Never animated to track or target anything. Single-colour use: set fill and stroke to currentColor including the centre dot.</desc>
+  <g stroke="#EAE7E1" stroke-width="5" fill="none" stroke-linecap="butt">
+    <circle cx="0" cy="0" r="28.5"/>
+    <line x1="0" y1="-50" x2="0" y2="-31"/>
+    <line x1="0" y1="31"  x2="0" y2="50"/>
+    <line x1="-50" y1="0" x2="-31" y2="0"/>
+    <line x1="31"  y1="0" x2="50"  y2="0"/>
+  </g>
+  <circle cx="0" cy="0" r="9" fill="#D4141B"/>
+</svg>

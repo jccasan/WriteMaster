@@ -1,0 +1,192 @@
+[
+  {
+    "path": "foundations/colour.html",
+    "group": "Foundations",
+    "name": "Colour",
+    "subtitle": "Six tokens, one accent, three-shade signal ramp",
+    "viewport": {
+      "width": 940,
+      "height": 600
+    }
+  },
+  {
+    "path": "foundations/space.html",
+    "group": "Foundations",
+    "name": "Space and geometry",
+    "subtitle": "4px unit, square corners, 48px controls",
+    "viewport": {
+      "width": 940,
+      "height": 440
+    }
+  },
+  {
+    "path": "foundations/type.html",
+    "group": "Foundations",
+    "name": "Type",
+    "subtitle": "Druk Condensed, Inter, Source Serif 4 and the eight-step scale",
+    "viewport": {
+      "width": 940,
+      "height": 660
+    }
+  },
+  {
+    "path": "brand/reticle.html",
+    "group": "Brand",
+    "name": "Reticle and monogram",
+    "subtitle": "The only symbol in the brand, with its size floors",
+    "viewport": {
+      "width": 940,
+      "height": 540
+    }
+  },
+  {
+    "path": "brand/wordmark.html",
+    "group": "Brand",
+    "name": "Wordmark",
+    "subtitle": "Stacked and horizontal lockups, three colour versions",
+    "viewport": {
+      "width": 940,
+      "height": 640
+    }
+  },
+  {
+    "path": "actions/button-primary.html",
+    "group": "Actions",
+    "name": "Button, primary",
+    "subtitle": "signalFill on ink, five states, 48px",
+    "viewport": {
+      "width": 880,
+      "height": 260
+    }
+  },
+  {
+    "path": "actions/button-secondary.html",
+    "group": "Actions",
+    "name": "Button, secondary",
+    "subtitle": "Bone outline, five states, no fill",
+    "viewport": {
+      "width": 880,
+      "height": 260
+    }
+  },
+  {
+    "path": "forms/newsletter.html",
+    "group": "Forms",
+    "name": "Newsletter field",
+    "subtitle": "Email capture with focus and error states",
+    "viewport": {
+      "width": 820,
+      "height": 420
+    }
+  },
+  {
+    "path": "navigation/footer.html",
+    "group": "Navigation",
+    "name": "Footer",
+    "subtitle": "Slate panel under a 2px signal rule",
+    "viewport": {
+      "width": 1240,
+      "height": 400
+    }
+  },
+  {
+    "path": "navigation/nav.html",
+    "group": "Navigation",
+    "name": "Navigation bar",
+    "subtitle": "Header lockup, four items, one red",
+    "viewport": {
+      "width": 1240,
+      "height": 200
+    }
+  },
+  {
+    "path": "content/coming-next.html",
+    "group": "Content",
+    "name": "Coming next",
+    "subtitle": "Placeholder for a book with no cover yet",
+    "viewport": {
+      "width": 820,
+      "height": 300
+    }
+  },
+  {
+    "path": "content/cover-card.html",
+    "group": "Content",
+    "name": "Cover card",
+    "subtitle": "Cover, title, status, blurb, secondary action",
+    "viewport": {
+      "width": 820,
+      "height": 340
+    }
+  },
+  {
+    "path": "content/excerpt-panel.html",
+    "group": "Content",
+    "name": "Excerpt panel",
+    "subtitle": "The only light surface in the system",
+    "viewport": {
+      "width": 780,
+      "height": 460
+    }
+  },
+  {
+    "path": "content/pull-quote.html",
+    "group": "Content",
+    "name": "Pull quote",
+    "subtitle": "Display face behind a signal rule",
+    "viewport": {
+      "width": 900,
+      "height": 300
+    }
+  },
+  {
+    "path": "content/retailer-strip.html",
+    "group": "Content",
+    "name": "Retailer strip",
+    "subtitle": "Name set in the UI face where a logo would break the palette",
+    "viewport": {
+      "width": 900,
+      "height": 260
+    }
+  },
+  {
+    "path": "covers/cover-grid.html",
+    "group": "Covers",
+    "name": "Cover grid",
+    "subtitle": "The locked series grid with both books placed",
+    "viewport": {
+      "width": 1240,
+      "height": 760
+    }
+  },
+  {
+    "path": "email/newsletter-email.html",
+    "group": "Email",
+    "name": "Newsletter email",
+    "subtitle": "600px, one column, one action, with the forced-inversion fallback",
+    "viewport": {
+      "width": 1360,
+      "height": 1080
+    }
+  },
+  {
+    "path": "social/landscape-16x9.html",
+    "group": "Social",
+    "name": "Landscape cards, 16:9",
+    "subtitle": "Title and end card at 1920x1080",
+    "viewport": {
+      "width": 940,
+      "height": 420
+    }
+  },
+  {
+    "path": "social/story-9x16.html",
+    "group": "Social",
+    "name": "Story cards, 9:16",
+    "subtitle": "Title, quote, chapter, end card and the platform safe zones at 1080x1920",
+    "viewport": {
+      "width": 1400,
+      "height": 620
+    }
+  }
+]

@@ -1,0 +1,49 @@
+<!-- @dsCard group="Actions" name="Button, primary" subtitle="signalFill on ink, five states, 48px" width="880" height="260" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Button, primary &middot; James D. May Books</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&amp;family=Inter:wght@400;600&amp;family=Source+Serif+4:ital,wght@0,400;1,400&amp;display=swap">
+<style>
+:root{
+  --ink:#102229; --slate:#1C3743; --fog:#49C2D6; --bone:#EAE7E1;
+  --signal:#D4141B; --signal-fill:#C31219; --signal-press:#A51015; --ember:#DD5A1E;
+  --hair:rgba(234,231,225,.10); --hair-firm:rgba(234,231,225,.22);
+  --muted:rgba(234,231,225,.78); --faint:rgba(234,231,225,.62);
+  --paper:#F4F1EA; --paper-ink:#1A1714;
+  --disp:"Druk Condensed",Oswald,"Arial Narrow",sans-serif;
+  --ui:Inter,-apple-system,"Segoe UI",sans-serif;
+  --read:"Source Serif 4",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{background:var(--ink);color:var(--bone);font-family:var(--ui);
+     -webkit-font-smoothing:antialiased;padding:32px;}
+a{color:var(--bone);text-decoration:none;border-bottom:1px solid var(--signal);}
+a:hover{color:var(--fog);border-bottom-color:var(--fog);}
+.lbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);}
+.note{font-size:12.5px;line-height:19px;color:var(--faint);margin:14px 0 0;max-width:70ch;}
+.row{display:flex;gap:20px;flex-wrap:wrap;}
+.st{display:flex;flex-direction:column;gap:9px;align-items:flex-start;}
+
+.btn{font-family:var(--ui);font-weight:600;font-size:14px;letter-spacing:.06em;
+     text-transform:uppercase;height:48px;min-width:176px;padding:0 28px;border:0;
+     display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:0;}
+.btn-p{background:var(--signal-fill);color:var(--bone);}
+.btn-p.hover{background:var(--signal-press);}
+.btn-p.focus{outline:2px solid var(--bone);outline-offset:2px;}
+.btn-p.active{background:var(--signal-press);box-shadow:inset 0 2px 7px rgba(0,0,0,.42);}
+.btn-p.dis{background:var(--slate);color:rgba(234,231,225,.34);cursor:not-allowed;}
+.btn-s{background:transparent;color:var(--bone);box-shadow:inset 0 0 0 1px var(--bone);}
+.btn-s.hover{background:rgba(234,231,225,.08);}
+.btn-s.focus{outline:2px solid var(--bone);outline-offset:2px;}
+.btn-s.active{background:rgba(234,231,225,.15);}
+.btn-s.dis{box-shadow:inset 0 0 0 1px rgba(234,231,225,.2);color:rgba(234,231,225,.3);cursor:not-allowed;}
+</style>
+</head>
+<body>
+<div class="row"><div class="st"><span class="lbl">Default</span><button class="btn btn-p " type="button">Preorder</button></div><div class="st"><span class="lbl">Hover</span><button class="btn btn-p hover" type="button">Preorder</button></div><div class="st"><span class="lbl">Focus</span><button class="btn btn-p focus" type="button">Preorder</button></div><div class="st"><span class="lbl">Active</span><button class="btn btn-p active" type="button">Preorder</button></div><div class="st"><span class="lbl">Disabled</span><button class="btn btn-p dis" type="button">Preorder</button></div></div><p class="note">One primary per screen, and it spends the screen's one red. Bone on signalFill reads 4.97:1. Hover darkens to signalPress rather than brightening, which takes contrast up to 6.34:1 instead of down. Disabled drops to slate and keeps the box so nothing shifts.</p>
+</body>
+</html>

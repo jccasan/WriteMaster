@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&amp;family=Inter:wght@400;600&amp;family=Source+Serif+4:ital,wght@0,400;1,400&amp;display=swap">
+  <style>
+:root{
+  --ink:#102229; --slate:#1C3743; --fog:#49C2D6; --bone:#EAE7E1;
+  --signal:#D4141B; --signal-fill:#C31219; --signal-press:#A51015; --ember:#DD5A1E;
+  --hair:rgba(234,231,225,0.10); --hair-firm:rgba(234,231,225,0.22);
+  --muted:rgba(234,231,225,0.78); --faint:rgba(234,231,225,0.62);
+  --paper:#F4F1EA; --paper-ink:#1A1714;
+  --disp:"Druk Condensed",Oswald,"Arial Narrow",sans-serif;
+  --ui:Inter,-apple-system,"Segoe UI",sans-serif;
+  --read:"Source Serif 4",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--ink);color:var(--bone);font-family:var(--ui);
+     -webkit-font-smoothing:antialiased;}
+a{color:var(--bone);text-decoration:none;border-bottom:1px solid var(--signal);}
+a:hover{color:var(--fog);border-bottom-color:var(--fog);}
+.sheet{background:var(--ink);padding:56px;min-height:100%;}
+.head{display:flex;justify-content:space-between;align-items:flex-end;
+      gap:24px;padding-bottom:18px;border-bottom:1px solid var(--hair-firm);}
+.eyebrow{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.22em;
+         text-transform:uppercase;color:var(--faint);}
+.secno{font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.22em;
+       color:var(--bone);}
+h1.title{font-family:var(--disp);font-weight:600;font-size:52px;line-height:.98;
+         letter-spacing:.01em;text-transform:uppercase;margin:28px 0 0;}
+.lede{font-family:var(--read);font-size:19px;line-height:29px;color:var(--muted);
+      max-width:62ch;margin:14px 0 0;text-wrap:pretty;}
+h2{font-family:var(--disp);font-weight:600;font-size:20px;letter-spacing:.14em;
+   text-transform:uppercase;margin:0 0 14px;color:var(--bone);}
+h3{font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.16em;
+   text-transform:uppercase;margin:0 0 8px;color:var(--faint);}
+p{font-size:15px;line-height:24px;color:var(--muted);margin:0 0 10px;text-wrap:pretty;}
+.block{margin-top:44px;}
+.rule{height:1px;background:var(--hair);margin:32px 0;}
+.grid{display:grid;gap:20px;}
+.card{background:var(--slate);border:1px solid var(--hair);padding:20px;}
+.mono{font-family:var(--ui);font-variant-numeric:tabular-nums;font-size:12.5px;
+      line-height:20px;letter-spacing:.02em;}
+.k{color:var(--faint);}
+table{border-collapse:collapse;width:100%;font-size:13px;}
+th{text-align:left;font-family:var(--ui);font-weight:600;font-size:10.5px;
+   letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+   padding:0 12px 8px 0;border-bottom:1px solid var(--hair-firm);}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--hair);color:var(--muted);
+   vertical-align:top;font-variant-numeric:tabular-nums;}
+td.on{color:var(--bone);}
+.pass{color:var(--fog);font-weight:600;}
+.fail{color:var(--bone);font-weight:600;}
+.fail::before{content:"";display:inline-block;width:7px;height:7px;
+              background:var(--signal);margin-right:7px;vertical-align:1px;}
+.flag{border-left:3px solid var(--signal);background:rgba(212,20,27,0.07);
+      padding:16px 18px;margin-top:16px;}
+.flag h3{color:var(--bone);}
+.gap{border-left:3px solid var(--fog);background:rgba(73,194,214,0.06);
+     padding:16px 18px;margin-top:16px;}
+.gap h3{color:var(--fog);}
+.tag{display:inline-block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+     padding:3px 8px;border:1px solid var(--hair-firm);color:var(--faint);}
+</style>
+</helmet>
+<div class="sheet">
+<div class="head"><div class="eyebrow"><svg width="13" height="13" viewBox="-58 -58 116 116" aria-hidden="true" style="flex:none;display:block"><g stroke="#EAE7E1" stroke-width="5" fill="none"><circle cx="0" cy="0" r="28.5"/><line x1="0" y1="-50" x2="0" y2="-31"/><line x1="0" y1="31" x2="0" y2="50"/><line x1="-50" y1="0" x2="-31" y2="0"/><line x1="31" y1="0" x2="50" y2="0"/></g><circle cx="0" cy="0" r="9" fill="#D4141B"/></svg><span>James D. May Books &middot; Design System</span></div><div class="secno">03 &middot; Typography</div></div><h1 class="title">Type</h1><p class="lede">Three faces. The display face never sets body copy. The reading face never appears in interface.</p><div class="block"><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px"><h3 style="margin:0">Display</h3><span class="tag">2 weights</span></div><div style="font-family:var(--disp);font-weight:700;font-size:58px;letter-spacing:-0.02em;text-transform:uppercase;color:var(--bone);margin:16px 0 4px;line-height:1.02">ORACLE</div><div class="rule" style="margin:18px 0 14px"></div><div class="mono"><span class="k">FACE&nbsp;&nbsp;</span>Druk Condensed</div><div class="mono"><span class="k">LIC&nbsp;&nbsp;&nbsp;</span>Commercial Type, desktop + web</div><p style="margin-top:12px;font-size:13px;line-height:20px">Cover titles, the wordmark, site H1, spine, social headlines. All caps, tracking from -0.03em at display size to +0.22em when it goes small in a strap. Medium 600 for the wordmark and author name. Bold 700 for cover titles.</p></div><div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px"><h3 style="margin:0">Interface</h3><span class="tag">400 / 600 only</span></div><div style="font-family:var(--ui);font-weight:600;font-size:34px;letter-spacing:-0.01em;color:var(--bone);margin:16px 0 4px;line-height:1.02">Preorder now</div><div class="rule" style="margin:18px 0 14px"></div><div class="mono"><span class="k">FACE&nbsp;&nbsp;</span>Inter</div><div class="mono"><span class="k">LIC&nbsp;&nbsp;&nbsp;</span>SIL OFL, free</div><p style="margin-top:12px;font-size:13px;line-height:20px">Navigation, buttons, captions, metadata, form labels, TikTok captions. Two weights and no more. If a third weight feels necessary the hierarchy is wrong, not the type.</p></div><div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px"><h3 style="margin:0">Reading</h3><span class="tag">400 + italic</span></div><div style="font-family:var(--read);font-weight:400;font-size:27px;letter-spacing:0;color:var(--bone);margin:16px 0 4px;line-height:1.02">She counted the exits.</div><div class="rule" style="margin:18px 0 14px"></div><div class="mono"><span class="k">FACE&nbsp;&nbsp;</span>Source Serif 4</div><div class="mono"><span class="k">LIC&nbsp;&nbsp;&nbsp;</span>SIL OFL, free</div><p style="margin-top:12px;font-size:13px;line-height:20px">Excerpts, long-form web copy, the blurb, interior text reference. One weight and its italic. It has a true italic rather than a slant, which matters for the thought-italics the books use constantly.</p></div></div></div><div class="block"><h2>Scale</h2><table><thead><tr><th>Step</th><th>Size / LH</th><th>Track</th><th>Specimen</th><th>Use</th></tr></thead><tbody><tr><td class="on" style="white-space:nowrap"><span class="mono">ds-800</span></td><td style="white-space:nowrap"><span class="mono">56 / 56</span></td><td style="white-space:nowrap"><span class="mono">-0.03em</span></td><td style="padding-right:28px"><div style="font-family:var(--disp);font-weight:600;font-size:56px;line-height:56px;letter-spacing:-0.03em;text-transform:uppercase;color:var(--bone)">The astrolabe held</div></td><td style="width:34%">Site H1. Cover card title at full bleed.</td></tr><tr><td class="on" style="white-space:nowrap"><span class="mono">ds-700</span></td><td style="white-space:nowrap"><span class="mono">42 / 44</span></td><td style="white-space:nowrap"><span class="mono">-0.02em</span></td><td style="padding-right:28px"><div style="font-family:var(--disp);font-weight:600;font-size:42px;line-height:44px;letter-spacing:-0.02em;text-transform:uppercase;color:var(--bone)">The astrolabe held</div></td><td style="width:34%">Section heads. Pull quote.</td></tr><tr><td class="on" style="white-space:nowrap"><span class="mono">ds-600</span></td><td style="white-space:nowrap"><span class="mono">32 / 36</span></td><td style="white-space:nowrap"><span class="mono">-0.02em</span></td><td style="padding-right:28px"><div style="font-family:var(--disp);font-weight:600;font-size:32px;line-height:36px;letter-spacing:-0.02em;text-transform:uppercase;color:var(--bone)">The astrolabe held</div></td><td style="width:34%">Sub head. Cover card title in a grid.</td></tr><tr><td class="on" style="white-space:nowrap"><span class="mono">ds-500</span></td><td style="white-space:nowrap"><span class="mono">25 / 32</span></td><td style="white-space:nowrap"><span class="mono">-0.01em</span></td><td style="padding-right:28px"><div style="font-family:var(--read);font-weight:400;font-size:25px;line-height:32px;letter-spacing:-0.01em;color:var(--bone)">The astrolabe held</div></td><td style="width:34%">Excerpt drop line. Large UI heading.</td></tr><tr><td class="on" style="white-space:nowrap"><span class="mono">ds-400</span></td><td style="white-space:nowrap"><span class="mono">20 / 30</span></td><td style="white-space:nowrap"><span class="mono">0</span></td><td style="padding-right:28px"><div style="font-family:var(--read);font-weight:400;font-size:20px;line-height:30px;letter-spacing:0;color:var(--bone)">The astrolabe held</div></td><td style="width:34%">Lede. Blurb copy.</td></tr><tr><td class="on" style="white-space:nowrap"><span class="mono">ds-300</span></td><td style="white-space:nowrap"><span class="mono">16 / 26</span></td><td style="white-space:nowrap"><span class="mono">0</span></td><td style="padding-right:28px"><div style="font-family:var(--read);font-weight:400;font-size:16px;line-height:26px;letter-spacing:0;color:var(--bone)">The astrolabe held</div></td><td style="width:34%">Body. Reading panel. The default.</td></tr><tr><td class="on" style="white-space:nowrap"><span class="mono">ds-200</span></td><td style="white-space:nowrap"><span class="mono">14 / 20</span></td><td style="white-space:nowrap"><span class="mono">0.01em</span></td><td style="padding-right:28px"><div style="font-family:var(--ui);font-weight:600;font-size:14px;line-height:20px;letter-spacing:0.01em;color:var(--bone)">The astrolabe held</div></td><td style="width:34%">UI text. Buttons, nav, form labels.</td></tr><tr><td class="on" style="white-space:nowrap"><span class="mono">ds-100</span></td><td style="white-space:nowrap"><span class="mono">12 / 16</span></td><td style="white-space:nowrap"><span class="mono">0.08em</span></td><td style="padding-right:28px"><div style="font-family:var(--ui);font-weight:600;font-size:12px;line-height:16px;letter-spacing:0.08em;color:var(--bone)">The astrolabe held</div></td><td style="width:34%">Metadata, captions, the series strap.</td></tr></tbody></table></div><div class="block"><h2>Fixed sizes</h2><table><thead><tr><th>Surface</th><th>Face</th><th>Size</th><th>Tracking</th></tr></thead><tbody><tr><td class="on">Cover title</td><td>Display 700</td><td>Cap height 15% to 17% of trim height. On a 6&times;9 that is roughly 145pt.</td><td>-0.02em</td></tr><tr><td class="on">Cover series strap</td><td>Display 600</td><td>Cap height 1.1% of trim height. Roughly 11pt on a 6&times;9.</td><td>+0.28em</td></tr><tr><td class="on">Cover author name</td><td>Display 600</td><td>Cap height 2.8% of trim height. Roughly 27pt on a 6&times;9.</td><td>+0.20em</td></tr><tr><td class="on">Spine</td><td>Display 600</td><td>Cap height 60% of spine width, 24pt floor</td><td>+0.06em</td></tr><tr><td class="on">Site H1</td><td>Display 600</td><td>56px, ds-800</td><td>-0.03em</td></tr><tr><td class="on">Social title card 9:16</td><td>Display 700</td><td>216px at 1080&times;1920</td><td>-0.02em</td></tr><tr><td class="on">Social quote card 9:16</td><td>Display 600</td><td>127px at 1080&times;1920</td><td>-0.01em</td></tr><tr><td class="on">Social title card 16:9</td><td>Display 700</td><td>200px at 1920&times;1080</td><td>-0.02em</td></tr></tbody></table></div><div class="block"><h2>Rules</h2><div class="grid" style="grid-template-columns:1fr 1fr"><div class="card"><h3 style="color:var(--fog)">Always</h3><p>Display is all caps. There are no lowercase forms in this system.</p><p>Tracking moves with size. Tight when large, open when small. A strap at 11px needs +0.28em or it turns into a smudge.</p><p>Reading copy holds 26px line height at 16px, which is a 1.63 ratio. Do not tighten it to fit.</p></div><div class="card"><h3 style="color:var(--signal)">Never</h3><p>Display face in body copy. It is a poster face and it does not read at paragraph length.</p><p>Reading face anywhere in interface. No serif buttons, no serif nav, no serif labels.</p><p>A fourth family. Not for code, not for numerals, not for a single clever pull quote.</p></div></div></div><div class="gap"><h3>Gap &middot; the display face is identified, not confirmed</h3><p style="color:var(--bone)">Druk Condensed is the closest commercially licensable match to the lettering on the Book 1 cover, read off the rendered image. Nobody has checked it against the real font file. Ask whoever built the cover for their font list. That is a one-email answer and it beats any guess made from a JPEG. Until it comes back, Oswald SemiBold and Bold are the production substitutes and the web faces regardless, since Oswald is free and Druk web licensing is per-domain and priced accordingly.</p><p style="color:var(--bone)">Inter is specified because the brief names it. It works. A grotesk with a narrower cap, IBM Plex Sans or Söhne, would sit closer to the condensed display face. That is a preference, not a defect, and changing it is a decision for the author and not for this document.</p></div>
+</div>
+</x-dc>
+</body>
+</html>

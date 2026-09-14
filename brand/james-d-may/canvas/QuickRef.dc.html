@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&amp;family=Inter:wght@400;600&amp;family=Source+Serif+4:ital,wght@0,400;1,400&amp;display=swap">
+  <style>
+:root{
+  --ink:#102229; --slate:#1C3743; --fog:#49C2D6; --bone:#EAE7E1;
+  --signal:#D4141B; --signal-fill:#C31219; --signal-press:#A51015; --ember:#DD5A1E;
+  --hair:rgba(234,231,225,0.10); --hair-firm:rgba(234,231,225,0.22);
+  --muted:rgba(234,231,225,0.78); --faint:rgba(234,231,225,0.62);
+  --paper:#F4F1EA; --paper-ink:#1A1714;
+  --disp:"Druk Condensed",Oswald,"Arial Narrow",sans-serif;
+  --ui:Inter,-apple-system,"Segoe UI",sans-serif;
+  --read:"Source Serif 4",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--ink);color:var(--bone);font-family:var(--ui);
+     -webkit-font-smoothing:antialiased;}
+a{color:var(--bone);text-decoration:none;border-bottom:1px solid var(--signal);}
+a:hover{color:var(--fog);border-bottom-color:var(--fog);}
+.sheet{background:var(--ink);padding:56px;min-height:100%;}
+.head{display:flex;justify-content:space-between;align-items:flex-end;
+      gap:24px;padding-bottom:18px;border-bottom:1px solid var(--hair-firm);}
+.eyebrow{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.22em;
+         text-transform:uppercase;color:var(--faint);}
+.secno{font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.22em;
+       color:var(--bone);}
+h1.title{font-family:var(--disp);font-weight:600;font-size:52px;line-height:.98;
+         letter-spacing:.01em;text-transform:uppercase;margin:28px 0 0;}
+.lede{font-family:var(--read);font-size:19px;line-height:29px;color:var(--muted);
+      max-width:62ch;margin:14px 0 0;text-wrap:pretty;}
+h2{font-family:var(--disp);font-weight:600;font-size:20px;letter-spacing:.14em;
+   text-transform:uppercase;margin:0 0 14px;color:var(--bone);}
+h3{font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.16em;
+   text-transform:uppercase;margin:0 0 8px;color:var(--faint);}
+p{font-size:15px;line-height:24px;color:var(--muted);margin:0 0 10px;text-wrap:pretty;}
+.block{margin-top:44px;}
+.rule{height:1px;background:var(--hair);margin:32px 0;}
+.grid{display:grid;gap:20px;}
+.card{background:var(--slate);border:1px solid var(--hair);padding:20px;}
+.mono{font-family:var(--ui);font-variant-numeric:tabular-nums;font-size:12.5px;
+      line-height:20px;letter-spacing:.02em;}
+.k{color:var(--faint);}
+table{border-collapse:collapse;width:100%;font-size:13px;}
+th{text-align:left;font-family:var(--ui);font-weight:600;font-size:10.5px;
+   letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+   padding:0 12px 8px 0;border-bottom:1px solid var(--hair-firm);}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--hair);color:var(--muted);
+   vertical-align:top;font-variant-numeric:tabular-nums;}
+td.on{color:var(--bone);}
+.pass{color:var(--fog);font-weight:600;}
+.fail{color:var(--bone);font-weight:600;}
+.fail::before{content:"";display:inline-block;width:7px;height:7px;
+              background:var(--signal);margin-right:7px;vertical-align:1px;}
+.flag{border-left:3px solid var(--signal);background:rgba(212,20,27,0.07);
+      padding:16px 18px;margin-top:16px;}
+.flag h3{color:var(--bone);}
+.gap{border-left:3px solid var(--fog);background:rgba(73,194,214,0.06);
+     padding:16px 18px;margin-top:16px;}
+.gap h3{color:var(--fog);}
+.tag{display:inline-block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+     padding:3px 8px;border:1px solid var(--hair-firm);color:var(--faint);}
+
+.sheet{padding:30px 34px;}
+.qh{font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--bone);margin:0 0 7px;
+    padding-bottom:5px;border-bottom:1px solid var(--hair-firm);}
+.qs{font-size:12px;line-height:16.5px;color:var(--muted);margin:0 0 5px;}
+.sec{margin-top:15px;}
+td{padding:4px 10px 4px 0;font-size:12px;}
+</style>
+</helmet>
+<div class="sheet">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:11px;border-bottom:2px solid var(--signal)"><div><svg viewBox="0 0 572 231" width="205" aria-label="James D. May Books" style="display:block"><text x="0" y="100" textLength="572" lengthAdjust="spacing" font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif" font-weight="600" font-size="137" fill="#EAE7E1">JAMES D. MAY</text><g stroke="#EAE7E1" stroke-width="2.6" fill="none"><line x1="0" y1="136" x2="252.72" y2="136"/><line x1="319.28" y1="136" x2="572" y2="136"/><circle cx="286" cy="136" r="14.82"/><line x1="286" y1="110" x2="286" y2="119.88"/><line x1="286" y1="152.12" x2="286" y2="162"/><line x1="260" y1="136" x2="269.88" y2="136"/><line x1="302.12" y1="136" x2="312" y2="136"/></g><circle cx="286" cy="136" r="4.68" fill="#D4141B"/><text x="0" y="231" textLength="572" lengthAdjust="spacing" font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif" font-weight="600" font-size="79" fill="#EAE7E1">BOOKS</text></svg></div><div style="text-align:right"><div style="font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.06em;text-transform:uppercase;color:var(--bone);line-height:1">Quick reference</div><div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:4px">One page &middot; v1.0</div></div></div><div class="sec"><div class="qh">Colour</div><div style="display:flex;gap:9px"><div style="flex:1"><div style="background:#102229;height:38px;border:1px solid var(--hair)"></div><div style="font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone);margin-top:5px;line-height:1.1">ink</div><div class="mono" style="font-size:10.5px;line-height:1.3;color:var(--muted)">#102229</div></div><div style="flex:1"><div style="background:#1C3743;height:38px;border:1px solid var(--hair)"></div><div style="font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone);margin-top:5px;line-height:1.1">slate</div><div class="mono" style="font-size:10.5px;line-height:1.3;color:var(--muted)">#1C3743</div></div><div style="flex:1"><div style="background:#49C2D6;height:38px;border:1px solid var(--hair)"></div><div style="font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone);margin-top:5px;line-height:1.1">fog</div><div class="mono" style="font-size:10.5px;line-height:1.3;color:var(--muted)">#49C2D6</div></div><div style="flex:1"><div style="background:#EAE7E1;height:38px;border:1px solid var(--hair)"></div><div style="font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone);margin-top:5px;line-height:1.1">bone</div><div class="mono" style="font-size:10.5px;line-height:1.3;color:var(--muted)">#EAE7E1</div></div><div style="flex:1"><div style="background:#D4141B;height:38px;border:1px solid var(--hair)"></div><div style="font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone);margin-top:5px;line-height:1.1">signal</div><div class="mono" style="font-size:10.5px;line-height:1.3;color:var(--muted)">#D4141B</div></div><div style="flex:1"><div style="background:#DD5A1E;height:38px;border:1px solid var(--hair)"></div><div style="font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone);margin-top:5px;line-height:1.1">ember</div><div class="mono" style="font-size:10.5px;line-height:1.3;color:var(--muted)">#DD5A1E</div></div></div><p class="qs" style="margin-top:8px"><strong style="color:var(--bone)">Backgrounds are ink. Type is bone. Red appears once.</strong> Fog is light only, never above 24% opacity. Ember belongs to photographs. Buttons fill with #C31219, not #D4141B, because bone on the brighter red fails accessibility.</p></div><div class="sec"><div class="qh">Type</div><div style="display:flex;gap:18px"><div style="flex:1"><div style="font-family:var(--disp);font-weight:700;font-size:31px;line-height:1.05;color:var(--bone);text-transform:uppercase;">ORACLE</div><div class="qs" style="margin-top:6px"><strong style="color:var(--bone)">Druk Condensed</strong><br>Titles, headings, wordmark. Always caps, never a paragraph.</div></div><div style="flex:1"><div style="font-family:var(--ui);font-weight:600;font-size:20px;line-height:1.05;color:var(--bone);">Preorder now</div><div class="qs" style="margin-top:6px"><strong style="color:var(--bone)">Inter</strong><br>Buttons, menus, labels. Regular and semibold only.</div></div><div style="flex:1"><div style="font-family:var(--read);font-weight:400;font-size:19px;line-height:1.05;color:var(--bone);">She counted the exits.</div><div class="qs" style="margin-top:6px"><strong style="color:var(--bone)">Source Serif 4</strong><br>Excerpts and long reading. Never inside a control.</div></div></div></div><div class="sec" style="display:flex;gap:22px"><div style="flex:1.3"><div class="qh">Marks</div><div style="display:flex;align-items:flex-end;gap:16px"><div style="flex:1"><svg viewBox="0 0 572 231" width="160" aria-label="James D. May Books" style="display:block"><text x="0" y="100" textLength="572" lengthAdjust="spacing" font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif" font-weight="600" font-size="137" fill="#EAE7E1">JAMES D. MAY</text><g stroke="#EAE7E1" stroke-width="2.6" fill="none"><line x1="0" y1="136" x2="252.72" y2="136"/><line x1="319.28" y1="136" x2="572" y2="136"/><circle cx="286" cy="136" r="14.82"/><line x1="286" y1="110" x2="286" y2="119.88"/><line x1="286" y1="152.12" x2="286" y2="162"/><line x1="260" y1="136" x2="269.88" y2="136"/><line x1="302.12" y1="136" x2="312" y2="136"/></g><circle cx="286" cy="136" r="4.68" fill="#D4141B"/><text x="0" y="231" textLength="572" lengthAdjust="spacing" font-family="Druk Condensed, Oswald, Arial Narrow, sans-serif" font-weight="600" font-size="79" fill="#EAE7E1">BOOKS</text></svg></div><svg width="40" height="40" viewBox="-58 -58 116 116" aria-hidden="true" style="flex:none;display:block"><g stroke="#EAE7E1" stroke-width="5" fill="none"><circle cx="0" cy="0" r="28.5"/><line x1="0" y1="-50" x2="0" y2="-31"/><line x1="0" y1="31" x2="0" y2="50"/><line x1="-50" y1="0" x2="-31" y2="0"/><line x1="31" y1="0" x2="50" y2="0"/></g><circle cx="0" cy="0" r="9" fill="#D4141B"/></svg><svg width="26" height="26" viewBox="-58 -58 116 116" aria-hidden="true" style="flex:none;display:block"><g stroke="#EAE7E1" stroke-width="5" fill="none"><circle cx="0" cy="0" r="28.5"/><line x1="0" y1="-50" x2="0" y2="-31"/><line x1="0" y1="31" x2="0" y2="50"/><line x1="-50" y1="0" x2="-31" y2="0"/><line x1="31" y1="0" x2="50" y2="0"/></g><circle cx="0" cy="0" r="9" fill="#D4141B"/></svg></div><table style="margin-top:8px"><tbody><tr><td class="on">Stacked wordmark</td><td>32mm / 180px</td></tr><tr><td class="on">Horizontal wordmark</td><td>44mm / 240px</td></tr><tr><td class="on">JDM monogram</td><td>12mm / 32px</td></tr><tr><td class="on">Reticle alone</td><td>6mm / 16px</td></tr></tbody></table><p class="qs" style="margin-top:7px">Clear space equals the height of the J on every side. Never stretch, rotate, recolour, or shadow it. Over a photograph the whole mark goes white, red dot included.</p></div><div style="flex:1"><div class="qh">Covers</div><table><tbody><tr><td class="on">Series strap</td><td>4% from top</td></tr><tr><td class="on">Title band</td><td>38% to 73%</td></tr><tr><td class="on">Author name</td><td>93% from top</td></tr><tr><td class="on">Side margins</td><td>8% each side</td></tr></tbody></table><p class="qs" style="margin-top:7px">Every title line stretches to the full live width, so lines with fewer letters come out taller. That is correct.</p><p class="qs">Two-word titles put red on the second word. One-word titles stay bone and let the strap carry the red.</p></div></div><div class="sec" style="display:flex;gap:22px"><div style="flex:1"><div class="qh">Never</div><div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px"><svg width="9" height="9" viewBox="0 0 12 12" style="flex:none;margin-top:4px"><line x1="1" y1="1" x2="11" y2="11" stroke="#D4141B" stroke-width="2.4"/><line x1="11" y1="1" x2="1" y2="11" stroke="#D4141B" stroke-width="2.4"/></svg><span class="qs" style="margin:0">Two red things on one screen. Covers take two. The dot inside the mark never counts.</span></div><div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px"><svg width="9" height="9" viewBox="0 0 12 12" style="flex:none;margin-top:4px"><line x1="1" y1="1" x2="11" y2="11" stroke="#D4141B" stroke-width="2.4"/><line x1="11" y1="1" x2="1" y2="11" stroke="#D4141B" stroke-width="2.4"/></svg><span class="qs" style="margin:0">A second accent colour, a second symbol, or a fourth typeface.</span></div><div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px"><svg width="9" height="9" viewBox="0 0 12 12" style="flex:none;margin-top:4px"><line x1="1" y1="1" x2="11" y2="11" stroke="#D4141B" stroke-width="2.4"/><line x1="11" y1="1" x2="1" y2="11" stroke="#D4141B" stroke-width="2.4"/></svg><span class="qs" style="margin:0">The display face in body copy, or the reading face in a button.</span></div><div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px"><svg width="9" height="9" viewBox="0 0 12 12" style="flex:none;margin-top:4px"><line x1="1" y1="1" x2="11" y2="11" stroke="#D4141B" stroke-width="2.4"/><line x1="11" y1="1" x2="1" y2="11" stroke="#D4141B" stroke-width="2.4"/></svg><span class="qs" style="margin:0">Rounded corners above 2px, gradients behind interface, shadows on the wordmark.</span></div><div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px"><svg width="9" height="9" viewBox="0 0 12 12" style="flex:none;margin-top:4px"><line x1="1" y1="1" x2="11" y2="11" stroke="#D4141B" stroke-width="2.4"/><line x1="11" y1="1" x2="1" y2="11" stroke="#D4141B" stroke-width="2.4"/></svg><span class="qs" style="margin:0">The cover tilted, cropped through the title, or mocked up as a 3D book.</span></div><div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px"><svg width="9" height="9" viewBox="0 0 12 12" style="flex:none;margin-top:4px"><line x1="1" y1="1" x2="11" y2="11" stroke="#D4141B" stroke-width="2.4"/><line x1="11" y1="1" x2="1" y2="11" stroke="#D4141B" stroke-width="2.4"/></svg><span class="qs" style="margin:0">Chrome, lens flare, glitch effects, gold, or a CLASSIFIED stamp.</span></div><div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px"><svg width="9" height="9" viewBox="0 0 12 12" style="flex:none;margin-top:4px"><line x1="1" y1="1" x2="11" y2="11" stroke="#D4141B" stroke-width="2.4"/><line x1="11" y1="1" x2="1" y2="11" stroke="#D4141B" stroke-width="2.4"/></svg><span class="qs" style="margin:0">Em dashes, exclamation points, or the word unputdownable.</span></div></div><div style="flex:1"><div class="qh" style="color:var(--fog)">If you are stuck</div><p class="qs">Choose restraint. Less type, more ink, one red. Nothing in this brand has been improved by adding something.</p><p class="qs">Check it in grey. If the layout stops working when the red goes grey, the red was holding up a hierarchy that size and space should have built.</p><div style="background:var(--slate);border:1px solid var(--hair);padding:10px 12px;margin-top:8px"><div style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:5px">Files</div><div class="mono" style="font-size:11px;color:var(--bone);line-height:17px">brand/james-d-may/marks/ &nbsp;SVG masters<br>brand/james-d-may/tokens/ &nbsp;tokens.json, tokens.css<br>brand/james-d-may/canvas/ &nbsp;the full system</div></div></div></div>
+</div>
+</x-dc>
+</body>
+</html>
